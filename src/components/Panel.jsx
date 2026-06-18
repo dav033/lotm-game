@@ -1,45 +1,58 @@
 import { useState, useRef, useEffect } from 'react'
 import { PATHWAYS, PATH_NAMES } from '../data/pathways.js'
 
-// Searchable pathway combobox. The typed text is a local draft; the committed
-// pathway (`value`) only changes when an option is picked, so clearing the input
-// to search never leaves an invalid pathway. Picking resets that slot to Seq 0.
+// Searchable pathway combobox. Focusing clears the field so you can type a new
+// search instantly; Enter commits the first match; Escape/blur restores the
+// committed pathway. The typed text is a local draft, so clearing it to search
+// never leaves an invalid pathway.
 function PathwayCombo({ value, onPick }) {
   const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState(value)
+  const [query, setQuery] = useState('')
+  const inputRef = useRef(null)
   const blurTimer = useRef(null)
 
-  // Keep the draft in sync when the committed pathway changes from outside.
-  useEffect(() => { setQuery(value) }, [value])
+  // Show the committed pathway whenever the field is closed/idle.
+  useEffect(() => { if (!open) setQuery('') }, [value, open])
 
   const filter = query.trim().toLowerCase()
   const matches = PATH_NAMES.filter((n) => n.toLowerCase().includes(filter))
 
+  const commit = (n) => {
+    onPick(n)
+    setOpen(false)
+    setQuery('')
+    inputRef.current?.blur()
+  }
+
   return (
     <>
       <input
-        value={query}
+        ref={inputRef}
+        value={open ? query : value}
         placeholder="Type to search…"
         autoComplete="off"
-        onFocus={() => setOpen(true)}
+        onFocus={() => { setQuery(''); setOpen(true) }}
         onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && matches.length) { e.preventDefault(); commit(matches[0]) }
+          else if (e.key === 'Escape') { setOpen(false); inputRef.current?.blur() }
+        }}
         onBlur={() => {
-          blurTimer.current = setTimeout(() => { setOpen(false); setQuery(value) }, 150)
+          blurTimer.current = setTimeout(() => { setOpen(false); setQuery('') }, 150)
         }}
       />
       <div className={'combo-list' + (open ? ' open' : '')}>
         {matches.length === 0 ? (
           <div className="none">No results</div>
         ) : (
-          matches.map((n) => (
+          matches.map((n, i) => (
             <div
               key={n}
-              className="opt"
+              className={'opt' + (i === 0 ? ' active' : '')}
               onMouseDown={(e) => {
                 e.preventDefault()
                 clearTimeout(blurTimer.current)
-                onPick(n)
-                setOpen(false)
+                commit(n)
               }}
             >
               {n}
@@ -62,19 +75,15 @@ function SeqSelect({ path, value, onChange }) {
   )
 }
 
-export default function Panel({
-  state, set, accent, batch, busy, editingId, editingIndex,
-  onUploadImage, onDownload, onAddToBatch, onUpdateCard, onLoadCard, onStep, onNewCard,
-  onRemoveFromBatch, onClearBatch, onDownloadZip,
-}) {
+export default function Panel({ state, set, accent, onUploadImage, onDownload }) {
   const fileRef = useRef(null)
 
   return (
-    <div className="panel">
+    <aside className="panel">
       <h1>Card builder</h1>
       <p className="sub">
-        Search a pathway (loads its sequences), pick the sequence (auto-colors by tier),
-        then export at 960×1280.
+        Search a pathway, pick the sequence (auto-colors by tier), and your work
+        saves automatically. Export at 960×1280.
       </p>
 
       <div className="field">
@@ -99,10 +108,7 @@ export default function Panel({
 
       <div className="field">
         <label>Pathway (search all 22)</label>
-        <PathwayCombo
-          value={state.path}
-          onPick={(n) => set({ path: n, seq: 0 })}
-        />
+        <PathwayCombo value={state.path} onPick={(n) => set({ path: n, seq: 0 })} />
       </div>
 
       <div className="field">
@@ -125,10 +131,7 @@ export default function Panel({
         <>
           <div className="field">
             <label>Pathway #2</label>
-            <PathwayCombo
-              value={state.path2}
-              onPick={(n) => set({ path2: n, seq2: 0 })}
-            />
+            <PathwayCombo value={state.path2} onPick={(n) => set({ path2: n, seq2: 0 })} />
           </div>
 
           <div className="field">
@@ -197,68 +200,10 @@ export default function Panel({
         onChange={(e) => onUploadImage(e.target.files[0])}
       />
 
-      <div className="batch">
-        <div className="batch-head">
-          <span className="bt">Batch · {batch.length}</span>
-          {batch.length > 0 && (
-            <div className="batch-nav">
-              <button className="nav" onClick={() => onStep(-1)} aria-label="Previous">‹</button>
-              <span className="pos">{editingIndex >= 0 ? editingIndex + 1 : '–'} / {batch.length}</span>
-              <button className="nav" onClick={() => onStep(1)} aria-label="Next">›</button>
-            </div>
-          )}
-          {batch.length > 0 && (
-            <button className="batch-clear" onClick={onClearBatch}>Clear all</button>
-          )}
-        </div>
-
-        {editingId ? (
-          <div className="batch-actions">
-            <button className="batch-add" disabled={busy} onClick={onUpdateCard}>
-              {busy ? 'Saving…' : `Update card ${editingIndex + 1}`}
-            </button>
-            <button className="batch-add ghost" disabled={busy} onClick={onAddToBatch}>Save as new</button>
-            <button className="batch-add ghost" onClick={onNewCard}>New card</button>
-          </div>
-        ) : (
-          <button className="batch-add" disabled={busy} onClick={onAddToBatch}>
-            {busy ? 'Saving…' : '+ Save current card to batch'}
-          </button>
-        )}
-
-        {batch.length === 0 ? (
-          <p className="batch-empty">No cards saved yet. Save the current card, change the fields, save again — repeat for as many as you want. Click any thumbnail to edit it.</p>
-        ) : (
-          <div className="batch-grid">
-            {batch.map((item) => (
-              <div
-                className={'thumb' + (item.id === editingId ? ' active' : '')}
-                key={item.id}
-                title={item.label}
-                onClick={() => onLoadCard(item.id)}
-              >
-                <img src={item.url} alt={item.label} />
-                <button
-                  className="rm"
-                  onClick={(e) => { e.stopPropagation(); onRemoveFromBatch(item.id) }}
-                  aria-label="Remove"
-                >×</button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <button
-          className="btn-zip"
-          style={{ background: accent.c }}
-          disabled={batch.length === 0}
-          onClick={onDownloadZip}
-        >
-          Download ZIP ({batch.length})
-        </button>
-      </div>
-
-      <p className="hint">PNG exports at 960×1280 (vertical 3:4). If the download fails, just screenshot the card.</p>
-    </div>
+      <p className="hint">
+        Every change auto-saves. Use the strip below the card to switch, reorder
+        (drag), or add cards. PNG exports at 960×1280.
+      </p>
+    </aside>
   )
 }
