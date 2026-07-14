@@ -24,9 +24,14 @@ export default async function PaginaDatosAdmin() {
           Descarga una copia completa del contenido del juego (sin progreso de
           jugadores). Útil como copia de seguridad o para migrar de entorno.
         </p>
-        <a href="/api/admin/exportar" className="btn-brass inline-block" download>
-          Descargar JSON
-        </a>
+        <div className="flex flex-wrap gap-3">
+          <a href="/api/admin/exportar" className="btn-brass inline-block" download>
+            Descargar backup completo
+          </a>
+          <a href="/api/admin/exportar-elementos" className="btn-ghost inline-block" download>
+            Exportar nombres y combinaciones
+          </a>
+        </div>
       </section>
 
       <section className="rounded-lg mist-card p-4">

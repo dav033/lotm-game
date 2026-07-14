@@ -6,6 +6,34 @@ export class ImportError extends Error {}
 
 // ---------- Exportación ----------
 
+export async function exportarElementosYCombinaciones(db: PrismaClient) {
+  const elementos = await db.element.findMany({
+    include: {
+      outputs: {
+        include: {
+          recipe: {
+            include: {
+              ingredients: {
+                include: { element: { select: { name: true } } },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: { name: 'asc' },
+  })
+
+  return elementos.map((elemento) => ({
+    nombre: elemento.name,
+    combinaciones: elemento.outputs.map((output) =>
+      output.recipe.ingredients
+        .flatMap((ingredient) => Array<string>(ingredient.quantity).fill(ingredient.element.name))
+        .sort((a, b) => a.localeCompare(b, 'es')),
+    ),
+  }))
+}
+
 export async function exportarContenido(db: PrismaClient) {
   const [categorias, elementos, caminos, secuencias, recetas, avances, rituales, logros] = await Promise.all([
     db.category.findMany({ include: { parent: { select: { slug: true } } }, orderBy: { sortOrder: 'asc' } }),
