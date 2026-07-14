@@ -95,26 +95,36 @@ export async function obtenerRecetasPendientes(db: Db, profileId: string): Promi
   ])
   const descubiertos = new Set(descubrimientos.map((d) => d.elementId))
 
-  const pendientes: RecetaPendiente[] = []
+  // Cuanto más bajo el tier de los ingredientes y menos falten por
+  // descubrir, menos combinaciones previas exige llegar a esta receta.
+  const conPrioridad: { receta: RecetaPendiente; faltantes: number; maxTier: number }[] = []
   for (const r of recetas) {
     const resultadosActivos = r.outputs.filter((o) => o.element.isActive)
     if (resultadosActivos.length === 0) continue
     const completa = resultadosActivos.every((o) => descubiertos.has(o.elementId))
     if (completa) continue
 
-    pendientes.push({
-      recipeId: r.id,
-      ingredientes: r.ingredients.map((i) => ({
-        ...toPublicElement(i.element),
-        quantity: i.quantity,
-      })),
-      resultados: resultadosActivos.map((o) => ({
-        ...toPublicElement(o.element),
-        quantity: o.quantity,
-      })),
+    conPrioridad.push({
+      receta: {
+        recipeId: r.id,
+        ingredientes: r.ingredients.map((i) => ({
+          ...toPublicElement(i.element),
+          quantity: i.quantity,
+          discovered: descubiertos.has(i.elementId),
+        })),
+        resultados: resultadosActivos.map((o) => ({
+          ...toPublicElement(o.element),
+          quantity: o.quantity,
+          discovered: descubiertos.has(o.elementId),
+        })),
+      },
+      faltantes: r.ingredients.filter((i) => !descubiertos.has(i.elementId)).length,
+      maxTier: Math.max(0, ...r.ingredients.map((i) => i.element.tier)),
     })
   }
-  return pendientes
+
+  conPrioridad.sort((a, b) => a.faltantes - b.faltantes || a.maxTier - b.maxTier)
+  return conPrioridad.map((p) => p.receta)
 }
 
 // Marca como descubiertos todos los elementos iniciales (Ojo, Moneda, Humano).

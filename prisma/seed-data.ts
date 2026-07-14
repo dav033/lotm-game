@@ -729,8 +729,8 @@ export async function seedGameData(prisma: PrismaClient) {
       categoryId: misticismo.id,
     },
     {
-      slug: 'vidente',
-      name: 'Vidente',
+      slug: 'seer',
+      name: 'Seer',
       description:
         'Secuencia 9 del Camino del Vidente. El primer paso más allá del velo.',
       iconKey: 'scan-eye',
@@ -761,8 +761,8 @@ export async function seedGameData(prisma: PrismaClient) {
       categoryId: misticismo.id,
     },
     {
-      slug: 'suplicante-de-secretos',
-      name: 'Suplicante de Secretos',
+      slug: 'secret-suplicant',
+      name: 'Secret Suplicant',
       description:
         'Secuencia 9 del Camino del Suplicante de Secretos. Quien pide saber, paga con algo más que monedas.',
       iconKey: 'book-key',
@@ -793,8 +793,8 @@ export async function seedGameData(prisma: PrismaClient) {
       categoryId: misticismo.id,
     },
     {
-      slug: 'monstruo',
-      name: 'Monstruo',
+      slug: 'monster',
+      name: 'Monster',
       description:
         'Secuencia 9 del Camino del Monstruo. La suerte lo ama tanto que da miedo.',
       iconKey: 'circle-dot-dashed',
@@ -825,6 +825,333 @@ export async function seedGameData(prisma: PrismaClient) {
       type: 'CONCEPTO',
       tier: 2,
       unlockedByType: 'BEYONDER',
+      categoryId: beyonder.id,
+    },
+    // ----- Cadena del Mar y la Sirena -----
+    {
+      slug: 'agua',
+      name: 'Agua',
+      description: 'El elemento que fluye, se adapta y jamás se rompe.',
+      iconKey: 'droplets',
+      type: 'MUNDANO',
+      tier: 0,
+      isStarter: true,
+      isHiddenUntilDiscovered: false,
+      categoryId: mundano.id,
+    },
+    {
+      slug: 'acumulacion',
+      name: 'Acumulación',
+      description: 'Lo pequeño repetido sin descanso hasta volverse inmenso.',
+      iconKey: 'layers',
+      type: 'CONCEPTO',
+      tier: 1,
+      categoryId: conceptos.id,
+    },
+    {
+      slug: 'mar',
+      name: 'Mar',
+      description: 'El agua acumulada hasta perder su orilla.',
+      iconKey: 'waves',
+      type: 'MUNDANO',
+      tier: 2,
+      categoryId: mundano.id,
+    },
+    {
+      slug: 'criatura',
+      name: 'Criatura',
+      description: 'La carne y el alma unidas en una forma que ya no es del todo humana.',
+      iconKey: 'ghost',
+      type: 'CRIATURA',
+      tier: 4,
+      categoryId: misticismo.id,
+    },
+    {
+      slug: 'criatura-beyonder',
+      name: 'Criatura Beyonder',
+      description: 'Una criatura tocada por el poder de quien cruzó la frontera.',
+      iconKey: 'skull',
+      type: 'CRIATURA',
+      tier: 5,
+      categoryId: misticismo.id,
+    },
+    {
+      slug: 'ritmo',
+      name: 'Ritmo',
+      description: 'La escucha que aprende a medirse con el tiempo.',
+      iconKey: 'hourglass',
+      type: 'CONCEPTO',
+      tier: 2,
+      categoryId: conceptos.id,
+    },
+    {
+      slug: 'canto',
+      name: 'Canto',
+      description: 'El ritmo que un humano convierte en voz.',
+      iconKey: 'feather',
+      type: 'CONCEPTO',
+      tier: 3,
+      categoryId: conceptos.id,
+    },
+    {
+      slug: 'criatura-beyonder-acuatica',
+      name: 'Criatura Beyonder Acuática',
+      description: 'Una criatura Beyonder que ha hecho del mar su morada.',
+      iconKey: 'anchor',
+      type: 'CRIATURA',
+      tier: 6,
+      categoryId: misticismo.id,
+    },
+    {
+      slug: 'sirena',
+      name: 'Sirena',
+      description: 'La criatura acuática cuyo canto no promete nada bueno.',
+      iconKey: 'moon-star',
+      type: 'CRIATURA',
+      tier: 7,
+      categoryId: misticismo.id,
+    },
+    {
+      slug: 'marionetista',
+      name: 'Marionetista',
+      description:
+        'Secuencia 5 del Camino del Vidente. Quien maneja los hilos ya no distingue su propia mano de la ajena.',
+      iconKey: 'drama',
+      type: 'BEYONDER',
+      tier: 7,
+      isMajorDiscovery: true,
+      revealTitle: 'Los hilos responden a tu voluntad',
+      revealText: 'Faceless deja de fingir un rostro: ahora mueve los de otros.',
+      categoryId: beyonder.id,
+    },
+    // ----- Cadena del Cuerpo Espiritual y la Marioneta -----
+    {
+      slug: 'cuerpo-espiritual',
+      name: 'Cuerpo Espiritual',
+      description: 'El humano despojado de su cuerpo mundano, sostenido apenas por el misticismo.',
+      iconKey: 'orbit',
+      type: 'MISTICISMO',
+      tier: 3,
+      categoryId: misticismo.id,
+    },
+    {
+      slug: 'espiritualidad',
+      name: 'Espiritualidad',
+      description: 'Lo que el misticismo revela cuando se posa sobre un humano.',
+      iconKey: 'sparkles',
+      type: 'CONCEPTO',
+      tier: 3,
+      categoryId: conceptos.id,
+    },
+    {
+      slug: 'continuidad',
+      name: 'Continuidad',
+      description: 'El tiempo que se repite sin quebrarse.',
+      iconKey: 'hourglass',
+      type: 'CONCEPTO',
+      tier: 1,
+      categoryId: conceptos.id,
+    },
+    {
+      slug: 'proyeccion',
+      name: 'Proyección',
+      description: 'Una silueta que avanza más allá de su dueño.',
+      iconKey: 'telescope',
+      type: 'CONCEPTO',
+      tier: 3,
+      categoryId: conceptos.id,
+    },
+    {
+      slug: 'extension',
+      name: 'Extensión',
+      description: 'La proyección sostenida en una continuidad que no termina.',
+      iconKey: 'move-up-right',
+      type: 'CONCEPTO',
+      tier: 4,
+      categoryId: conceptos.id,
+    },
+    {
+      slug: 'hilos-del-cuerpo-espiritual',
+      name: 'Hilos del Cuerpo Espiritual',
+      description: 'El cuerpo espiritual estirado hasta convertirse en cuerdas invisibles.',
+      iconKey: 'gem',
+      type: 'MISTICISMO',
+      tier: 5,
+      categoryId: misticismo.id,
+    },
+    {
+      slug: 'marioneta',
+      name: 'Marioneta',
+      description: 'Los hilos del cuerpo espiritual encontrando algo -o alguien- a quien mover.',
+      iconKey: 'drama',
+      type: 'OBJETO',
+      tier: 6,
+      categoryId: misticismo.id,
+    },
+    {
+      slug: 'desastre',
+      name: 'Desastre',
+      description: 'La ruina que llega sin avisar y no distingue a quién alcanza.',
+      iconKey: 'triangle-alert',
+      type: 'MISTICISMO',
+      tier: 0,
+      categoryId: misticismo.id,
+    },
+    {
+      slug: 'mala-suerte',
+      name: 'Mala Suerte',
+      description: 'La suerte vuelta del revés por el desastre.',
+      iconKey: 'skull',
+      type: 'MISTICISMO',
+      tier: 5,
+      categoryId: misticismo.id,
+    },
+    {
+      slug: 'procedimiento',
+      name: 'Procedimiento',
+      description: 'La información ordenada por el trabajo hasta volverse repetible.',
+      iconKey: 'notebook-tabs',
+      type: 'CONCEPTO',
+      tier: 3,
+      categoryId: conceptos.id,
+    },
+    {
+      slug: 'ritual',
+      name: 'Ritual',
+      description: 'Un procedimiento que el misticismo vuelve sagrado.',
+      iconKey: 'scroll-text',
+      type: 'MISTICISMO',
+      tier: 4,
+      categoryId: misticismo.id,
+    },
+    {
+      slug: 'rezar',
+      name: 'Rezar',
+      description: 'El ritual dirigido hacia lo que permanece oculto, con la esperanza de ser oído.',
+      iconKey: 'landmark',
+      type: 'MISTICISMO',
+      tier: 5,
+      categoryId: misticismo.id,
+    },
+    {
+      slug: 'sacrificio',
+      name: 'Sacrificio',
+      description: 'El ritual que exige algo a cambio de lo oculto.',
+      iconKey: 'flame',
+      type: 'MISTICISMO',
+      tier: 5,
+      categoryId: misticismo.id,
+    },
+    {
+      slug: 'otorgamiento',
+      name: 'Otorgamiento',
+      description: 'Lo oculto que responde al ritual y concede lo pedido.',
+      iconKey: 'key-round',
+      type: 'MISTICISMO',
+      tier: 5,
+      categoryId: misticismo.id,
+    },
+    {
+      slug: 'winner',
+      name: 'Winner',
+      description:
+        'Secuencia 5 del Camino del Monstruo. La suerte deja de ser un don y se convierte en destino garantizado.',
+      iconKey: 'trophy',
+      type: 'BEYONDER',
+      tier: 7,
+      isMajorDiscovery: true,
+      revealTitle: 'Ganar deja de ser cuestión de azar',
+      revealText: 'Calamity Priest descubre que el desastre también puede jugar a tu favor.',
+      categoryId: beyonder.id,
+    },
+    {
+      slug: 'bizarro-sorcerer',
+      name: 'Bizarro Sorcerer',
+      description:
+        'Secuencia 4 del Camino del Vidente. Los hilos ya no mueven marionetas: mueven la realidad misma.',
+      iconKey: 'flask-conical',
+      type: 'BEYONDER',
+      tier: 8,
+      isMajorDiscovery: true,
+      revealTitle: 'La magia deja de pedir permiso',
+      revealText: 'Marionetista comprende que también la realidad puede tener hilos.',
+      categoryId: beyonder.id,
+    },
+    // ----- Cadena de la Corrupción, el Guerrero y la Comunidad -----
+    {
+      slug: 'corrupcion',
+      name: 'Corrupción',
+      description: 'La locura que un Beyonder disemina sin proponérselo.',
+      iconKey: 'triangle-alert',
+      type: 'MISTICISMO',
+      tier: 5,
+      categoryId: misticismo.id,
+    },
+    {
+      slug: 'degeneracion',
+      name: 'Degeneración',
+      description: 'La corrupción que el tiempo no cura, sino que profundiza.',
+      iconKey: 'history',
+      type: 'MISTICISMO',
+      tier: 6,
+      categoryId: misticismo.id,
+    },
+    {
+      slug: 'guerrero',
+      name: 'Guerrero',
+      description: 'El humano que convierte la fuerza en oficio.',
+      iconKey: 'swords',
+      type: 'MUNDANO',
+      tier: 3,
+      categoryId: mundano.id,
+    },
+    {
+      slug: 'caballero',
+      name: 'Caballero',
+      description: 'La experiencia que pule al guerrero hasta volverlo disciplina.',
+      iconKey: 'medal',
+      type: 'MUNDANO',
+      tier: 4,
+      categoryId: mundano.id,
+    },
+    {
+      slug: 'familia',
+      name: 'Familia',
+      description: 'Dos humanos que deciden dejar de estar solos.',
+      iconKey: 'user-round',
+      type: 'CONCEPTO',
+      tier: 1,
+      categoryId: conceptos.id,
+    },
+    {
+      slug: 'comunidad',
+      name: 'Comunidad',
+      description: 'Las familias que comparten algo más que sangre.',
+      iconKey: 'landmark',
+      type: 'CONCEPTO',
+      tier: 2,
+      categoryId: conceptos.id,
+    },
+    {
+      slug: 'ciudad',
+      name: 'Ciudad',
+      description: 'La comunidad que ya no cabe a simple vista.',
+      iconKey: 'landmark',
+      type: 'MUNDANO',
+      tier: 3,
+      categoryId: mundano.id,
+    },
+    {
+      slug: 'black-knight',
+      name: 'Black Knight',
+      description:
+        'Secuencia 4 del Camino del Suplicante de Secretos. La degeneración vestida con la disciplina de un caballero.',
+      iconKey: 'moon',
+      type: 'BEYONDER',
+      tier: 8,
+      isMajorDiscovery: true,
+      revealTitle: 'La armadura ya no protege: contiene',
+      revealText: 'Shepherd descubre que también la corrupción puede jurar lealtad.',
       categoryId: beyonder.id,
     },
   ]
@@ -858,14 +1185,14 @@ export async function seedGameData(prisma: PrismaClient) {
 
   // ---------- Secuencias ----------
   const secuencias: { camino: { id: string }; number: number; name: string; slug: string }[] = [
-    { camino: caminoVidente, number: 9, name: 'Vidente', slug: 'vidente' },
+    { camino: caminoVidente, number: 9, name: 'Seer', slug: 'seer' },
     {
       camino: caminoSuplicante,
       number: 9,
-      name: 'Suplicante de Secretos',
-      slug: 'suplicante-de-secretos',
+      name: 'Secret Suplicant',
+      slug: 'secret-suplicant',
     },
-    { camino: caminoMonstruo, number: 9, name: 'Monstruo', slug: 'monstruo' },
+    { camino: caminoMonstruo, number: 9, name: 'Monster', slug: 'monster' },
     { camino: caminoMonstruo, number: 8, name: 'Robot', slug: 'robot' },
     { camino: caminoVidente, number: 8, name: 'Clown', slug: 'clown' },
     {
@@ -901,6 +1228,30 @@ export async function seedGameData(prisma: PrismaClient) {
       name: 'Shepherd',
       slug: 'shepherd',
     },
+    {
+      camino: caminoVidente,
+      number: 5,
+      name: 'Marionetista',
+      slug: 'marionetista',
+    },
+    {
+      camino: caminoMonstruo,
+      number: 5,
+      name: 'Winner',
+      slug: 'winner',
+    },
+    {
+      camino: caminoVidente,
+      number: 4,
+      name: 'Bizarro Sorcerer',
+      slug: 'bizarro-sorcerer',
+    },
+    {
+      camino: caminoSuplicante,
+      number: 4,
+      name: 'Black Knight',
+      slug: 'black-knight',
+    },
   ]
   const sequenceBySlug = new Map<string, { id: string }>()
   for (const s of secuencias) {
@@ -924,15 +1275,15 @@ export async function seedGameData(prisma: PrismaClient) {
     { ings: [['vision', 1], ['ojo', 1]], outputs: ['percepcion'] },
     { ings: [['moneda', 2]], outputs: ['fortuna'] },
     { ings: [['fortuna', 1], ['moneda', 1]], outputs: ['adivinacion'] },
-    { ings: [['adivinacion', 1], ['percepcion', 1]], outputs: ['vidente'] },
+    { ings: [['adivinacion', 1], ['percepcion', 1]], outputs: ['seer'] },
     // Camino del Suplicante de Secretos
     { ings: [['humano', 2]], outputs: ['susurro'] },
     { ings: [['susurro', 1], ['ojo', 1]], outputs: ['secreto'] },
-    { ings: [['secreto', 1], ['humano', 1]], outputs: ['suplicante-de-secretos'] },
+    { ings: [['secreto', 1], ['humano', 1]], outputs: ['secret-suplicant'] },
     // Camino del Monstruo
     { ings: [['humano', 1], ['moneda', 1]], outputs: ['apuesta', 'trabajo'] },
     { ings: [['apuesta', 1], ['moneda', 1]], outputs: ['destino'] },
-    { ings: [['destino', 1], ['humano', 1]], outputs: ['monstruo'] },
+    { ings: [['destino', 1], ['humano', 1]], outputs: ['monster'] },
     // Cadena del Ocultamiento
     { ings: [['experiencia-2', 1], ['conocimiento', 1]], outputs: ['prudencia'] },
     { ings: [['prudencia', 1], ['informacion', 1]], outputs: ['reserva'] },
@@ -976,6 +1327,34 @@ export async function seedGameData(prisma: PrismaClient) {
     { ings: [['desgaste', 1], ['tiempo', 1]], outputs: ['hambre'] },
     { ings: [['hambre', 1], ['carne', 1]], outputs: ['devoracion'] },
     { ings: [['informacion', 1], ['percepcion', 1]], outputs: ['influencia'] },
+    // Cadena del Mar y la Sirena
+    { ings: [['moneda', 1], ['tiempo', 1]], outputs: ['acumulacion'] },
+    { ings: [['agua', 1], ['acumulacion', 1]], outputs: ['mar'] },
+    { ings: [['carne', 1], ['alma', 1]], outputs: ['criatura'] },
+    { ings: [['criatura', 1], ['beyonder', 1]], outputs: ['criatura-beyonder'] },
+    { ings: [['escucha', 1], ['tiempo', 1]], outputs: ['ritmo'] },
+    { ings: [['ritmo', 1], ['humano', 1]], outputs: ['canto'] },
+    { ings: [['criatura-beyonder', 1], ['mar', 1]], outputs: ['criatura-beyonder-acuatica'] },
+    { ings: [['criatura-beyonder-acuatica', 1], ['canto', 1]], outputs: ['sirena'] },
+    // Cadena del Cuerpo Espiritual y la Marioneta
+    { ings: [['humano', 1], ['misticismo', 1]], outputs: ['cuerpo-espiritual', 'espiritualidad'] },
+    { ings: [['tiempo', 2]], outputs: ['continuidad'] },
+    { ings: [['silueta', 1], ['avance', 1]], outputs: ['proyeccion'] },
+    { ings: [['proyeccion', 1], ['continuidad', 1]], outputs: ['extension'] },
+    { ings: [['cuerpo-espiritual', 1], ['extension', 1]], outputs: ['hilos-del-cuerpo-espiritual'] },
+    { ings: [['hilos-del-cuerpo-espiritual', 1], ['influencia', 1]], outputs: ['marioneta'] },
+    { ings: [['suerte', 1], ['desastre', 1]], outputs: ['mala-suerte'] },
+    { ings: [['informacion', 1], ['trabajo', 1]], outputs: ['procedimiento'] },
+    { ings: [['procedimiento', 1], ['misticismo', 1]], outputs: ['ritual'] },
+    { ings: [['ritual', 1], ['existencia-oculta', 1]], outputs: ['rezar', 'sacrificio', 'otorgamiento'] },
+    // Cadena de la Corrupción, el Guerrero y la Comunidad
+    { ings: [['locura', 1], ['beyonder', 1]], outputs: ['perdida-de-control', 'corrupcion'] },
+    { ings: [['corrupcion', 1], ['tiempo', 1]], outputs: ['degeneracion'] },
+    { ings: [['humano', 1], ['fuerza', 1]], outputs: ['guerrero'] },
+    { ings: [['experiencia-2', 1], ['guerrero', 1]], outputs: ['caballero'] },
+    { ings: [['humano', 2]], outputs: ['familia'] },
+    { ings: [['familia', 2]], outputs: ['comunidad'] },
+    { ings: [['comunidad', 2]], outputs: ['ciudad'] },
   ]
 
   for (const r of recetas) {
@@ -1010,19 +1389,19 @@ export async function seedGameData(prisma: PrismaClient) {
     {
       internalName: 'Avance a Robot',
       ingredients: ['fuerza', 'adivinacion'],
-      source: 'monstruo',
+      source: 'monster',
       target: 'robot',
     },
     {
       internalName: 'Avance a Clown',
       ingredients: ['control-corporal', 'danger-intuition'],
-      source: 'vidente',
+      source: 'seer',
       target: 'clown',
     },
     {
       internalName: 'Avance a Listener',
       ingredients: ['escucha', 'locura'],
-      source: 'suplicante-de-secretos',
+      source: 'secret-suplicant',
       target: 'listener',
     },
     {
@@ -1066,6 +1445,30 @@ export async function seedGameData(prisma: PrismaClient) {
       ingredients: ['devoracion', 'alma'],
       source: 'rose-bishop',
       target: 'shepherd',
+    },
+    {
+      internalName: 'Avance a Marionetista',
+      ingredients: ['hilos-del-cuerpo-espiritual', 'marioneta'],
+      source: 'faceless',
+      target: 'marionetista',
+    },
+    {
+      internalName: 'Avance a Winner',
+      ingredients: ['suerte', 'fortuna'],
+      source: 'calamity-priest',
+      target: 'winner',
+    },
+    {
+      internalName: 'Avance a Bizarro Sorcerer',
+      ingredients: ['otorgamiento', 'marioneta'],
+      source: 'marionetista',
+      target: 'bizarro-sorcerer',
+    },
+    {
+      internalName: 'Avance a Black Knight',
+      ingredients: ['degeneracion', 'caballero'],
+      source: 'shepherd',
+      target: 'black-knight',
     },
   ]
   const advanceByName = new Map<string, { id: string }>()
@@ -1113,6 +1516,126 @@ export async function seedGameData(prisma: PrismaClient) {
         create: [
           { elementId: id('influencia'), quantity: 1 },
           { elementId: id('alma'), quantity: 1 },
+        ],
+      },
+      failureOutputs: {
+        create: [
+          { elementId: id('perdida-de-control') },
+          { elementId: id('monstruo-descontrol') },
+          { elementId: id('corrupcion-de-alborotador') },
+        ],
+      },
+    },
+  })
+
+  const marionetistaAdvance = advanceByName.get('Avance a Marionetista')
+  if (!marionetistaAdvance) throw new Error('No se encontró el avance a Marionetista para su ritual.')
+  const marionetistaRitualKey = buildRecipeInputKey([
+    { slug: 'sirena', quantity: 1 },
+    { slug: 'canto', quantity: 1 },
+  ])
+  await prisma.ritual.upsert({
+    where: { inputKey: marionetistaRitualKey },
+    update: {},
+    create: {
+      name: 'Ritual de avance a Marionetista',
+      inputKey: marionetistaRitualKey,
+      advanceId: marionetistaAdvance.id,
+      requiredSequenceNumber: 6,
+      ingredients: {
+        create: [
+          { elementId: id('sirena'), quantity: 1 },
+          { elementId: id('canto'), quantity: 1 },
+        ],
+      },
+      failureOutputs: {
+        create: [
+          { elementId: id('perdida-de-control') },
+          { elementId: id('monstruo-descontrol') },
+          { elementId: id('corrupcion-de-alborotador') },
+        ],
+      },
+    },
+  })
+
+  const winnerAdvance = advanceByName.get('Avance a Winner')
+  if (!winnerAdvance) throw new Error('No se encontró el avance a Winner para su ritual.')
+  const winnerRitualKey = buildRecipeInputKey([
+    { slug: 'mala-suerte', quantity: 1 },
+    { slug: 'tiempo', quantity: 1 },
+  ])
+  await prisma.ritual.upsert({
+    where: { inputKey: winnerRitualKey },
+    update: {},
+    create: {
+      name: 'Ritual de avance a Winner',
+      inputKey: winnerRitualKey,
+      advanceId: winnerAdvance.id,
+      requiredSequenceNumber: 6,
+      ingredients: {
+        create: [
+          { elementId: id('mala-suerte'), quantity: 1 },
+          { elementId: id('tiempo'), quantity: 1 },
+        ],
+      },
+      failureOutputs: {
+        create: [
+          { elementId: id('perdida-de-control') },
+          { elementId: id('monstruo-descontrol') },
+          { elementId: id('corrupcion-de-alborotador') },
+        ],
+      },
+    },
+  })
+
+  const bizarroAdvance = advanceByName.get('Avance a Bizarro Sorcerer')
+  if (!bizarroAdvance) throw new Error('No se encontró el avance a Bizarro Sorcerer para su ritual.')
+  const bizarroRitualKey = buildRecipeInputKey([
+    { slug: 'demigod', quantity: 1 },
+    { slug: 'muerte', quantity: 1 },
+  ])
+  await prisma.ritual.upsert({
+    where: { inputKey: bizarroRitualKey },
+    update: {},
+    create: {
+      name: 'Ritual de avance a Bizarro Sorcerer',
+      inputKey: bizarroRitualKey,
+      advanceId: bizarroAdvance.id,
+      requiredSequenceNumber: 5,
+      ingredients: {
+        create: [
+          { elementId: id('demigod'), quantity: 1 },
+          { elementId: id('muerte'), quantity: 1 },
+        ],
+      },
+      failureOutputs: {
+        create: [
+          { elementId: id('perdida-de-control') },
+          { elementId: id('monstruo-descontrol') },
+          { elementId: id('corrupcion-de-alborotador') },
+        ],
+      },
+    },
+  })
+
+  const blackKnightAdvance = advanceByName.get('Avance a Black Knight')
+  if (!blackKnightAdvance) throw new Error('No se encontró el avance a Black Knight para su ritual.')
+  const blackKnightRitualKey = buildRecipeInputKey([
+    { slug: 'comunidad', quantity: 1 },
+    { slug: 'degeneracion', quantity: 1 },
+  ])
+  await prisma.ritual.upsert({
+    where: { inputKey: blackKnightRitualKey },
+    update: {},
+    create: {
+      name: 'Ritual de avance a Black Knight',
+      inputKey: blackKnightRitualKey,
+      advanceId: blackKnightAdvance.id,
+      requiredSequenceNumber: 5,
+      ingredients: {
+        create: [
+          { elementId: id('comunidad'), quantity: 1 },
+          { elementId: id('degeneracion'), quantity: 1 },
         ],
       },
       failureOutputs: {

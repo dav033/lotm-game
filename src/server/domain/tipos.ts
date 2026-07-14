@@ -100,7 +100,7 @@ export const MENSAJE_SIN_RECETA = 'La combinación no responde.'
 
 // Panel de depuración (solo admin): receta activa aún no descubierta por
 // completo, con sus ingredientes y resultados (pueden estar ocultos).
-export type RecetaPendienteElemento = ElementPublicData & { quantity: number }
+export type RecetaPendienteElemento = ElementPublicData & { quantity: number; discovered: boolean }
 
 export type RecetaPendiente = {
   recipeId: string

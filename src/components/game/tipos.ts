@@ -16,6 +16,3 @@ export type EstadoJuego = {
   pendingAchievements: AchievementPublicData[]
   rituals: RitualPublicData[]
 }
-
-// Tipo de dato usado para arrastrar tarjetas del panel a la mesa.
-export const DATO_ARRASTRE_SLUG = 'text/element-slug'

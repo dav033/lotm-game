@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AchievementPublicData, CombineResult } from '@/server/domain/tipos'
 import type { ElementoDescubierto, EstadoJuego, RecetaPendiente } from './tipos'
+import type { ResultadoDirecto } from './ResultadoFlotante'
 
 // Estado y reglas del juego en el cliente: carga del progreso, mesa de
 // combinación, llamadas a la API y avisos. Los componentes que lo consumen
@@ -13,6 +14,7 @@ export function useJuego(esAdmin = false) {
   const [slots, setSlots] = useState<(ElementoDescubierto | null)[]>([null, null])
   const [combinando, setCombinando] = useState(false)
   const [resultado, setResultado] = useState<CombineResult | null>(null)
+  const [resultadoDirecto, setResultadoDirecto] = useState<ResultadoDirecto | null>(null)
   const [fallo, setFallo] = useState(0) // contador para reiniciar la animación
   const [reveal, setReveal] = useState<CombineResult | null>(null)
   const [conservarTrasFallo, setConservarTrasFallo] = useState(true)
@@ -63,13 +65,13 @@ export function useJuego(esAdmin = false) {
   }, [cargarEstado, cargarPendientes])
 
   const colocar = (el: ElementoDescubierto) => {
-    setSlots((s) => {
-      const libre = s.findIndex((x) => x === null)
-      if (libre === -1) return s
-      const next = [...s]
-      next[libre] = el
-      return next
-    })
+    const libre = slots.findIndex((x) => x === null)
+    if (libre === -1) return
+    const next = [...slots]
+    next[libre] = el
+    setSlots(next)
+    // Al quedar los dos espacios llenos, se combina solo (sin botón).
+    if (next[0] && next[1]) ejecutarCombinacion(next[0].slug, next[1].slug, { origen: 'mesa' })
   }
 
   const retirar = (i: number) =>
@@ -84,7 +86,9 @@ export function useJuego(esAdmin = false) {
   const colocarEnSlot = (i: number, slug: string) => {
     const el = estado?.elementos.find((x) => x.slug === slug)
     if (!el) return
-    setSlots((s) => s.map((x, idx) => (idx === i ? el : x)))
+    const next = slots.map((x, idx) => (idx === i ? el : x))
+    setSlots(next)
+    if (next[0] && next[1]) ejecutarCombinacion(next[0].slug, next[1].slug, { origen: 'mesa' })
   }
 
   // Clic en una tarjeta de resultado: limpia la mesa y coloca ese elemento en
@@ -113,7 +117,7 @@ export function useJuego(esAdmin = false) {
   }
 
   // Registra el resultado en el estado local sin recargar todo el progreso.
-  const registrarResultado = (r: CombineResult) => {
+  const registrarResultado = useCallback((r: CombineResult) => {
     if (r.consumedSlugs.length > 0) {
       setEstado((prev) => {
         if (!prev) return prev
@@ -157,47 +161,79 @@ export function useJuego(esAdmin = false) {
         }
       })
     }
+  }, [])
+
+  // Núcleo de combinación compartido por la mesa y por el arrastre directo
+  // (icono sobre icono). `origen` decide dónde se muestra el resultado.
+  const combinandoRef = useRef(false)
+  const ejecutarCombinacion = useCallback(
+    async (
+      slugA: string,
+      slugB: string,
+      opts: { origen: 'mesa' | 'directo'; punto?: { x: number; y: number } },
+    ) => {
+      if (combinandoRef.current) return
+      combinandoRef.current = true
+      setCombinando(true)
+      if (opts.origen === 'mesa') setResultado(null)
+      try {
+        const res = await fetch('/api/combine', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ elementos: [slugA, slugB] }),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          mostrarAviso(data?.error ?? 'El archivo guarda silencio.')
+          return
+        }
+        const r = data as CombineResult
+        if (r.unlockedAchievements.length > 0) {
+          setLogrosPendientes((current) => {
+            const ids = new Set(current.map((achievement) => achievement.id))
+            return [
+              ...current,
+              ...r.unlockedAchievements.filter((achievement) => !ids.has(achievement.id)),
+            ]
+          })
+        }
+        if (r.results.length > 0) registrarResultado(r)
+
+        if (r.success && r.results.length > 0) {
+          if (opts.origen === 'directo' && opts.punto) {
+            setResultadoDirecto({ resultado: r, punto: opts.punto })
+          } else {
+            setResultado(r)
+          }
+          cargarPendientes()
+          if (r.pathwayReveal) setReveal(r)
+        } else if (opts.origen === 'mesa') {
+          setResultado(r)
+          setFallo((n) => n + 1)
+          if (!conservarTrasFallo) setSlots([null, null])
+        } else {
+          // Fallo en combinación directa: un aviso discreto, sin ruido en la mesa.
+          mostrarAviso(r.message)
+        }
+      } catch {
+        mostrarAviso('No hay conexión con el archivo. Inténtalo de nuevo.')
+      } finally {
+        combinandoRef.current = false
+        setCombinando(false)
+      }
+    },
+    [conservarTrasFallo, mostrarAviso, cargarPendientes, registrarResultado],
+  )
+
+  const combinar = () => {
+    if (!slots[0] || !slots[1]) return
+    ejecutarCombinacion(slots[0].slug, slots[1].slug, { origen: 'mesa' })
   }
 
-  const combinar = async () => {
-    if (!slots[0] || !slots[1] || combinando) return
-    setCombinando(true)
-    setResultado(null)
-    try {
-      const res = await fetch('/api/combine', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ elementos: [slots[0].slug, slots[1].slug] }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        mostrarAviso(data?.error ?? 'El archivo guarda silencio.')
-        return
-      }
-      const r = data as CombineResult
-      setResultado(r)
-      if (r.unlockedAchievements.length > 0) {
-        setLogrosPendientes((current) => {
-          const ids = new Set(current.map((achievement) => achievement.id))
-          return [
-            ...current,
-            ...r.unlockedAchievements.filter((achievement) => !ids.has(achievement.id)),
-          ]
-        })
-      }
-      if (r.results.length > 0) registrarResultado(r)
-      if (r.success && r.results.length > 0) {
-        cargarPendientes()
-        if (r.pathwayReveal) setReveal(r)
-      } else {
-        setFallo((n) => n + 1)
-        if (!conservarTrasFallo) setSlots([null, null])
-      }
-    } catch {
-      mostrarAviso('No hay conexión con el archivo. Inténtalo de nuevo.')
-    } finally {
-      setCombinando(false)
-    }
+  // Combinación directa por arrastre: no toca la mesa, muestra el resultado
+  // flotando donde se soltó.
+  const combinarDirecto = (slugA: string, slugB: string, punto: { x: number; y: number }) => {
+    ejecutarCombinacion(slugA, slugB, { origen: 'directo', punto })
   }
 
   const reiniciar = async () => {
@@ -278,6 +314,9 @@ export function useJuego(esAdmin = false) {
     resultado,
     fallo,
     combinar,
+    combinarDirecto,
+    resultadoDirecto,
+    cerrarResultadoDirecto: () => setResultadoDirecto(null),
     conservarTrasFallo,
     setConservarTrasFallo,
     reveal,

@@ -27,32 +27,40 @@ export function RecetasPendientes({
         Solo tú la ves (sesión de admin). Clic para cargar los ingredientes en la mesa.
       </p>
       <ul className="max-h-64 space-y-1 overflow-y-auto">
-        {pendientes.map((r) => (
-          <li key={r.recipeId}>
-            <button
-              type="button"
-              onClick={() => onAutocompletar(r.recipeId)}
-              className="flex w-full flex-wrap items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-xs text-fog hover:bg-panel2 hover:text-parchment"
-            >
-              {r.ingredientes.map((ing, idx) => (
-                <span key={idx} className="flex items-center gap-1">
-                  {idx > 0 && <span aria-hidden>+</span>}
-                  <IconoElemento iconKey={ing.iconKey} className="h-3.5 w-3.5 text-brass" />
-                  {ing.name}
-                  {ing.quantity > 1 && <span>×{ing.quantity}</span>}
-                </span>
-              ))}
-              <span aria-hidden className="text-brass-deep">→</span>
-              {r.resultados.map((res, idx) => (
-                <span key={idx} className="flex items-center gap-1">
-                  {idx > 0 && <span aria-hidden>,</span>}
-                  <IconoElemento iconKey={res.iconKey} className="h-3.5 w-3.5 text-brass" />
-                  {res.name}
-                </span>
-              ))}
-            </button>
-          </li>
-        ))}
+        {pendientes.map((r) => {
+          const disponible = r.ingredientes.every((ing) => ing.discovered)
+          return (
+            <li key={r.recipeId}>
+              <button
+                type="button"
+                disabled={!disponible}
+                onClick={() => onAutocompletar(r.recipeId)}
+                title={disponible ? undefined : 'Aún te falta descubrir alguno de estos ingredientes.'}
+                className="flex w-full flex-wrap items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-xs text-fog hover:bg-panel2 hover:text-parchment disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+              >
+                {r.ingredientes.map((ing, idx) => (
+                  <span
+                    key={idx}
+                    className={`flex items-center gap-1 ${ing.discovered ? '' : 'text-wine'}`}
+                  >
+                    {idx > 0 && <span aria-hidden>+</span>}
+                    <IconoElemento iconKey={ing.iconKey} className="h-3.5 w-3.5 text-brass" />
+                    {ing.name}
+                    {ing.quantity > 1 && <span>×{ing.quantity}</span>}
+                  </span>
+                ))}
+                <span aria-hidden className="text-brass-deep">→</span>
+                {r.resultados.map((res, idx) => (
+                  <span key={idx} className="flex items-center gap-1">
+                    {idx > 0 && <span aria-hidden>,</span>}
+                    <IconoElemento iconKey={res.iconKey} className="h-3.5 w-3.5 text-brass" />
+                    {res.name}
+                  </span>
+                ))}
+              </button>
+            </li>
+          )
+        })}
       </ul>
     </section>
   )

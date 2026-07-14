@@ -59,8 +59,8 @@ export function esPasswordAdminCorrecta(password: string): boolean {
 }
 
 export async function haySesionAdmin(): Promise<boolean> {
-  const store = await cookies()
-  return verificarTokenSesion(store.get(ADMIN_COOKIE)?.value)
+  // Autenticación desactivada: uso exclusivamente local, un solo usuario.
+  return true
 }
 
 // Guard para páginas: redirige al login si no hay sesión.

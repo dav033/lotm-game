@@ -4,7 +4,8 @@ import { useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
 import { ELEMENT_TYPES, etiquetaTipo } from '@/server/domain/tipos'
 import { IconoElemento } from './IconoElemento'
-import { DATO_ARRASTRE_SLUG, type ElementoDescubierto, type EstadoJuego } from './tipos'
+import { type ElementoDescubierto, type EstadoJuego } from './tipos'
+import type { DestinoArrastre, PayloadArrastre } from './useArrastre'
 
 type Orden = 'descubrimiento' | 'nombre' | 'nivel'
 
@@ -13,13 +14,19 @@ const FILTROS_TIPO = ['TODOS', ...ELEMENT_TYPES, 'AVANCE']
 export function PanelDescubiertos({
   estado,
   errorCarga,
-  onColocar,
   onReintentar,
+  onColocar,
+  iniciarArrastre,
+  objetivo,
+  slugArrastrado,
 }: {
   estado: EstadoJuego | null
   errorCarga: boolean
-  onColocar: (el: ElementoDescubierto) => void
   onReintentar: () => void
+  onColocar: (el: ElementoDescubierto) => void
+  iniciarArrastre: (e: React.PointerEvent, payload: PayloadArrastre) => void
+  objetivo: DestinoArrastre
+  slugArrastrado: string | null
 }) {
   const [busqueda, setBusqueda] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('TODOS')
@@ -103,32 +110,53 @@ export function PanelDescubiertos({
       )}
 
       <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-3">
-        {visibles.map((el) => (
-          <li key={el.id}>
-            <button
-              draggable
-              onDragStart={(e) => e.dataTransfer.setData(DATO_ARRASTRE_SLUG, el.slug)}
-              onClick={() => onColocar(el)}
-              aria-label={`Colocar ${el.name} en la mesa`}
-              title={el.derivationLabel ?? el.description ?? el.name}
-              className="flex w-full flex-col items-center gap-1.5 rounded-lg mist-card p-3 text-center transition hover:border-brass-deep focus:outline-none focus-visible:ring-2 focus-visible:ring-brass"
-            >
-              <IconoElemento iconKey={el.iconKey} className="h-7 w-7 text-brass" />
-              <span className="text-xs leading-tight text-parchment">{el.name}</span>
-              {el.derivationLabel && (
-                <span className="text-[10px] leading-tight text-brass-deep">
-                  {el.derivationLabel}
+        {visibles.map((el) => {
+          const esObjetivo =
+            objetivo?.tipo === 'elemento' &&
+            objetivo.slug === el.slug &&
+            slugArrastrado !== null
+          return (
+            <li key={el.id}>
+              <button
+                data-drop-elemento={el.slug}
+                onPointerDown={(e) =>
+                  iniciarArrastre(e, {
+                    slug: el.slug,
+                    name: el.name,
+                    iconKey: el.iconKey,
+                    origen: { tipo: 'panel' },
+                  })
+                }
+                onClick={(e) => {
+                  // Solo teclado (Enter/Espacio): el mouse/táctil los gestiona
+                  // el sistema de arrastre para no colocar dos veces.
+                  if (e.detail === 0) onColocar(el)
+                }}
+                aria-label={`${el.name}: arrastra sobre otro elemento para combinar, o pulsa para colocar en la mesa`}
+                title={el.derivationLabel ?? el.description ?? el.name}
+                className={`flex w-full touch-none select-none flex-col items-center gap-1.5 rounded-lg mist-card p-3 text-center transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brass ${
+                  esObjetivo
+                    ? 'scale-105 border-brass ring-2 ring-brass'
+                    : 'hover:border-brass-deep'
+                }`}
+              >
+                <IconoElemento iconKey={el.iconKey} className="h-7 w-7 text-brass" />
+                <span className="text-xs leading-tight text-parchment">{el.name}</span>
+                {el.derivationLabel && (
+                  <span className="text-[10px] leading-tight text-brass-deep">
+                    {el.derivationLabel}
+                  </span>
+                )}
+                {(el.quantity ?? 1) > 1 && (
+                  <span className="text-[10px] text-fog">Disponibles: {el.quantity}</span>
+                )}
+                <span className="text-[10px] uppercase tracking-wider text-fog/70">
+                  {etiquetaTipo(el.type)}
                 </span>
-              )}
-              {(el.quantity ?? 1) > 1 && (
-                <span className="text-[10px] text-fog">Disponibles: {el.quantity}</span>
-              )}
-              <span className="text-[10px] uppercase tracking-wider text-fog/70">
-                {etiquetaTipo(el.type)}
-              </span>
-            </button>
-          </li>
-        ))}
+              </button>
+            </li>
+          )
+        })}
       </ul>
       {estado && visibles.length === 0 && (
         <p className="mt-2 text-sm italic text-fog">Ningún elemento coincide con la búsqueda.</p>

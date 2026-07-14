@@ -7,11 +7,24 @@ import { ModalLogro } from './ModalLogro'
 import { PanelDescubiertos } from './PanelDescubiertos'
 import { RecetasPendientes } from './RecetasPendientes'
 import { PanelRituales } from './PanelRituales'
+import { GhostArrastre } from './GhostArrastre'
+import { ResultadoFlotante } from './ResultadoFlotante'
 import { useJuego } from './useJuego'
+import { useArrastre } from './useArrastre'
 
 export default function Juego({ esAdmin = false }: { esAdmin?: boolean }) {
   const juego = useJuego(esAdmin)
   const { estado, reveal } = juego
+
+  const { arrastre, objetivo, iniciar } = useArrastre({
+    onCombinarElementos: (slugA, slugB, punto) => juego.combinarDirecto(slugA, slugB, punto),
+    onSoltarEnSlot: (index, payload) => juego.colocarEnSlot(index, payload.slug),
+    onTap: (payload) => {
+      if (payload.origen.tipo !== 'panel') return
+      const el = estado?.elementos.find((e) => e.slug === payload.slug)
+      if (el) juego.colocar(el)
+    },
+  })
 
   return (
     <div className="mist-bg min-h-screen">
@@ -59,11 +72,12 @@ export default function Juego({ esAdmin = false }: { esAdmin?: boolean }) {
             fallo={juego.fallo}
             conservarTrasFallo={juego.conservarTrasFallo}
             onRetirar={juego.retirar}
-            onSoltarEnSlot={juego.colocarEnSlot}
             onCombinar={juego.combinar}
             onLimpiar={juego.limpiar}
             onCambiarConservar={juego.setConservarTrasFallo}
             onUsarResultado={juego.usarResultado}
+            iniciarArrastre={iniciar}
+            objetivo={objetivo}
           />
         </div>
         <PanelDescubiertos
@@ -71,8 +85,15 @@ export default function Juego({ esAdmin = false }: { esAdmin?: boolean }) {
           errorCarga={juego.errorCarga}
           onColocar={juego.colocar}
           onReintentar={juego.cargarEstado}
+          iniciarArrastre={iniciar}
+          objetivo={objetivo}
+          slugArrastrado={arrastre?.payload.slug ?? null}
         />
       </main>
+
+      <GhostArrastre arrastre={arrastre} />
+      <ResultadoFlotante directo={juego.resultadoDirecto} onCerrar={juego.cerrarResultadoDirecto} />
+
 
       {reveal?.pathwayReveal && reveal.results.length > 0 && (
         <ModalRevelacion reveal={reveal.pathwayReveal} onCerrar={juego.cerrarReveal} />
