@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+/* ===== Paleta victoriana / ocultista del Archivo de Misterios ===== */
+@theme {
+  --color-ink: #0b0908;
+  --color-panel: #161009;
+  --color-panel2: #1e1710;
+  --color-line: #3a2f1f;
+  --color-line2: #57492f;
+  --color-parchment: #e9dcbe;
+  --color-fog: #a2947a;
+  --color-brass: #c9a35c;
+  --color-brass-deep: #7a5c24;
+  --color-wine: #6e2432;
+  --color-abyssal: #131a24;
+
+  --font-display: "Cinzel", ui-serif, serif;
+  /* Texto de lectura: sans legible; lo ornamental queda solo en títulos. */
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html {
+  background: var(--color-ink);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--color-parchment);
+  font-family: var(--font-body);
+  background: var(--color-ink);
+}
+
+/* Textura sutil de papel envejecido + viñeta, solo con CSS. */
+.mist-bg {
+  background:
+    radial-gradient(120% 90% at 50% -10%, rgba(201, 163, 92, 0.07), transparent 55%),
+    radial-gradient(130% 100% at 50% 115%, rgba(110, 36, 50, 0.10), transparent 55%),
+    repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, 0.14) 3px 4px),
+    var(--color-ink);
+}
+
+.mist-card {
+  background:
+    linear-gradient(160deg, rgba(201, 163, 92, 0.06), transparent 45%),
+    var(--color-panel);
+  border: 1px solid var(--color-line);
+}
+
+.brass-ring {
+  box-shadow: 0 0 0 1px rgba(201, 163, 92, 0.25), 0 12px 34px -18px rgba(0, 0, 0, 0.9);
+}
+
+/* Controles de formulario del panel (evita repetir utilidades en 30 sitios). */
+.campo {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--color-line);
+  background: var(--color-panel);
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--color-parchment);
+}
+.campo:focus { outline: none; border-color: var(--color-brass-deep); }
+.campo::placeholder { color: color-mix(in srgb, var(--color-fog) 60%, transparent); }
+.etiqueta {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-fog);
+  margin-bottom: 4px;
+}
+.btn-brass {
+  border-radius: 6px;
+  background: var(--color-brass);
+  color: var(--color-ink);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 9px 20px;
+  cursor: pointer;
+}
+.btn-brass:hover { filter: brightness(1.1); }
+.btn-brass:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-ghost {
+  border-radius: 6px;
+  border: 1px solid var(--color-line2);
+  color: var(--color-fog);
+  font-size: 14px;
+  padding: 8px 16px;
+  cursor: pointer;
+  background: transparent;
+}
+.btn-ghost:hover { color: var(--color-parchment); }
+.tabla { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tabla th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-fog);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-line2);
+}
+.tabla td { padding: 8px 10px; border-bottom: 1px solid var(--color-line); vertical-align: top; }
+
+/* Animaciones del juego — desactivadas con prefers-reduced-motion. */
+@keyframes mist-pop {
+  0% { transform: scale(0.86); opacity: 0; }
+  60% { transform: scale(1.04); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes mist-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+@keyframes mist-glow {
+  0%, 100% { box-shadow: 0 0 18px -6px rgba(201, 163, 92, 0.55); }
+  50% { box-shadow: 0 0 34px -4px rgba(201, 163, 92, 0.85); }
+}
+@keyframes mist-rise {
+  from { transform: translateY(14px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.anim-pop { animation: mist-pop 0.45s ease both; }
+.anim-shake { animation: mist-shake 0.3s ease both; }
+.anim-glow { animation: mist-glow 2.4s ease-in-out infinite; }
+.anim-rise { animation: mist-rise 0.5s ease both; }
+.anim-rise-1 { animation: mist-rise 0.5s ease 0.25s both; }
+.anim-rise-2 { animation: mist-rise 0.5s ease 0.5s both; }
+.anim-rise-3 { animation: mist-rise 0.5s ease 0.75s both; }
+.anim-rise-4 { animation: mist-rise 0.5s ease 1.1s both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-pop, .anim-shake, .anim-glow,
+  .anim-rise, .anim-rise-1, .anim-rise-2, .anim-rise-3, .anim-rise-4 {
+    animation: none;
+  }
+}

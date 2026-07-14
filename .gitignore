@@ -2,3 +2,22 @@ node_modules
 dist
 *.local
 .DS_Store
+
+# Next.js
+.next
+out
+next-env.d.ts
+*.tsbuildinfo
+
+# Base de datos SQLite (persistente, fuera del repo)
+/data
+*.db
+*.db-journal
+
+# Prisma (cliente generado)
+/src/generated
+
+# Entorno
+.env
+.env.*
+!.env.example

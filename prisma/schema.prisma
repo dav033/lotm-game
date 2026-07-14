@@ -1,0 +1,359 @@
+// Archivo de Misterios — esquema de datos.
+// SQLite hoy, pero sin enums nativos ni rasgos específicos del motor para que
+// migrar a PostgreSQL solo requiera cambiar el provider y el adaptador.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ---------- Contenido del juego ----------
+
+model Element {
+  id                       String   @id @default(cuid())
+  // Identificador estable y sin acentos; inmutable una vez referenciado.
+  slug                     String   @unique
+  name                     String
+  description              String   @default("")
+  iconKey                  String   @default("sparkles")
+  imageUrl                 String?
+  // MUNDANO | CONCEPTO | MISTICISMO | BEYONDER | CRIATURA | OBJETO | OTRO
+  // (texto validado con Zod; sin enum de motor para portabilidad)
+  type                     String   @default("OTRO")
+  tier                     Int      @default(0)
+  isStarter                Boolean  @default(false)
+  isHiddenUntilDiscovered  Boolean  @default(true)
+  isMajorDiscovery         Boolean  @default(false)
+  revealTitle              String?
+  revealText               String?
+  // Si se define, el elemento se desbloquea solo cuando el jugador descubre
+  // un elemento de este tipo (conceptos que no se fabrican con recetas).
+  unlockedByType           String?
+  unlockedBySequenceNumber Int?
+  isActive                 Boolean  @default(true)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  categories         ElementCategory[]
+  sequence           Sequence?
+  usedIn             RecipeIngredient[]
+  outputs            RecipeOutput[]
+  advanceIngredients AdvanceIngredient[]
+  ritualIngredients  RitualIngredient[]
+  ritualConsequences RitualFailureOutput[]
+  achievements       Achievement[]          @relation("AchievementElementTrigger")
+  discoveries        PlayerDiscovery[]
+  // Desencadenantes que desbloquean ESTE elemento / elementos que este desbloquea.
+  unlockTriggers     ElementUnlockTrigger[] @relation("ElementoDesbloqueado")
+  desencadena        ElementUnlockTrigger[] @relation("ElementoDesencadenante")
+}
+
+// Desbloqueo espontáneo por elemento concreto: `element` se desbloquea cuando
+// el jugador descubre `trigger`. Varios desencadenantes = cualquiera vale.
+model ElementUnlockTrigger {
+  elementId String
+  triggerId String
+
+  element Element @relation("ElementoDesbloqueado", fields: [elementId], references: [id], onDelete: Cascade)
+  trigger Element @relation("ElementoDesencadenante", fields: [triggerId], references: [id], onDelete: Cascade)
+
+  @@id([elementId, triggerId])
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  name        String
+  description String?
+  parentId    String?
+  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryTree")
+  sortOrder   Int        @default(0)
+  isHidden    Boolean    @default(false)
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  elements ElementCategory[]
+  pathways Pathway[]
+}
+
+model ElementCategory {
+  elementId  String
+  categoryId String
+  isPrimary  Boolean @default(false)
+
+  element  Element  @relation(fields: [elementId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([elementId, categoryId])
+}
+
+model Pathway {
+  id                      String   @id @default(cuid())
+  slug                    String   @unique
+  name                    String
+  description             String   @default("")
+  categoryId              String
+  category                Category @relation(fields: [categoryId], references: [id])
+  iconKey                 String?
+  imageUrl                String?
+  isHiddenUntilDiscovered Boolean  @default(true)
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  sequences Sequence[]
+  unlocks   PlayerPathwayUnlock[]
+}
+
+model Sequence {
+  id          String   @id @default(cuid())
+  pathwayId   String
+  pathway     Pathway  @relation(fields: [pathwayId], references: [id], onDelete: Cascade)
+  number      Int
+  name        String
+  description String?
+  // Un elemento representa como máximo una secuencia.
+  elementId   String   @unique
+  element     Element  @relation(fields: [elementId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  advancesFrom Advance[]     @relation("AdvanceSourceSequence")
+  advancesTo   Advance[]     @relation("AdvanceTargetSequence")
+  achievements Achievement[] @relation("AchievementSequenceTrigger")
+
+  // Un camino no puede repetir número de secuencia.
+  @@unique([pathwayId, number])
+}
+
+// Progreso temporal: dos elementos producen un avance enmascarado. El jugador
+// debe combinarlo con sourceSequence para descubrir targetSequence.
+model Advance {
+  id               String   @id @default(cuid())
+  internalName     String
+  inputKey         String   @unique
+  sourceSequenceId String
+  sourceSequence   Sequence @relation("AdvanceSourceSequence", fields: [sourceSequenceId], references: [id], onDelete: Cascade)
+  targetSequenceId String
+  targetSequence   Sequence @relation("AdvanceTargetSequence", fields: [targetSequenceId], references: [id], onDelete: Cascade)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  ingredients AdvanceIngredient[]
+  players     PlayerAdvance[]
+  stats       PlayerCombinationStat[]
+  ritual      Ritual?
+}
+
+model AdvanceIngredient {
+  id        String  @id @default(cuid())
+  advanceId String
+  advance   Advance @relation(fields: [advanceId], references: [id], onDelete: Cascade)
+  elementId String
+  element   Element @relation(fields: [elementId], references: [id], onDelete: Restrict)
+  quantity  Int     @default(1)
+
+  @@unique([advanceId, elementId])
+}
+
+model Ritual {
+  id                     String   @id @default(cuid())
+  name                   String
+  inputKey               String   @unique
+  advanceId              String   @unique
+  advance                Advance  @relation(fields: [advanceId], references: [id], onDelete: Cascade)
+  requiredSequenceNumber Int      @default(6)
+  isActive               Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  ingredients    RitualIngredient[]
+  failureOutputs RitualFailureOutput[]
+  players        PlayerRitual[]
+}
+
+model RitualIngredient {
+  id        String  @id @default(cuid())
+  ritualId  String
+  ritual    Ritual  @relation(fields: [ritualId], references: [id], onDelete: Cascade)
+  elementId String
+  element   Element @relation(fields: [elementId], references: [id], onDelete: Restrict)
+  quantity  Int     @default(1)
+
+  @@unique([ritualId, elementId])
+}
+
+model RitualFailureOutput {
+  ritualId  String
+  ritual    Ritual  @relation(fields: [ritualId], references: [id], onDelete: Cascade)
+  elementId String
+  element   Element @relation(fields: [elementId], references: [id], onDelete: Restrict)
+
+  @@id([ritualId, elementId])
+}
+
+// Logro configurable. Exactamente uno de los dos desencadenantes debe estar
+// definido; esa regla se valida en las acciones e importaciones del servidor.
+model Achievement {
+  id                    String    @id @default(cuid())
+  slug                  String    @unique
+  name                  String
+  description           String    @default("")
+  iconKey               String    @default("trophy")
+  triggerElementId      String?
+  triggerElement        Element?  @relation("AchievementElementTrigger", fields: [triggerElementId], references: [id], onDelete: Cascade)
+  triggerSequenceId     String?
+  triggerSequence       Sequence? @relation("AchievementSequenceTrigger", fields: [triggerSequenceId], references: [id], onDelete: Cascade)
+  isHiddenUntilUnlocked Boolean   @default(false)
+  isActive              Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  players PlayerAchievement[]
+}
+
+model Recipe {
+  id          String   @id @default(cuid())
+  name        String?
+  // Clave determinista de los ingredientes ("adivinacion*1|percepcion*1").
+  // Derivada SIEMPRE de RecipeIngredient; nunca escrita a mano.
+  inputKey    String   @unique
+  successText String?
+  hintText    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ingredients RecipeIngredient[]
+  outputs     RecipeOutput[]
+  stats       PlayerCombinationStat[]
+}
+
+model RecipeOutput {
+  id        String  @id @default(cuid())
+  recipeId  String
+  recipe    Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  elementId String
+  element   Element @relation(fields: [elementId], references: [id], onDelete: Cascade)
+  quantity  Int     @default(1)
+  // Probabilidad de que este resultado aparezca (0-1). Si es 1, siempre aparece.
+  chance    Float   @default(1.0)
+  // Orden de presentación en la UI.
+  sortOrder Int     @default(0)
+
+  @@unique([recipeId, elementId])
+}
+
+model RecipeIngredient {
+  id        String  @id @default(cuid())
+  recipeId  String
+  recipe    Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  elementId String
+  element   Element @relation(fields: [elementId], references: [id], onDelete: Cascade)
+  quantity  Int     @default(1)
+
+  // Un mismo elemento no puede aparecer en dos filas de la misma receta.
+  @@unique([recipeId, elementId])
+}
+
+// ---------- Progreso del jugador ----------
+
+model PlayerProfile {
+  id         String    @id @default(cuid())
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  resetAt    DateTime?
+
+  discoveries      PlayerDiscovery[]
+  pathwayUnlocks   PlayerPathwayUnlock[]
+  combinationStats PlayerCombinationStat[]
+  advances         PlayerAdvance[]
+  achievements     PlayerAchievement[]
+  rituals          PlayerRitual[]
+}
+
+model PlayerAdvance {
+  profileId       String
+  advanceId       String
+  quantity        Int      @default(1)
+  firstObtainedAt DateTime @default(now())
+  lastObtainedAt  DateTime @default(now())
+  timesCreated    Int      @default(1)
+
+  profile PlayerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  advance Advance       @relation(fields: [advanceId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, advanceId])
+}
+
+model PlayerAchievement {
+  profileId     String
+  achievementId String
+  unlockedAt    DateTime  @default(now())
+  notifiedAt    DateTime?
+
+  profile     PlayerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  achievement Achievement   @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, achievementId])
+}
+
+model PlayerRitual {
+  profileId  String
+  ritualId   String
+  unlockedAt DateTime @default(now())
+
+  profile PlayerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  ritual  Ritual        @relation(fields: [ritualId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, ritualId])
+}
+
+model PlayerDiscovery {
+  profileId         String
+  elementId         String
+  firstDiscoveredAt DateTime @default(now())
+  lastCreatedAt     DateTime @default(now())
+  timesCreated      Int      @default(1)
+
+  profile PlayerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  element Element       @relation(fields: [elementId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, elementId])
+}
+
+model PlayerPathwayUnlock {
+  profileId  String
+  pathwayId  String
+  unlockedAt DateTime @default(now())
+
+  profile PlayerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  pathway Pathway       @relation(fields: [pathwayId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, pathwayId])
+}
+
+model PlayerCombinationStat {
+  profileId      String
+  inputKey       String
+  recipeId       String?
+  advanceId      String?
+  attempts       Int      @default(0)
+  successes      Int      @default(0)
+  firstAttemptAt DateTime @default(now())
+  lastAttemptAt  DateTime @default(now())
+
+  profile PlayerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  recipe  Recipe?       @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  advance Advance?      @relation(fields: [advanceId], references: [id], onDelete: SetNull)
+
+  @@id([profileId, inputKey])
+  @@index([inputKey])
+}
