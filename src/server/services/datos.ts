@@ -6,32 +6,101 @@ export class ImportError extends Error {}
 
 // ---------- Exportación ----------
 
+// Lista de nombres por unidad ("Ojo ×2" → ["Ojo", "Ojo"]), ordenada en español.
+function nombresPorUnidad(
+  ingredientes: { quantity: number; element: { name: string } }[],
+): string[] {
+  return ingredientes
+    .flatMap((ingredient) => Array<string>(ingredient.quantity).fill(ingredient.element.name))
+    .sort((a, b) => a.localeCompare(b, 'es'))
+}
+
+// Exportación ligera para lectura humana (o para dársela a un LLM): solo
+// nombres. Cada elemento lista las recetas que lo crean e indica su camino y
+// secuencia si representa una; la sección «caminos» recorre cada escalera de
+// secuencias con sus ascensiones (avance + secuencia de origen + ritual).
 export async function exportarElementosYCombinaciones(db: PrismaClient) {
-  const elementos = await db.element.findMany({
-    include: {
-      outputs: {
-        include: {
-          recipe: {
-            include: {
-              ingredients: {
-                include: { element: { select: { name: true } } },
+  const [elementos, caminos] = await Promise.all([
+    db.element.findMany({
+      include: {
+        sequence: { include: { pathway: { select: { name: true } } } },
+        outputs: {
+          include: {
+            recipe: {
+              include: {
+                ingredients: {
+                  include: { element: { select: { name: true } } },
+                },
               },
             },
           },
         },
       },
-    },
-    orderBy: { name: 'asc' },
-  })
+      orderBy: { name: 'asc' },
+    }),
+    db.pathway.findMany({
+      include: {
+        sequences: {
+          // De la secuencia más alta (donde se empieza) a la más profunda.
+          orderBy: { number: 'desc' },
+          include: {
+            element: { select: { name: true } },
+            advancesTo: {
+              include: {
+                ingredients: { include: { element: { select: { name: true } } } },
+                sourceSequence: { include: { element: { select: { name: true } } } },
+                ritual: {
+                  include: {
+                    ingredients: { include: { element: { select: { name: true } } } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    }),
+  ])
 
-  return elementos.map((elemento) => ({
-    nombre: elemento.name,
-    combinaciones: elemento.outputs.map((output) =>
-      output.recipe.ingredients
-        .flatMap((ingredient) => Array<string>(ingredient.quantity).fill(ingredient.element.name))
-        .sort((a, b) => a.localeCompare(b, 'es')),
-    ),
-  }))
+  return {
+    exportadoEn: new Date().toISOString(),
+    elementos: elementos.map((elemento) => ({
+      nombre: elemento.name,
+      ...(elemento.sequence
+        ? {
+            camino: elemento.sequence.pathway.name,
+            secuencia: elemento.sequence.number,
+          }
+        : {}),
+      combinaciones: elemento.outputs.map((output) =>
+        nombresPorUnidad(output.recipe.ingredients),
+      ),
+    })),
+    caminos: caminos.map((camino) => ({
+      nombre: camino.name,
+      secuencias: camino.sequences.map((secuencia) => ({
+        numero: secuencia.number,
+        nombre: secuencia.name,
+        elemento: secuencia.element.name,
+        // Cómo se llega a esta secuencia desde otra: primero se crea el avance
+        // con estos ingredientes y luego se combina con el elemento de origen.
+        ascensiones: secuencia.advancesTo.map((avance) => ({
+          desdeSecuencia: avance.sourceSequence.number,
+          desdeElemento: avance.sourceSequence.element.name,
+          avance: nombresPorUnidad(avance.ingredients),
+          ...(avance.ritual
+            ? {
+                ritual: {
+                  nombre: avance.ritual.name,
+                  ingredientes: nombresPorUnidad(avance.ritual.ingredients),
+                },
+              }
+            : {}),
+        })),
+      })),
+    })),
+  }
 }
 
 export async function exportarContenido(db: PrismaClient) {

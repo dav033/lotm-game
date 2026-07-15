@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AchievementPublicData, CombineResult } from '@/server/domain/tipos'
 import type { ElementoDescubierto, EstadoJuego, RecetaPendiente } from './tipos'
-import type { ResultadoDirecto } from './ResultadoFlotante'
+
+// Marca local de "ya vio el tutorial del primer avance"; por navegador.
+const TUTORIAL_AVANCE_KEY = 'am-tutorial-avance-visto'
 
 // Estado y reglas del juego en el cliente: carga del progreso, mesa de
 // combinación, llamadas a la API y avisos. Los componentes que lo consumen
@@ -14,14 +16,13 @@ export function useJuego(esAdmin = false) {
   const [slots, setSlots] = useState<(ElementoDescubierto | null)[]>([null, null])
   const [combinando, setCombinando] = useState(false)
   const [resultado, setResultado] = useState<CombineResult | null>(null)
-  const [resultadoDirecto, setResultadoDirecto] = useState<ResultadoDirecto | null>(null)
   const [fallo, setFallo] = useState(0) // contador para reiniciar la animación
   const [reveal, setReveal] = useState<CombineResult | null>(null)
-  const [conservarTrasFallo, setConservarTrasFallo] = useState(true)
   const [aviso, setAviso] = useState<string | null>(null)
   const [reiniciando, setReiniciando] = useState(false)
   const [pendientes, setPendientes] = useState<RecetaPendiente[]>([])
   const [logrosPendientes, setLogrosPendientes] = useState<AchievementPublicData[]>([])
+  const [tutorialAvance, setTutorialAvance] = useState(false)
   const avisoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const mostrarAviso = useCallback((texto: string) => {
@@ -66,7 +67,10 @@ export function useJuego(esAdmin = false) {
 
   const colocar = (el: ElementoDescubierto) => {
     const libre = slots.findIndex((x) => x === null)
-    if (libre === -1) return
+    if (libre === -1) {
+      mostrarAviso('La mesa está llena. Retira un elemento o pulsa Limpiar.')
+      return
+    }
     const next = [...slots]
     next[libre] = el
     setSlots(next)
@@ -99,21 +103,35 @@ export function useJuego(esAdmin = false) {
     setSlots([el, null])
   }
 
-  // Panel de depuración (admin): autocompleta la mesa con los ingredientes de
-  // una receta pendiente (puede que el jugador no los tenga descubiertos
-  // todavía; combinar seguirá exigiéndolo del lado del servidor).
-  const autocompletarPendiente = (recipeId: string) => {
+  // Panel de depuración (admin): expande los ingredientes de una receta
+  // pendiente en unidades sueltas (ojo ×2 → ojo, ojo) listas para la mesa.
+  const unidadesDePendiente = (recipeId: string) => {
     const receta = pendientes.find((r) => r.recipeId === recipeId)
-    if (!receta) return
-    const unidades = receta.ingredientes.flatMap((i) =>
+    if (!receta) return []
+    return receta.ingredientes.flatMap((i) =>
       Array.from({ length: i.quantity }, () => ({
         ...i,
         firstDiscoveredAt: '',
         timesCreated: 0,
       })),
     )
+  }
+
+  // Clic: autocompleta la mesa con los ingredientes (puede que el jugador no
+  // los tenga descubiertos todavía; combinar seguirá exigiéndolo del servidor).
+  const autocompletarPendiente = (recipeId: string) => {
+    const unidades = unidadesDePendiente(recipeId)
+    if (unidades.length === 0) return
     setSlots([unidades[0] ?? null, unidades[1] ?? null])
     setResultado(null)
+  }
+
+  // Doble clic: carga los ingredientes y lanza la combinación al momento.
+  const combinarPendiente = (recipeId: string) => {
+    const unidades = unidadesDePendiente(recipeId)
+    if (unidades.length < 2) return
+    setSlots([unidades[0], unidades[1]])
+    ejecutarCombinacion(unidades[0].slug, unidades[1].slug, { origen: 'mesa' })
   }
 
   // Registra el resultado en el estado local sin recargar todo el progreso.
@@ -164,18 +182,16 @@ export function useJuego(esAdmin = false) {
   }, [])
 
   // Núcleo de combinación compartido por la mesa y por el arrastre directo
-  // (icono sobre icono). `origen` decide dónde se muestra el resultado.
+  // (icono sobre icono). El resultado se muestra siempre en el mismo sitio:
+  // el área bajo la mesa. `origen` solo decide si hay que limpiar los
+  // espacios tras el éxito (mesa) o agitar la mesa en el fallo.
   const combinandoRef = useRef(false)
   const ejecutarCombinacion = useCallback(
-    async (
-      slugA: string,
-      slugB: string,
-      opts: { origen: 'mesa' | 'directo'; punto?: { x: number; y: number } },
-    ) => {
+    async (slugA: string, slugB: string, opts: { origen: 'mesa' | 'directo' }) => {
       if (combinandoRef.current) return
       combinandoRef.current = true
       setCombinando(true)
-      if (opts.origen === 'mesa') setResultado(null)
+      setResultado(null)
       try {
         const res = await fetch('/api/combine', {
           method: 'POST',
@@ -199,21 +215,24 @@ export function useJuego(esAdmin = false) {
         }
         if (r.results.length > 0) registrarResultado(r)
 
+        // Tutorial de una sola vez: el primer avance rompe la regla de que
+        // nada se gasta, así que merece una explicación puntual.
+        if (
+          r.results.some((salida) => salida.element.kind === 'ADVANCE') &&
+          !window.localStorage.getItem(TUTORIAL_AVANCE_KEY)
+        ) {
+          setTutorialAvance(true)
+        }
+
+        setResultado(r)
         if (r.success && r.results.length > 0) {
-          if (opts.origen === 'directo' && opts.punto) {
-            setResultadoDirecto({ resultado: r, punto: opts.punto })
-          } else {
-            setResultado(r)
-          }
+          // Tras el éxito la mesa queda libre para la siguiente combinación.
+          if (opts.origen === 'mesa') setSlots([null, null])
           cargarPendientes()
           if (r.pathwayReveal) setReveal(r)
         } else if (opts.origen === 'mesa') {
-          setResultado(r)
+          // El fallo conserva los elementos: así se puede cambiar solo uno.
           setFallo((n) => n + 1)
-          if (!conservarTrasFallo) setSlots([null, null])
-        } else {
-          // Fallo en combinación directa: un aviso discreto, sin ruido en la mesa.
-          mostrarAviso(r.message)
         }
       } catch {
         mostrarAviso('No hay conexión con el archivo. Inténtalo de nuevo.')
@@ -222,18 +241,12 @@ export function useJuego(esAdmin = false) {
         setCombinando(false)
       }
     },
-    [conservarTrasFallo, mostrarAviso, cargarPendientes, registrarResultado],
+    [mostrarAviso, cargarPendientes, registrarResultado],
   )
 
-  const combinar = () => {
-    if (!slots[0] || !slots[1]) return
-    ejecutarCombinacion(slots[0].slug, slots[1].slug, { origen: 'mesa' })
-  }
-
-  // Combinación directa por arrastre: no toca la mesa, muestra el resultado
-  // flotando donde se soltó.
-  const combinarDirecto = (slugA: string, slugB: string, punto: { x: number; y: number }) => {
-    ejecutarCombinacion(slugA, slugB, { origen: 'directo', punto })
+  // Combinación directa por arrastre (icono sobre icono): no toca la mesa.
+  const combinarDirecto = (slugA: string, slugB: string) => {
+    ejecutarCombinacion(slugA, slugB, { origen: 'directo' })
   }
 
   const reiniciar = async () => {
@@ -250,6 +263,8 @@ export function useJuego(esAdmin = false) {
       limpiar()
       setReveal(null)
       setLogrosPendientes([])
+      // Al empezar de cero, el tutorial del primer avance vuelve a mostrarse.
+      window.localStorage.removeItem(TUTORIAL_AVANCE_KEY)
       await cargarEstado()
       mostrarAviso('El archivo ha sido restaurado. Empiezas de nuevo.')
     } catch {
@@ -287,6 +302,11 @@ export function useJuego(esAdmin = false) {
     }
   }
 
+  const cerrarTutorialAvance = () => {
+    window.localStorage.setItem(TUTORIAL_AVANCE_KEY, '1')
+    setTutorialAvance(false)
+  }
+
   const cerrarLogro = () => {
     const current = logrosPendientes[0]
     if (!current) return
@@ -310,19 +330,17 @@ export function useJuego(esAdmin = false) {
     usarResultado,
     pendientes,
     autocompletarPendiente,
+    combinarPendiente,
     combinando,
     resultado,
     fallo,
-    combinar,
     combinarDirecto,
-    resultadoDirecto,
-    cerrarResultadoDirecto: () => setResultadoDirecto(null),
-    conservarTrasFallo,
-    setConservarTrasFallo,
     reveal,
     cerrarReveal: () => setReveal(null),
     logroPendiente: logrosPendientes[0] ?? null,
     cerrarLogro,
+    tutorialAvance,
+    cerrarTutorialAvance,
     aviso,
     reiniciando,
     reiniciar,

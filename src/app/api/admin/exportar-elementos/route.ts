@@ -10,9 +10,9 @@ export async function GET() {
     return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
   }
   try {
-    const elementos = await exportarElementosYCombinaciones(prisma)
+    const doc = await exportarElementosYCombinaciones(prisma)
     const fecha = new Date().toISOString().slice(0, 10)
-    return new NextResponse(JSON.stringify(elementos, null, 2), {
+    return new NextResponse(JSON.stringify(doc, null, 2), {
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
         'Content-Disposition': `attachment; filename="elementos-y-combinaciones-${fecha}.json"`,

@@ -53,7 +53,7 @@ export default function FormularioAvance({
           className="campo"
         />
         <p className="mt-1 text-xs text-fog">
-          Solo el administrador verá este nombre. El jugador siempre verá «Unknown Advance».
+          Solo el administrador verá este nombre. El jugador siempre verá «Avance desconocido».
         </p>
       </div>
 

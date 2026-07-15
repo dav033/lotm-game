@@ -47,6 +47,9 @@ export type ElementPublicData = {
   tier: number
   isMajorDiscovery: boolean
   derivationLabel: string | null
+  // Presente solo cuando el elemento representa una secuencia de un camino
+  // (p. ej. "Secuencia 9 · Camino del Vidente"); ayuda a usar los avances.
+  sequenceLabel?: string | null
 }
 
 export type PathwayReveal = {

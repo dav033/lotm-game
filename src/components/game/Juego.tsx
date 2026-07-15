@@ -4,11 +4,11 @@ import { RotateCcw } from 'lucide-react'
 import { MesaCombinacion } from './MesaCombinacion'
 import { ModalRevelacion } from './ModalRevelacion'
 import { ModalLogro } from './ModalLogro'
+import { ModalTutorialAvance } from './ModalTutorialAvance'
 import { PanelDescubiertos } from './PanelDescubiertos'
 import { RecetasPendientes } from './RecetasPendientes'
 import { PanelRituales } from './PanelRituales'
 import { GhostArrastre } from './GhostArrastre'
-import { ResultadoFlotante } from './ResultadoFlotante'
 import { useJuego } from './useJuego'
 import { useArrastre } from './useArrastre'
 
@@ -17,7 +17,7 @@ export default function Juego({ esAdmin = false }: { esAdmin?: boolean }) {
   const { estado, reveal } = juego
 
   const { arrastre, objetivo, iniciar } = useArrastre({
-    onCombinarElementos: (slugA, slugB, punto) => juego.combinarDirecto(slugA, slugB, punto),
+    onCombinarElementos: (slugA, slugB) => juego.combinarDirecto(slugA, slugB),
     onSoltarEnSlot: (index, payload) => juego.colocarEnSlot(index, payload.slug),
     onTap: (payload) => {
       if (payload.origen.tipo !== 'panel') return
@@ -63,6 +63,7 @@ export default function Juego({ esAdmin = false }: { esAdmin?: boolean }) {
             <RecetasPendientes
               pendientes={juego.pendientes}
               onAutocompletar={juego.autocompletarPendiente}
+              onCombinar={juego.combinarPendiente}
             />
           )}
           <MesaCombinacion
@@ -70,11 +71,8 @@ export default function Juego({ esAdmin = false }: { esAdmin?: boolean }) {
             combinando={juego.combinando}
             resultado={juego.resultado}
             fallo={juego.fallo}
-            conservarTrasFallo={juego.conservarTrasFallo}
             onRetirar={juego.retirar}
-            onCombinar={juego.combinar}
             onLimpiar={juego.limpiar}
-            onCambiarConservar={juego.setConservarTrasFallo}
             onUsarResultado={juego.usarResultado}
             iniciarArrastre={iniciar}
             objetivo={objetivo}
@@ -92,13 +90,14 @@ export default function Juego({ esAdmin = false }: { esAdmin?: boolean }) {
       </main>
 
       <GhostArrastre arrastre={arrastre} />
-      <ResultadoFlotante directo={juego.resultadoDirecto} onCerrar={juego.cerrarResultadoDirecto} />
-
 
       {reveal?.pathwayReveal && reveal.results.length > 0 && (
         <ModalRevelacion reveal={reveal.pathwayReveal} onCerrar={juego.cerrarReveal} />
       )}
-      {!reveal && juego.logroPendiente && (
+      {!reveal && juego.tutorialAvance && (
+        <ModalTutorialAvance onCerrar={juego.cerrarTutorialAvance} />
+      )}
+      {!reveal && !juego.tutorialAvance && juego.logroPendiente && (
         <ModalLogro logro={juego.logroPendiente} onCerrar={juego.cerrarLogro} />
       )}
 

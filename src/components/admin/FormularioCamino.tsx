@@ -132,7 +132,7 @@ export function FormularioSecuencia({
         </label>
         <p className="mb-2 text-xs text-fog">
           Desmarca esta opción si la secuencia solo debe descubrirse mediante
-          un Unknown Advance. En ese caso puedes dejar los ingredientes vacíos.
+          un Avance desconocido. En ese caso puedes dejar los ingredientes vacíos.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>

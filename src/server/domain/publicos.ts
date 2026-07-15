@@ -38,9 +38,18 @@ export function toPublicElement(e: {
   }
 }
 
+// Etiqueta corta que identifica una secuencia dentro de su camino, para que
+// "combínalo con la secuencia correcta" sea accionable desde el panel.
+export function sequenceLabelOf(
+  seq: { number: number; pathway: { name: string } } | null | undefined,
+): string | null {
+  return seq ? `Secuencia ${seq.number} · ${seq.pathway.name}` : null
+}
+
 export function toPublicAdvance(advance: {
   id: string
   ingredients: { quantity: number; element: { name: string } }[]
+  sourceSequence?: { pathway: { name: string; iconKey: string | null } }
 }): ElementPublicData {
   const token = advanceToken(advance.id)
   const derivationLabel = advance.ingredients
@@ -51,9 +60,12 @@ export function toPublicAdvance(advance: {
     kind: 'ADVANCE',
     id: token,
     slug: token,
-    name: 'Unknown Advance',
-    description: 'Un avance de naturaleza desconocida. Combínalo con la secuencia correcta.',
-    iconKey: 'wand-sparkles',
+    name: 'Avance desconocido',
+    description:
+      'Se consume al usarlo: combínalo con la secuencia correcta para ascender.',
+    // El icono del camino de origen distingue avances entre sí y da una pista
+    // de dónde encaja sin revelar la secuencia exacta.
+    iconKey: advance.sourceSequence?.pathway.iconKey ?? 'wand-sparkles',
     imageUrl: null,
     type: 'AVANCE',
     tier: 0,

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/server/db'
 import { asegurarPerfil } from '@/server/perfil'
-import { toPublicAdvance, toPublicElement } from '@/server/domain/publicos'
+import { sequenceLabelOf, toPublicAdvance, toPublicElement } from '@/server/domain/publicos'
 import { obtenerLogrosPendientes, reconciliarLogros } from '@/server/domain/logros'
 import { obtenerRitualesDisponibles } from '@/server/domain/rituales'
 
@@ -17,7 +17,7 @@ export async function GET() {
     const [discoveries, advances, totalElementos, pendingAchievements, rituals] = await Promise.all([
       prisma.playerDiscovery.findMany({
         where: { profileId: profile.id, element: { isActive: true } },
-        include: { element: true },
+        include: { element: { include: { sequence: { include: { pathway: true } } } } },
         orderBy: { firstDiscoveredAt: 'asc' },
       }),
       prisma.playerAdvance.findMany({
@@ -29,6 +29,7 @@ export async function GET() {
                 include: { element: { select: { name: true } } },
                 orderBy: { id: 'asc' },
               },
+              sourceSequence: { include: { pathway: true } },
             },
           },
         },
@@ -41,6 +42,7 @@ export async function GET() {
 
     const elementosDescubiertos = discoveries.map((d) => ({
       ...toPublicElement(d.element),
+      sequenceLabel: sequenceLabelOf(d.element.sequence),
       firstDiscoveredAt: d.firstDiscoveredAt.toISOString(),
       timesCreated: d.timesCreated,
     }))

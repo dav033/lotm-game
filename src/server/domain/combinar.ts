@@ -3,7 +3,7 @@ import type { Db } from '../db'
 import { desbloquearEspontaneos } from './descubrimientos'
 import { buildRecipeInputKey } from './inputKey'
 import { concederLogrosPorElementos } from './logros'
-import { advanceIdFromToken, toPublicAdvance, toPublicElement } from './publicos'
+import { advanceIdFromToken, sequenceLabelOf, toPublicAdvance, toPublicElement } from './publicos'
 import {
   MENSAJE_SIN_RECETA,
   type CombineResult,
@@ -231,7 +231,14 @@ async function combinarAvanceConSecuencia(
         }
       : null
     const results: RecipeOutputData[] = [
-      { element: toPublicElement(target), quantity: 1, isNewDiscovery },
+      {
+        element: {
+          ...toPublicElement(target),
+          sequenceLabel: sequenceLabelOf(advance.targetSequence),
+        },
+        quantity: 1,
+        isNewDiscovery,
+      },
     ]
     const desbloqueados = await desbloquearEspontaneos(
       tx,
@@ -417,7 +424,7 @@ export async function combinarParaPerfil(
       })
       return {
         success: true,
-        message: 'Has obtenido un Unknown Advance.',
+        message: 'Has obtenido un avance desconocido.',
         inputKey,
         results: [
           {
@@ -491,7 +498,7 @@ export async function combinarParaPerfil(
       }
 
       results.push({
-        element: toPublicElement(output),
+        element: { ...toPublicElement(output), sequenceLabel: sequenceLabelOf(seq) },
         quantity: ro.quantity,
         isNewDiscovery,
       })

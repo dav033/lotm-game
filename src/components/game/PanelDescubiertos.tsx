@@ -109,7 +109,7 @@ export function PanelDescubiertos({
         </p>
       )}
 
-      <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-3">
+      <ul className="grid grid-cols-4 gap-1.5 sm:grid-cols-5 lg:grid-cols-4">
         {visibles.map((el) => {
           const esObjetivo =
             objetivo?.tipo === 'elemento' &&
@@ -134,23 +134,28 @@ export function PanelDescubiertos({
                 }}
                 aria-label={`${el.name}: arrastra sobre otro elemento para combinar, o pulsa para colocar en la mesa`}
                 title={el.derivationLabel ?? el.description ?? el.name}
-                className={`flex w-full touch-none select-none flex-col items-center gap-1.5 rounded-lg mist-card p-3 text-center transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brass ${
+                className={`flex w-full touch-none select-none flex-col items-center gap-1 rounded-lg mist-card p-2 text-center transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brass ${
                   esObjetivo
                     ? 'scale-105 border-brass ring-2 ring-brass'
                     : 'hover:border-brass-deep'
                 }`}
               >
-                <IconoElemento iconKey={el.iconKey} className="h-7 w-7 text-brass" />
-                <span className="text-xs leading-tight text-parchment">{el.name}</span>
+                <IconoElemento iconKey={el.iconKey} className="h-5 w-5 text-brass" />
+                <span className="text-[11px] leading-tight text-parchment">{el.name}</span>
+                {el.sequenceLabel && (
+                  <span className="rounded-full border border-brass-deep px-1.5 py-px text-[8px] leading-tight text-brass">
+                    {el.sequenceLabel}
+                  </span>
+                )}
                 {el.derivationLabel && (
-                  <span className="text-[10px] leading-tight text-brass-deep">
+                  <span className="text-[9px] leading-tight text-brass-deep">
                     {el.derivationLabel}
                   </span>
                 )}
                 {(el.quantity ?? 1) > 1 && (
-                  <span className="text-[10px] text-fog">Disponibles: {el.quantity}</span>
+                  <span className="text-[9px] text-fog">Disponibles: {el.quantity}</span>
                 )}
-                <span className="text-[10px] uppercase tracking-wider text-fog/70">
+                <span className="text-[9px] uppercase tracking-wider text-fog/70">
                   {etiquetaTipo(el.type)}
                 </span>
               </button>
