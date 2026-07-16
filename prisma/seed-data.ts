@@ -1391,6 +1391,7 @@ export async function seedGameData(prisma: PrismaClient) {
     { ings: [['vision', 1], ['ocultamiento', 1]], outputs: ['silueta'] },
     { ings: [['silueta', 1], ['luz', 1]], outputs: ['sombra'] },
     { ings: [['peligro', 1], ['cambio-cualitativo', 1]], outputs: ['calamidad'] },
+    { ings: [['peligro', 1], ['fuerza', 1]], outputs: ['desastre'] },
     { ings: [['humano', 1], ['ocultamiento', 1]], outputs: ['disfraz'] },
     { ings: [['humano', 1], ['muerte', 1]], outputs: ['carne', 'espiritu'] },
     { ings: [['carne', 1], ['fuerza', 1]], outputs: ['herida'] },
