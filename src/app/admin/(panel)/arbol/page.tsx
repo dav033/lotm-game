@@ -159,11 +159,11 @@ export default async function PaginaArbolAdmin() {
   return (
     <div>
       <h1 className="mb-1 font-[family-name:var(--font-display)] text-2xl text-parchment">
-        Árbol de conexiones
+        Árbol de habilidades
       </h1>
       <p className="mb-4 text-sm text-fog">
-        {nodos.length} nodos y {aristas.length} conexiones: recetas, avances, secuencias y
-        rituales, de las fuentes (izquierda) a lo más profundo (derecha).
+        {nodos.length} habilidades y {aristas.length} conexiones. Explora las ramas de recetas,
+        avances, secuencias y rituales como un mapa de progresión.
       </p>
       <ArbolConexiones nodos={nodos} aristas={aristas} caminos={leyenda} />
     </div>

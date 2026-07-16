@@ -11,7 +11,7 @@ const SECCIONES = [
   { href: '/admin/rituales', label: 'Rituales' },
   { href: '/admin/categorias', label: 'Categorías' },
   { href: '/admin/caminos', label: 'Caminos' },
-  { href: '/admin/arbol', label: 'Árbol de conexiones' },
+  { href: '/admin/arbol', label: 'Árbol de habilidades' },
   { href: '/admin/combinaciones-fallidas', label: 'Combinaciones fallidas' },
   { href: '/admin/diagnostico', label: 'Diagnóstico' },
   { href: '/admin/datos', label: 'Importar / Exportar' },
