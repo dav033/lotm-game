@@ -1154,6 +1154,58 @@ export async function seedGameData(prisma: PrismaClient) {
       revealText: 'Shepherd descubre que también la corrupción puede jurar lealtad.',
       categoryId: beyonder.id,
     },
+    // ----- Destino, memoria, vínculos y mundos espirituales -----
+    { slug: 'registro', name: 'Registro', description: 'Información preservada para sobrevivir al paso del tiempo.', iconKey: 'file-text', type: 'CONCEPTO', tier: 2, categoryId: conceptos.id },
+    { slug: 'bendicion', name: 'Bendición', description: 'Una existencia oculta responde favorablemente a una plegaria o sacrificio.', iconKey: 'award', type: 'MISTICISMO', tier: 5, categoryId: misticismo.id },
+    { slug: 'historia', name: 'Historia', description: 'El registro transformado por la distancia del tiempo.', iconKey: 'history', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
+    { slug: 'vinculo', name: 'Vínculo', description: 'La relación invisible que nace entre dos humanos.', iconKey: 'blend', type: 'CONCEPTO', tier: 1, categoryId: conceptos.id },
+    { slug: 'ruptura', name: 'Ruptura', description: 'La fuerza aplicada hasta quebrar un vínculo.', iconKey: 'triangle-alert', type: 'CONCEPTO', tier: 2, categoryId: conceptos.id },
+    { slug: 'separacion', name: 'Separación', description: 'La ruptura consolidada por el paso del tiempo.', iconKey: 'move-up-right', type: 'CONCEPTO', tier: 3, categoryId: conceptos.id },
+    { slug: 'era', name: 'Era', description: 'Una continuidad tan extensa que adquiere identidad propia.', iconKey: 'hourglass', type: 'CONCEPTO', tier: 3, categoryId: conceptos.id },
+    { slug: 'ausencia', name: 'Ausencia', description: 'El vacío que deja un vínculo después de la separación.', iconKey: 'eye-off', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
+    { slug: 'deseo', name: 'Deseo', description: 'La ausencia percibida se convierte en anhelo.', iconKey: 'flame', type: 'CONCEPTO', tier: 5, categoryId: conceptos.id },
+    { slug: 'milagro', name: 'Milagro', description: 'Un deseo que atraviesa un cambio cualitativo y altera lo posible.', iconKey: 'wand-sparkles', type: 'MISTICISMO', tier: 6, categoryId: misticismo.id },
+    { slug: 'proyeccion-astral', name: 'Proyección astral', description: 'El cuerpo espiritual proyectado más allá del plano material.', iconKey: 'orbit', type: 'MISTICISMO', tier: 4, categoryId: misticismo.id },
+    { slug: 'mundo-espiritual', name: 'Mundo espiritual', description: 'El plano invisible al que conduce una proyección astral.', iconKey: 'moon-star', type: 'MISTICISMO', tier: 5, categoryId: misticismo.id },
+    { slug: 'criatura-espiritual', name: 'Criatura espiritual', description: 'Una criatura adaptada a existir en el mundo espiritual.', iconKey: 'ghost', type: 'CRIATURA', tier: 5, categoryId: misticismo.id },
+    { slug: 'descripcion-espiritual', name: 'Descripción espiritual', description: 'Un registro preciso de la esencia de una criatura espiritual.', iconKey: 'scroll-text', type: 'MISTICISMO', tier: 6, categoryId: misticismo.id },
+    { slug: 'invocacion', name: 'Invocación', description: 'Un ritual capaz de llamar aquello que ha sido descrito.', iconKey: 'circle-dot-dashed', type: 'MISTICISMO', tier: 6, categoryId: misticismo.id },
+    { slug: 'invocador', name: 'Invocador', description: 'Un Beyonder que domina el arte de la invocación.', iconKey: 'wand', type: 'BEYONDER', tier: 6, categoryId: beyonder.id },
+    { slug: 'ciclo', name: 'Ciclo', description: 'El destino atrapado en una continuidad recurrente.', iconKey: 'circle-dot-dashed', type: 'CONCEPTO', tier: 3, categoryId: conceptos.id },
+    { slug: 'retorno', name: 'Retorno', description: 'El ciclo que completa su recorrido a través del tiempo.', iconKey: 'history', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
+    { slug: 'consecuencia', name: 'Consecuencia', description: 'El resultado inevitable de una influencia prolongada.', iconKey: 'move-up-right', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
+    { slug: 'inevitabilidad', name: 'Inevitabilidad', description: 'La consecuencia unida al destino hasta no admitir alternativa.', iconKey: 'lock-keyhole', type: 'MISTICISMO', tier: 5, categoryId: misticismo.id },
+    { slug: 'nacion', name: 'Nación', description: 'Dos ciudades unidas bajo una identidad y un destino comunes.', iconKey: 'landmark', type: 'MUNDANO', tier: 4, categoryId: mundano.id },
+    { slug: 'simbolismo', name: 'Simbolismo', description: 'La información expresada mediante correspondencias místicas.', iconKey: 'book-key', type: 'MISTICISMO', tier: 4, categoryId: misticismo.id },
+    { slug: 'mundo-astral', name: 'Mundo Astral', description: 'El dominio de los símbolos y la divinidad.', iconKey: 'star', type: 'MISTICISMO', tier: 6, categoryId: misticismo.id },
+    { slug: 'rio', name: 'Río', description: 'Agua que encuentra un cauce y comienza a avanzar.', iconKey: 'waves', type: 'MUNDANO', tier: 1, categoryId: mundano.id },
+    { slug: 'river-of-fate', name: 'River of Fate', description: 'Un río cuyo cauce sigue el destino en lugar de la geografía.', iconKey: 'waves', type: 'MISTICISMO', tier: 5, categoryId: misticismo.id },
+    { slug: 'ley', name: 'Ley', description: 'El procedimiento aceptado por toda una comunidad.', iconKey: 'scroll-text', type: 'CONCEPTO', tier: 3, categoryId: conceptos.id },
+    { slug: 'orden', name: 'Orden', description: 'La ley extendida sobre una ciudad.', iconKey: 'layers', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
+    { slug: 'distorsion', name: 'Distorsión', description: 'El orden deformado por la corrupción.', iconKey: 'blend', type: 'MISTICISMO', tier: 5, categoryId: misticismo.id },
+    { slug: 'desorden', name: 'Desorden', description: 'La distorsión liberada por la incertidumbre.', iconKey: 'dices', type: 'MISTICISMO', tier: 6, categoryId: misticismo.id },
+    { slug: 'revelacion', name: 'Revelación', description: 'El destino expuesto por medio de la adivinación.', iconKey: 'scan-eye', type: 'MISTICISMO', tier: 4, categoryId: misticismo.id },
+    { slug: 'profecia', name: 'Profecía', description: 'Una revelación fijada en un registro antes de que ocurra.', iconKey: 'book-open', type: 'MISTICISMO', tier: 5, categoryId: misticismo.id },
+    { slug: 'misfortune-mage', name: 'Misfortune Mage', description: 'Secuencia 4 del Camino del Monstruo. Convierte la desgracia en un arte dirigido.', iconKey: 'wand-sparkles', type: 'BEYONDER', tier: 8, isMajorDiscovery: true, categoryId: beyonder.id },
+    { slug: 'chaoswalker', name: 'Chaoswalker', description: 'Secuencia 3 del Camino del Monstruo. Camina donde el destino pierde todo orden.', iconKey: 'dices', type: 'BEYONDER', tier: 9, isMajorDiscovery: true, categoryId: beyonder.id },
+    { slug: 'soothsayer', name: 'Soothsayer', description: 'Secuencia 2 del Camino del Monstruo. Contempla los cauces futuros del destino.', iconKey: 'scan-eye', type: 'BEYONDER', tier: 10, isMajorDiscovery: true, categoryId: beyonder.id },
+    { slug: 'scholar-of-yore', name: 'Scholar of Yore', description: 'Secuencia 3 del Camino del Vidente. Extrae poder de la historia y de eras olvidadas.', iconKey: 'history', type: 'BEYONDER', tier: 9, isMajorDiscovery: true, categoryId: beyonder.id },
+    { slug: 'miracle-invoker', name: 'Invocador de Milagros', description: 'Secuencia 2 del Camino del Vidente. Hace que los deseos imposibles encuentren respuesta.', iconKey: 'wand-sparkles', type: 'BEYONDER', tier: 10, isMajorDiscovery: true, categoryId: beyonder.id },
+    // ----- Trinidad, profanación y el mundo de sombras -----
+    { slug: 'diferenciacion', name: 'Diferenciación', description: 'La percepción que reconoce aquello que la separación vuelve distinto.', iconKey: 'layers', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
+    { slug: 'trinidad', name: 'Trinidad', description: 'Tres aspectos diferenciados que comparten una misma divinidad.', iconKey: 'triangle-alert', type: 'MISTICISMO', tier: 6, categoryId: misticismo.id },
+    { slug: 'autocontrol', name: 'Autocontrol', description: 'La claridad guiada por la prudencia para dominar el propio impulso.', iconKey: 'shield', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
+    { slug: 'lenguaje', name: 'Lenguaje', description: 'Información organizada mediante un procedimiento compartido.', iconKey: 'book-open', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
+    { slug: 'profanacion', name: 'Profanación', description: 'La divinidad degradada por una degeneración persistente.', iconKey: 'triangle-alert', type: 'MISTICISMO', tier: 6, categoryId: misticismo.id },
+    { slug: 'dominacion', name: 'Dominación', description: 'La fuerza ejercida a través de la influencia sobre otra voluntad.', iconKey: 'lock-keyhole', type: 'MISTICISMO', tier: 5, categoryId: misticismo.id },
+    { slug: 'sombra-independiente', name: 'Sombra independiente', description: 'Una sombra separada de aquello que debía proyectarla.', iconKey: 'moon', type: 'MISTICISMO', tier: 5, categoryId: misticismo.id },
+    { slug: 'sombra-dominada', name: 'Sombra dominada', description: 'Una sombra independiente sometida a una voluntad ajena.', iconKey: 'moon-star', type: 'MISTICISMO', tier: 6, categoryId: misticismo.id },
+    { slug: 'continente', name: 'Continente', description: 'Dos naciones extendidas sobre una misma gran masa de tierra.', iconKey: 'landmark', type: 'MUNDANO', tier: 5, categoryId: mundano.id },
+    { slug: 'mundo', name: 'Mundo', description: 'La totalidad formada por continentes, pueblos y fronteras.', iconKey: 'orbit', type: 'MUNDANO', tier: 6, categoryId: mundano.id },
+    { slug: 'mundo-de-sombra', name: 'Mundo de sombra', description: 'Un mundo completo cubierto por una sombra que le pertenece.', iconKey: 'moon', type: 'MISTICISMO', tier: 7, categoryId: misticismo.id },
+    { slug: 'dominio-en-el-mundo-de-sombras', name: 'Dominio en el mundo de sombras', description: 'La dominación convertida en ley dentro de un mundo de sombras.', iconKey: 'key-round', type: 'MISTICISMO', tier: 8, categoryId: misticismo.id },
+    { slug: 'trinity-templar', name: 'Trinity Templar', description: 'Secuencia 3 del Camino del Suplicante de Secretos. Encarna tres aspectos de una misma carne divina.', iconKey: 'shield', type: 'BEYONDER', tier: 9, isMajorDiscovery: true, categoryId: beyonder.id },
+    { slug: 'profane-presbyter', name: 'Profane Presbyter', description: 'Secuencia 2 del Camino del Suplicante de Secretos. Convierte la profanación en doctrina y dominio.', iconKey: 'book-key', type: 'BEYONDER', tier: 10, isMajorDiscovery: true, categoryId: beyonder.id },
   ]
 
   const bySlug = new Map<string, { id: string }>()
@@ -1182,6 +1234,20 @@ export async function seedGameData(prisma: PrismaClient) {
     if (!e) throw new Error(`Elemento del seed no encontrado: ${slug}`)
     return e.id
   }
+
+  await prisma.elementUnlockTrigger.upsert({
+    where: {
+      elementId_triggerId: {
+        elementId: id('mundo-espiritual'),
+        triggerId: id('proyeccion-astral'),
+      },
+    },
+    update: {},
+    create: {
+      elementId: id('mundo-espiritual'),
+      triggerId: id('proyeccion-astral'),
+    },
+  })
 
   // ---------- Secuencias ----------
   const secuencias: { camino: { id: string }; number: number; name: string; slug: string }[] = [
@@ -1252,6 +1318,13 @@ export async function seedGameData(prisma: PrismaClient) {
       name: 'Black Knight',
       slug: 'black-knight',
     },
+    { camino: caminoMonstruo, number: 4, name: 'Misfortune Mage', slug: 'misfortune-mage' },
+    { camino: caminoMonstruo, number: 3, name: 'Chaoswalker', slug: 'chaoswalker' },
+    { camino: caminoMonstruo, number: 2, name: 'Soothsayer', slug: 'soothsayer' },
+    { camino: caminoVidente, number: 3, name: 'Scholar of Yore', slug: 'scholar-of-yore' },
+    { camino: caminoVidente, number: 2, name: 'Invocador de Milagros', slug: 'miracle-invoker' },
+    { camino: caminoSuplicante, number: 3, name: 'Trinity Templar', slug: 'trinity-templar' },
+    { camino: caminoSuplicante, number: 2, name: 'Profane Presbyter', slug: 'profane-presbyter' },
   ]
   const sequenceBySlug = new Map<string, { id: string }>()
   for (const s of secuencias) {
@@ -1277,7 +1350,7 @@ export async function seedGameData(prisma: PrismaClient) {
     { ings: [['fortuna', 1], ['moneda', 1]], outputs: ['adivinacion'] },
     { ings: [['adivinacion', 1], ['percepcion', 1]], outputs: ['seer'] },
     // Camino del Suplicante de Secretos
-    { ings: [['humano', 2]], outputs: ['susurro'] },
+    { ings: [['humano', 2]], outputs: ['susurro', 'familia', 'vinculo'] },
     { ings: [['susurro', 1], ['ojo', 1]], outputs: ['secreto'] },
     { ings: [['secreto', 1], ['humano', 1]], outputs: ['secret-suplicant'] },
     // Camino del Monstruo
@@ -1347,12 +1420,58 @@ export async function seedGameData(prisma: PrismaClient) {
     { ings: [['informacion', 1], ['trabajo', 1]], outputs: ['procedimiento'] },
     { ings: [['procedimiento', 1], ['misticismo', 1]], outputs: ['ritual'] },
     { ings: [['ritual', 1], ['existencia-oculta', 1]], outputs: ['rezar', 'sacrificio', 'otorgamiento'] },
+    // Bendición y memoria histórica
+    { ings: [['existencia-oculta', 1], ['sacrificio', 1]], outputs: ['bendicion'] },
+    { ings: [['existencia-oculta', 1], ['rezar', 1]], outputs: ['bendicion'] },
+    { ings: [['registro', 1], ['tiempo', 1]], outputs: ['historia'] },
+    // Vínculos, separación y milagros
+    { ings: [['vinculo', 1], ['fuerza', 1]], outputs: ['ruptura'] },
+    { ings: [['ruptura', 1], ['tiempo', 1]], outputs: ['separacion'] },
+    { ings: [['continuidad', 1], ['tiempo', 1]], outputs: ['era'] },
+    { ings: [['vinculo', 1], ['separacion', 1]], outputs: ['ausencia'] },
+    { ings: [['ausencia', 1], ['percepcion', 1]], outputs: ['deseo'] },
+    { ings: [['deseo', 1], ['cambio-cualitativo', 1]], outputs: ['milagro'] },
+    // Mundo espiritual e invocación
+    { ings: [['cuerpo-espiritual', 1], ['proyeccion', 1]], outputs: ['proyeccion-astral'] },
+    { ings: [['proyeccion-astral', 1], ['misticismo', 1]], outputs: ['mundo-espiritual'] },
+    { ings: [['mundo-espiritual', 1], ['criatura', 1]], outputs: ['criatura-espiritual'] },
+    { ings: [['criatura-espiritual', 1], ['registro', 1]], outputs: ['descripcion-espiritual'] },
+    { ings: [['descripcion-espiritual', 1], ['ritual', 1]], outputs: ['invocacion'] },
+    { ings: [['beyonder', 1], ['invocacion', 1]], outputs: ['invocador'] },
+    // Destino, ley y los planos superiores
+    { ings: [['destino', 1], ['continuidad', 1]], outputs: ['ciclo'] },
+    { ings: [['ciclo', 1], ['tiempo', 1]], outputs: ['retorno'] },
+    { ings: [['influencia', 1], ['tiempo', 1]], outputs: ['consecuencia'] },
+    { ings: [['consecuencia', 1], ['destino', 1]], outputs: ['inevitabilidad'] },
+    { ings: [['ciudad', 2]], outputs: ['nacion'] },
+    { ings: [['informacion', 1], ['misticismo', 1]], outputs: ['simbolismo'] },
+    { ings: [['simbolismo', 1], ['divinidad', 1]], outputs: ['mundo-astral'] },
+    { ings: [['agua', 2]], outputs: ['rio'] },
+    { ings: [['rio', 1], ['destino', 1]], outputs: ['river-of-fate'] },
+    { ings: [['comunidad', 1], ['procedimiento', 1]], outputs: ['ley'] },
+    { ings: [['ley', 1], ['ciudad', 1]], outputs: ['orden'] },
+    { ings: [['orden', 1], ['corrupcion', 1]], outputs: ['distorsion'] },
+    { ings: [['distorsion', 1], ['incertidumbre', 1]], outputs: ['desorden'] },
+    { ings: [['adivinacion', 1], ['destino', 1]], outputs: ['revelacion'] },
+    { ings: [['revelacion', 1], ['registro', 1]], outputs: ['profecia'] },
+    // Trinidad, profanación y dominio de sombras
+    { ings: [['percepcion', 1], ['separacion', 1]], outputs: ['diferenciacion'] },
+    { ings: [['diferenciacion', 1], ['divinidad', 1]], outputs: ['trinidad'] },
+    { ings: [['claridad', 1], ['prudencia', 1]], outputs: ['autocontrol'] },
+    { ings: [['informacion', 1], ['procedimiento', 1]], outputs: ['lenguaje'] },
+    { ings: [['divinidad', 1], ['degeneracion', 1]], outputs: ['profanacion'] },
+    { ings: [['fuerza', 1], ['influencia', 1]], outputs: ['dominacion'] },
+    { ings: [['sombra', 1], ['separacion', 1]], outputs: ['sombra-independiente'] },
+    { ings: [['sombra-independiente', 1], ['dominacion', 1]], outputs: ['sombra-dominada'] },
+    { ings: [['nacion', 2]], outputs: ['continente'] },
+    { ings: [['continente', 2]], outputs: ['mundo'] },
+    { ings: [['mundo', 1], ['sombra', 1]], outputs: ['mundo-de-sombra'] },
+    { ings: [['mundo-de-sombra', 1], ['dominacion', 1]], outputs: ['dominio-en-el-mundo-de-sombras'] },
     // Cadena de la Corrupción, el Guerrero y la Comunidad
     { ings: [['locura', 1], ['beyonder', 1]], outputs: ['perdida-de-control', 'corrupcion'] },
     { ings: [['corrupcion', 1], ['tiempo', 1]], outputs: ['degeneracion'] },
     { ings: [['humano', 1], ['fuerza', 1]], outputs: ['guerrero'] },
     { ings: [['experiencia-2', 1], ['guerrero', 1]], outputs: ['caballero'] },
-    { ings: [['humano', 2]], outputs: ['familia'] },
     { ings: [['familia', 2]], outputs: ['comunidad'] },
     { ings: [['comunidad', 2]], outputs: ['ciudad'] },
   ]
@@ -1361,7 +1480,7 @@ export async function seedGameData(prisma: PrismaClient) {
     const inputKey = buildRecipeInputKey(
       r.ings.map(([slug, quantity]) => ({ slug, quantity })),
     )
-    await prisma.recipe.upsert({
+    const recipe = await prisma.recipe.upsert({
       where: { inputKey },
       update: {},
       create: {
@@ -1382,6 +1501,19 @@ export async function seedGameData(prisma: PrismaClient) {
         },
       },
     })
+    for (const [sortOrder, output] of r.outputs.entries()) {
+      await prisma.recipeOutput.upsert({
+        where: { recipeId_elementId: { recipeId: recipe.id, elementId: id(output) } },
+        update: { sortOrder },
+        create: {
+          recipeId: recipe.id,
+          elementId: id(output),
+          quantity: 1,
+          chance: 1.0,
+          sortOrder,
+        },
+      })
+    }
   }
 
   // ---------- Avances ----------
@@ -1469,6 +1601,48 @@ export async function seedGameData(prisma: PrismaClient) {
       ingredients: ['degeneracion', 'caballero'],
       source: 'shepherd',
       target: 'black-knight',
+    },
+    {
+      internalName: 'Avance a Misfortune Mage',
+      ingredients: ['bendicion', 'mala-suerte'],
+      source: 'winner',
+      target: 'misfortune-mage',
+    },
+    {
+      internalName: 'Avance a Scholar of Yore',
+      ingredients: ['proyeccion', 'historia'],
+      source: 'bizarro-sorcerer',
+      target: 'scholar-of-yore',
+    },
+    {
+      internalName: 'Avance a Invocador de Milagros',
+      ingredients: ['invocador', 'milagro'],
+      source: 'scholar-of-yore',
+      target: 'miracle-invoker',
+    },
+    {
+      internalName: 'Avance a Chaoswalker',
+      ingredients: ['desorden', 'destino'],
+      source: 'misfortune-mage',
+      target: 'chaoswalker',
+    },
+    {
+      internalName: 'Avance a Soothsayer',
+      ingredients: ['profecia', 'mundo-espiritual'],
+      source: 'chaoswalker',
+      target: 'soothsayer',
+    },
+    {
+      internalName: 'Avance a Trinity Templar',
+      ingredients: ['trinidad', 'carne-y-sangre'],
+      source: 'black-knight',
+      target: 'trinity-templar',
+    },
+    {
+      internalName: 'Avance a Profane Presbyter',
+      ingredients: ['lenguaje', 'profanacion'],
+      source: 'trinity-templar',
+      target: 'profane-presbyter',
     },
   ]
   const advanceByName = new Map<string, { id: string }>()
@@ -1647,4 +1821,70 @@ export async function seedGameData(prisma: PrismaClient) {
       },
     },
   })
+
+  const nuevosRituales = [
+    {
+      name: 'Ritual de avance a Misfortune Mage',
+      advanceName: 'Avance a Misfortune Mage',
+      ingredients: ['calamidad', 'mala-suerte'],
+      requiredSequenceNumber: 5,
+    },
+    {
+      name: 'Ritual de avance a Scholar of Yore',
+      advanceName: 'Avance a Scholar of Yore',
+      ingredients: ['era', 'separacion'],
+      requiredSequenceNumber: 4,
+    },
+    {
+      name: 'Ritual de avance a Chaoswalker',
+      advanceName: 'Avance a Chaoswalker',
+      ingredients: ['inevitabilidad', 'destino'],
+      requiredSequenceNumber: 4,
+    },
+    {
+      name: 'Ritual de avance a Soothsayer',
+      advanceName: 'Avance a Soothsayer',
+      ingredients: ['river-of-fate', 'nacion'],
+      requiredSequenceNumber: 3,
+    },
+    {
+      name: 'Ritual de avance a Trinity Templar',
+      advanceName: 'Avance a Trinity Templar',
+      ingredients: ['separacion', 'autocontrol'],
+      requiredSequenceNumber: 4,
+    },
+    {
+      name: 'Ritual de avance a Profane Presbyter',
+      advanceName: 'Avance a Profane Presbyter',
+      ingredients: ['dominio-en-el-mundo-de-sombras', 'sombra-dominada'],
+      requiredSequenceNumber: 3,
+    },
+  ]
+  for (const ritual of nuevosRituales) {
+    const advance = advanceByName.get(ritual.advanceName)
+    if (!advance) throw new Error(`No se encontró ${ritual.advanceName} para su ritual.`)
+    const inputKey = buildRecipeInputKey(
+      ritual.ingredients.map((slug) => ({ slug, quantity: 1 })),
+    )
+    await prisma.ritual.upsert({
+      where: { inputKey },
+      update: {},
+      create: {
+        name: ritual.name,
+        inputKey,
+        advanceId: advance.id,
+        requiredSequenceNumber: ritual.requiredSequenceNumber,
+        ingredients: {
+          create: ritual.ingredients.map((slug) => ({ elementId: id(slug), quantity: 1 })),
+        },
+        failureOutputs: {
+          create: [
+            { elementId: id('perdida-de-control') },
+            { elementId: id('monstruo-descontrol') },
+            { elementId: id('corrupcion-de-alborotador') },
+          ],
+        },
+      },
+    })
+  }
 }
