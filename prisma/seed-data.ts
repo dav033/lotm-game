@@ -90,6 +90,47 @@ export async function seedGameData(prisma: PrismaClient) {
       isHiddenUntilDiscovered: true,
     },
   })
+  const caminoAprendizAnterior = await prisma.pathway.findUnique({
+    where: { slug: 'camino-del-aprendiz' },
+  })
+  const caminoPuertaExistente = await prisma.pathway.findUnique({
+    where: { slug: 'camino-de-la-puerta' },
+  })
+  if (caminoAprendizAnterior && !caminoPuertaExistente) {
+    await prisma.pathway.update({
+      where: { id: caminoAprendizAnterior.id },
+      data: { slug: 'camino-de-la-puerta' },
+    })
+  }
+  const caminoPuertaData = {
+    name: 'Camino de la Puerta',
+    description:
+      'La senda de quienes abren puertas hacia espacios que deberían permanecer vacíos.',
+    categoryId: beyonder.id,
+    iconKey: 'door-open',
+    isHiddenUntilDiscovered: true,
+  }
+  const caminoPuerta = await prisma.pathway.upsert({
+    where: { slug: 'camino-de-la-puerta' },
+    update: caminoPuertaData,
+    create: {
+      slug: 'camino-de-la-puerta',
+      ...caminoPuertaData,
+    },
+  })
+  const caminoError = await prisma.pathway.upsert({
+    where: { slug: 'camino-del-error' },
+    update: {},
+    create: {
+      slug: 'camino-del-error',
+      name: 'Camino del Error',
+      description:
+        'La senda de quienes roban oportunidades, identidades y hasta las reglas de la realidad.',
+      categoryId: beyonder.id,
+      iconKey: 'bug',
+      isHiddenUntilDiscovered: true,
+    },
+  })
 
   // ---------- Elementos ----------
   type ElementSeed = {
@@ -139,8 +180,6 @@ export async function seedGameData(prisma: PrismaClient) {
       iconKey: 'user-round',
       type: 'MUNDANO',
       tier: 0,
-      isStarter: true,
-      isHiddenUntilDiscovered: false,
       categoryId: mundano.id,
     },
     {
@@ -218,6 +257,8 @@ export async function seedGameData(prisma: PrismaClient) {
       iconKey: 'alarm-clock',
       type: 'CONCEPTO',
       tier: 0,
+      isStarter: true,
+      isHiddenUntilDiscovered: false,
       categoryId: conceptos.id,
     },
     {
@@ -486,6 +527,39 @@ export async function seedGameData(prisma: PrismaClient) {
       type: 'MISTICISMO',
       tier: 3,
       categoryId: misticismo.id,
+    },
+    {
+      slug: 'fuego',
+      name: 'Fuego',
+      description: 'La luz convertida por la fuerza en calor capaz de transformar la materia.',
+      iconKey: 'flame',
+      type: 'MISTICISMO',
+      tier: 4,
+      categoryId: misticismo.id,
+    },
+    {
+      slug: 'bard',
+      name: 'Bard',
+      description: 'Un Beyonder cuyo canto porta luz y despierta el valor de quienes lo escuchan.',
+      iconKey: 'music',
+      type: 'BEYONDER',
+      tier: 4,
+      isMajorDiscovery: true,
+      revealTitle: 'El canto porta luz',
+      revealText: 'Tu voz despierta el valor de quienes reciben su claridad.',
+      categoryId: beyonder.id,
+    },
+    {
+      slug: 'solar-high-priest',
+      name: 'Solar High Priest',
+      description: 'Un Beyonder que oficia con fuego bendecido bajo la autoridad del sol.',
+      iconKey: 'sun',
+      type: 'BEYONDER',
+      tier: 6,
+      isMajorDiscovery: true,
+      revealTitle: 'El fuego bendecido arde',
+      revealText: 'La llama responde a tu oficio bajo la autoridad del sol.',
+      categoryId: beyonder.id,
     },
     {
       slug: 'silueta',
@@ -789,7 +863,7 @@ export async function seedGameData(prisma: PrismaClient) {
       description: 'Cuando la apuesta se repite lo bastante, deja de ser azar.',
       iconKey: 'dices',
       type: 'MISTICISMO',
-      tier: 2,
+      tier: 3,
       categoryId: misticismo.id,
     },
     {
@@ -805,8 +879,8 @@ export async function seedGameData(prisma: PrismaClient) {
       revealText: 'El destino te ha mirado a los ojos y ha sonreído.',
       categoryId: beyonder.id,
     },
-    // Conceptos que ninguna receta fabrica: se revelan solos al descubrir el
-    // primer elemento de tipo BEYONDER.
+    // Conceptos que ninguna receta fabrica: se desbloquean al descubrir todos
+    // los elementos de la progresión del Vidente.
     {
       slug: 'misticismo',
       name: 'Misticismo',
@@ -814,7 +888,6 @@ export async function seedGameData(prisma: PrismaClient) {
       iconKey: 'wand-sparkles',
       type: 'CONCEPTO',
       tier: 2,
-      unlockedByType: 'BEYONDER',
       categoryId: misticismo.id,
     },
     {
@@ -824,7 +897,6 @@ export async function seedGameData(prisma: PrismaClient) {
       iconKey: 'star',
       type: 'CONCEPTO',
       tier: 2,
-      unlockedByType: 'BEYONDER',
       categoryId: beyonder.id,
     },
     // ----- Cadena del Mar y la Sirena -----
@@ -835,8 +907,6 @@ export async function seedGameData(prisma: PrismaClient) {
       iconKey: 'droplets',
       type: 'MUNDANO',
       tier: 0,
-      isStarter: true,
-      isHiddenUntilDiscovered: false,
       categoryId: mundano.id,
     },
     {
@@ -1155,13 +1225,13 @@ export async function seedGameData(prisma: PrismaClient) {
       categoryId: beyonder.id,
     },
     // ----- Destino, memoria, vínculos y mundos espirituales -----
-    { slug: 'registro', name: 'Registro', description: 'Información preservada para sobrevivir al paso del tiempo.', iconKey: 'file-text', type: 'CONCEPTO', tier: 2, categoryId: conceptos.id },
+    { slug: 'registro', name: 'Registro', description: 'Información preservada para sobrevivir al paso del tiempo.', iconKey: 'file-text', type: 'CONCEPTO', tier: 3, categoryId: conceptos.id },
     { slug: 'bendicion', name: 'Bendición', description: 'Una existencia oculta responde favorablemente a una plegaria o sacrificio.', iconKey: 'award', type: 'MISTICISMO', tier: 5, categoryId: misticismo.id },
     { slug: 'historia', name: 'Historia', description: 'El registro transformado por la distancia del tiempo.', iconKey: 'history', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
     { slug: 'vinculo', name: 'Vínculo', description: 'La relación invisible que nace entre dos humanos.', iconKey: 'blend', type: 'CONCEPTO', tier: 1, categoryId: conceptos.id },
     { slug: 'ruptura', name: 'Ruptura', description: 'La fuerza aplicada hasta quebrar un vínculo.', iconKey: 'triangle-alert', type: 'CONCEPTO', tier: 2, categoryId: conceptos.id },
     { slug: 'separacion', name: 'Separación', description: 'La ruptura consolidada por el paso del tiempo.', iconKey: 'move-up-right', type: 'CONCEPTO', tier: 3, categoryId: conceptos.id },
-    { slug: 'era', name: 'Era', description: 'Una continuidad tan extensa que adquiere identidad propia.', iconKey: 'hourglass', type: 'CONCEPTO', tier: 3, categoryId: conceptos.id },
+    { slug: 'era', name: 'Era', description: 'Una continuidad tan extensa que adquiere identidad propia.', iconKey: 'hourglass', type: 'CONCEPTO', tier: 2, categoryId: conceptos.id },
     { slug: 'ausencia', name: 'Ausencia', description: 'El vacío que deja un vínculo después de la separación.', iconKey: 'eye-off', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
     { slug: 'deseo', name: 'Deseo', description: 'La ausencia percibida se convierte en anhelo.', iconKey: 'flame', type: 'CONCEPTO', tier: 5, categoryId: conceptos.id },
     { slug: 'milagro', name: 'Milagro', description: 'Un deseo que atraviesa un cambio cualitativo y altera lo posible.', iconKey: 'wand-sparkles', type: 'MISTICISMO', tier: 6, categoryId: misticismo.id },
@@ -1171,8 +1241,8 @@ export async function seedGameData(prisma: PrismaClient) {
     { slug: 'descripcion-espiritual', name: 'Descripción espiritual', description: 'Un registro preciso de la esencia de una criatura espiritual.', iconKey: 'scroll-text', type: 'MISTICISMO', tier: 6, categoryId: misticismo.id },
     { slug: 'invocacion', name: 'Invocación', description: 'Un ritual capaz de llamar aquello que ha sido descrito.', iconKey: 'circle-dot-dashed', type: 'MISTICISMO', tier: 6, categoryId: misticismo.id },
     { slug: 'invocador', name: 'Invocador', description: 'Un Beyonder que domina el arte de la invocación.', iconKey: 'wand', type: 'BEYONDER', tier: 6, categoryId: beyonder.id },
-    { slug: 'ciclo', name: 'Ciclo', description: 'El destino atrapado en una continuidad recurrente.', iconKey: 'circle-dot-dashed', type: 'CONCEPTO', tier: 3, categoryId: conceptos.id },
-    { slug: 'retorno', name: 'Retorno', description: 'El ciclo que completa su recorrido a través del tiempo.', iconKey: 'history', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
+    { slug: 'ciclo', name: 'Ciclo', description: 'El destino atrapado en una continuidad recurrente.', iconKey: 'circle-dot-dashed', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
+    { slug: 'retorno', name: 'Retorno', description: 'El ciclo que completa su recorrido a través del tiempo.', iconKey: 'history', type: 'CONCEPTO', tier: 5, categoryId: conceptos.id },
     { slug: 'consecuencia', name: 'Consecuencia', description: 'El resultado inevitable de una influencia prolongada.', iconKey: 'move-up-right', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
     { slug: 'inevitabilidad', name: 'Inevitabilidad', description: 'La consecuencia unida al destino hasta no admitir alternativa.', iconKey: 'lock-keyhole', type: 'MISTICISMO', tier: 5, categoryId: misticismo.id },
     { slug: 'nacion', name: 'Nación', description: 'Dos ciudades unidas bajo una identidad y un destino comunes.', iconKey: 'landmark', type: 'MUNDANO', tier: 4, categoryId: mundano.id },
@@ -1185,6 +1255,7 @@ export async function seedGameData(prisma: PrismaClient) {
     { slug: 'distorsion', name: 'Distorsión', description: 'El orden deformado por la corrupción.', iconKey: 'blend', type: 'MISTICISMO', tier: 5, categoryId: misticismo.id },
     { slug: 'desorden', name: 'Desorden', description: 'La distorsión liberada por la incertidumbre.', iconKey: 'dices', type: 'MISTICISMO', tier: 6, categoryId: misticismo.id },
     { slug: 'revelacion', name: 'Revelación', description: 'El destino expuesto por medio de la adivinación.', iconKey: 'scan-eye', type: 'MISTICISMO', tier: 4, categoryId: misticismo.id },
+    { slug: 'dato', name: 'Dato', description: 'La unidad mínima de información, fija y verificable, antes de que el tiempo le dé significado.', iconKey: 'file-digit', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
     { slug: 'profecia', name: 'Profecía', description: 'Una revelación fijada en un registro antes de que ocurra.', iconKey: 'book-open', type: 'MISTICISMO', tier: 5, categoryId: misticismo.id },
     { slug: 'misfortune-mage', name: 'Misfortune Mage', description: 'Secuencia 4 del Camino del Monstruo. Convierte la desgracia en un arte dirigido.', iconKey: 'wand-sparkles', type: 'BEYONDER', tier: 8, isMajorDiscovery: true, categoryId: beyonder.id },
     { slug: 'chaoswalker', name: 'Chaoswalker', description: 'Secuencia 3 del Camino del Monstruo. Camina donde el destino pierde todo orden.', iconKey: 'dices', type: 'BEYONDER', tier: 9, isMajorDiscovery: true, categoryId: beyonder.id },
@@ -1200,14 +1271,14 @@ export async function seedGameData(prisma: PrismaClient) {
     { slug: 'dominacion', name: 'Dominación', description: 'La fuerza ejercida a través de la influencia sobre otra voluntad.', iconKey: 'lock-keyhole', type: 'MISTICISMO', tier: 5, categoryId: misticismo.id },
     { slug: 'sombra-independiente', name: 'Sombra independiente', description: 'Una sombra separada de aquello que debía proyectarla.', iconKey: 'moon', type: 'MISTICISMO', tier: 5, categoryId: misticismo.id },
     { slug: 'sombra-dominada', name: 'Sombra dominada', description: 'Una sombra independiente sometida a una voluntad ajena.', iconKey: 'moon-star', type: 'MISTICISMO', tier: 6, categoryId: misticismo.id },
-    { slug: 'continente', name: 'Continente', description: 'Dos naciones extendidas sobre una misma gran masa de tierra.', iconKey: 'landmark', type: 'MUNDANO', tier: 5, categoryId: mundano.id },
+    { slug: 'continente', name: 'Continente', description: 'Dos campos extendidos hasta formar una gran masa de tierra.', iconKey: 'landmark', type: 'MUNDANO', tier: 2, categoryId: mundano.id },
     { slug: 'mundo', name: 'Mundo', description: 'La totalidad formada por continentes, pueblos y fronteras.', iconKey: 'orbit', type: 'MUNDANO', tier: 6, categoryId: mundano.id },
     { slug: 'mundo-de-sombra', name: 'Mundo de sombra', description: 'Un mundo completo cubierto por una sombra que le pertenece.', iconKey: 'moon', type: 'MISTICISMO', tier: 7, categoryId: misticismo.id },
     { slug: 'dominio-en-el-mundo-de-sombras', name: 'Dominio en el mundo de sombras', description: 'La dominación convertida en ley dentro de un mundo de sombras.', iconKey: 'key-round', type: 'MISTICISMO', tier: 8, categoryId: misticismo.id },
     { slug: 'trinity-templar', name: 'Trinity Templar', description: 'Secuencia 3 del Camino del Suplicante de Secretos. Encarna tres aspectos de una misma carne divina.', iconKey: 'shield', type: 'BEYONDER', tier: 9, isMajorDiscovery: true, categoryId: beyonder.id },
     { slug: 'profane-presbyter', name: 'Profane Presbyter', description: 'Secuencia 2 del Camino del Suplicante de Secretos. Convierte la profanación en doctrina y dominio.', iconKey: 'book-key', type: 'BEYONDER', tier: 10, isMajorDiscovery: true, categoryId: beyonder.id },
     // ----- Psique y Camino del Visionario -----
-    { slug: 'observacion', name: 'Observación', description: 'La atención sostenida que registra sin intervenir.', iconKey: 'eye', type: 'CONCEPTO', tier: 1, categoryId: conceptos.id },
+    { slug: 'observacion', name: 'Observación', description: 'La atención sostenida que registra sin intervenir.', iconKey: 'eye', type: 'CONCEPTO', tier: 2, categoryId: conceptos.id },
     { slug: 'pensamiento', name: 'Pensamiento', description: 'La información procesada dentro de una mente humana.', iconKey: 'brain', type: 'CONCEPTO', tier: 2, categoryId: conceptos.id },
     { slug: 'psique', name: 'Psique', description: 'El alma organizada mediante el pensamiento consciente e inconsciente.', iconKey: 'brain', type: 'MISTICISMO', tier: 4, categoryId: misticismo.id },
     { slug: 'intervencion', name: 'Intervención', description: 'Una influencia aplicada siguiendo un procedimiento preciso.', iconKey: 'move-up-right', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
@@ -1256,7 +1327,28 @@ export async function seedGameData(prisma: PrismaClient) {
     { slug: 'construccion', name: 'Construcción', description: 'El trabajo convertido en un procedimiento capaz de levantar estructuras.', iconKey: 'hammer', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
     { slug: 'torre', name: 'Torre', description: 'Una construcción extendida hacia lo alto.', iconKey: 'landmark', type: 'OBJETO', tier: 5, categoryId: mundano.id },
     { slug: 'oficiante', name: 'Oficiante', description: 'El humano que aprende a conducir un ritual.', iconKey: 'scroll-text', type: 'MISTICISMO', tier: 5, categoryId: misticismo.id },
-    { slug: 'tierra', name: 'Tierra', description: 'El elemento firme bajo toda construcción y toda frontera.', iconKey: 'mountain', type: 'MUNDANO', tier: 0, unlockedBySequenceNumber: 5, categoryId: mundano.id },
+    { slug: 'tierra', name: 'Tierra', description: 'El elemento firme bajo toda construcción y toda frontera.', iconKey: 'mountain', type: 'MUNDANO', tier: 0, isStarter: true, isHiddenUntilDiscovered: false, categoryId: mundano.id },
+    { slug: 'campo', name: 'Campo', description: 'La tierra trabajada y extendida hasta adquirir una forma propia.', iconKey: 'sprout', type: 'MUNDANO', tier: 1, categoryId: mundano.id },
+    { slug: 'espacio', name: 'Espacio', description: 'La extensión donde toda posición, distancia y movimiento pueden existir.', iconKey: 'orbit', type: 'CONCEPTO', tier: 0, categoryId: conceptos.id },
+    { slug: 'vacio', name: 'Vacío', description: 'El espacio privado de toda materia, presencia y dirección.', iconKey: 'circle', type: 'CONCEPTO', tier: 1, categoryId: conceptos.id },
+    { slug: 'apertura', name: 'Apertura', description: 'Una separación extendida en el espacio hasta permitir el paso.', iconKey: 'door-open', type: 'MISTICISMO', tier: 3, categoryId: misticismo.id },
+    { slug: 'puerta', name: 'Puerta', description: 'La tierra delimitando un espacio que puede abrirse o cerrarse.', iconKey: 'key-round', type: 'OBJETO', tier: 1, categoryId: mundano.id },
+    { slug: 'aprendiz', name: 'Aprendiz', description: 'Secuencia 9 del Camino de la Puerta. Quien ha aprendido a encontrar puertas donde otros solo ven límites.', iconKey: 'book-open', type: 'BEYONDER', tier: 4, isMajorDiscovery: true, revealTitle: 'Una puerta se abre', revealText: 'El vacío al otro lado te reconoce como alguien dispuesto a aprender.', categoryId: beyonder.id },
+    { slug: 'truco', name: 'Truco', description: 'Una ilusión manipulada con suficiente precisión para producir un efecto imposible.', iconKey: 'wand-sparkles', type: 'MISTICISMO', tier: 4, categoryId: misticismo.id },
+    { slug: 'trickmaster', name: 'Trickmaster', description: 'Secuencia 8 del Camino de la Puerta. Convierte cada apertura en escenario para un truco imposible.', iconKey: 'sparkles', type: 'BEYONDER', tier: 5, isMajorDiscovery: true, revealTitle: 'El espacio aprende el truco', revealText: 'Las puertas ya no limitan tu camino: ahora forman parte de la función.', categoryId: beyonder.id },
+    { slug: 'espacio-exterior', name: 'Espacio exterior', description: 'El vacío extendido más allá de toda frontera terrestre.', iconKey: 'orbit', type: 'CONCEPTO', tier: 2, categoryId: conceptos.id },
+    { slug: 'cuerpo-celeste', name: 'Cuerpo celeste', description: 'Una presencia distinguible al observar el espacio exterior.', iconKey: 'moon-star', type: 'CONCEPTO', tier: 3, categoryId: conceptos.id },
+    { slug: 'astrologo', name: 'Astrólogo', description: 'Secuencia 7 del Camino de la Puerta. Lee rutas y presagios en los cuerpos celestes.', iconKey: 'telescope', type: 'BEYONDER', tier: 6, isMajorDiscovery: true, revealTitle: 'El firmamento revela una ruta', revealText: 'Cada estrella se convierte en coordenada para una puerta aún distante.', categoryId: beyonder.id },
+    { slug: 'poder-beyonder', name: 'Poder Beyonder', description: 'La fuerza que surge cuando el misticismo encuentra una naturaleza Beyonder.', iconKey: 'sparkles', type: 'MISTICISMO', tier: 6, categoryId: misticismo.id },
+    { slug: 'escriba', name: 'Escriba', description: 'Secuencia 6 del Camino de la Puerta. Registra poderes Beyonder para reproducir sus efectos.', iconKey: 'scroll-text', type: 'BEYONDER', tier: 7, isMajorDiscovery: true, revealTitle: 'La página conserva el poder', revealText: 'Lo imposible deja una marca que ahora puedes volver a invocar.', categoryId: beyonder.id },
+    { slug: 'robo', name: 'Robo', description: 'La apropiación de aquello que pertenecía a otro.', iconKey: 'hand', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
+    { slug: 'marauder', name: 'Marauder', description: 'Secuencia 9 del Camino del Error. Encuentra oportunidades donde otros solo ven propiedad.', iconKey: 'hand', type: 'BEYONDER', tier: 5, isMajorDiscovery: true, revealTitle: 'Nada está completamente protegido', revealText: 'Tus ojos reconocen el instante exacto en que algo puede ser tomado.', categoryId: beyonder.id },
+    { slug: 'swindler', name: 'Swindler', description: 'Secuencia 8 del Camino del Error. Convierte la fortuna y el engaño en herramientas de estafa.', iconKey: 'dices', type: 'BEYONDER', tier: 6, isMajorDiscovery: true, categoryId: beyonder.id },
+    { slug: 'cryptologist', name: 'Cryptologist', description: 'Secuencia 7 del Camino del Error. Descifra los datos ocultos tras símbolos y secretos místicos.', iconKey: 'file-key', type: 'BEYONDER', tier: 7, isMajorDiscovery: true, categoryId: beyonder.id },
+    { slug: 'prometheus', name: 'Prometheus', description: 'Secuencia 6 del Camino del Error. Se apropia del poder Beyonder como si fuera fuego robado.', iconKey: 'flame', type: 'BEYONDER', tier: 8, isMajorDiscovery: true, categoryId: beyonder.id },
+    { slug: 'robo-de-identidad', name: 'Robo de identidad', description: 'El robo aplicado a aquello que hace única a una persona.', iconKey: 'scan-face', type: 'MISTICISMO', tier: 5, categoryId: misticismo.id },
+    { slug: 'blasfemia', name: 'Blasfemia', description: 'Una identidad robada que se atreve a usurpar lo divino.', iconKey: 'triangle-alert', type: 'MISTICISMO', tier: 6, categoryId: misticismo.id },
+    { slug: 'dream-stealer', name: 'Dream Stealer', description: 'Secuencia 5 del Camino del Error. Roba sueños, pensamientos e identidades mientras sus víctimas duermen.', iconKey: 'moon-star', type: 'BEYONDER', tier: 9, isMajorDiscovery: true, revealTitle: 'El sueño deja de pertenecerte', revealText: 'Las fronteras de la mente se abren ante una mano que sabe robar sin despertar.', categoryId: beyonder.id },
     { slug: 'terremoto', name: 'Terremoto', description: 'La tierra sacudida por una calamidad.', iconKey: 'activity', type: 'MISTICISMO', tier: 7, categoryId: misticismo.id },
     { slug: 'tsunami', name: 'Tsunami', description: 'El mar elevado por una calamidad hasta devorar la costa.', iconKey: 'waves', type: 'MISTICISMO', tier: 7, categoryId: misticismo.id },
     { slug: 'sailor', name: 'Sailor', description: 'Secuencia 9 del Camino del Tirano. Su cuerpo aprende a obedecer al mar.', iconKey: 'anchor', type: 'BEYONDER', tier: 1, isMajorDiscovery: true, categoryId: beyonder.id },
@@ -1271,15 +1363,18 @@ export async function seedGameData(prisma: PrismaClient) {
   const bySlug = new Map<string, { id: string }>()
   for (const def of defs) {
     const { categoryId, ...data } = def
+    const normalized = {
+      ...data,
+      isStarter: data.isStarter ?? false,
+      isHiddenUntilDiscovered: data.isHiddenUntilDiscovered ?? true,
+      isMajorDiscovery: data.isMajorDiscovery ?? false,
+      unlockedByType: data.unlockedByType ?? null,
+      unlockedBySequenceNumber: data.unlockedBySequenceNumber ?? null,
+    }
     const element = await prisma.element.upsert({
       where: { slug: def.slug },
-      update: {},
-      create: {
-        ...data,
-        isStarter: data.isStarter ?? false,
-        isHiddenUntilDiscovered: data.isHiddenUntilDiscovered ?? true,
-        isMajorDiscovery: data.isMajorDiscovery ?? false,
-      },
+      update: normalized,
+      create: normalized,
     })
     bySlug.set(def.slug, element)
     await prisma.elementCategory.upsert({
@@ -1295,6 +1390,43 @@ export async function seedGameData(prisma: PrismaClient) {
     return e.id
   }
 
+  // Desbloqueo conjunto de los conceptos raíz al completar la progresión.
+  const progressionSlugs = [
+    'moneda',
+    'ojo',
+    'tiempo',
+    'tierra',
+    'fortuna',
+    'continuidad',
+    'vision',
+    'adivinacion',
+    'era',
+    'percepcion',
+    'observacion',
+    'destino',
+    'seer',
+    'espacio',
+    'registro',
+    'ciclo',
+    'historia',
+    'revelacion',
+    'dato',
+    'profecia',
+    'retorno',
+  ]
+  for (const targetSlug of ['misticismo', 'beyonder']) {
+    const targetId = id(targetSlug)
+    await prisma.elementUnlockRequirement.deleteMany({
+      where: { elementId: targetId },
+    })
+    await prisma.elementUnlockRequirement.createMany({
+      data: progressionSlugs.map((requiredSlug) => ({
+        elementId: targetId,
+        requiredElementId: id(requiredSlug),
+      })),
+    })
+  }
+
   await prisma.elementUnlockTrigger.upsert({
     where: {
       elementId_triggerId: {
@@ -1306,6 +1438,32 @@ export async function seedGameData(prisma: PrismaClient) {
     create: {
       elementId: id('mundo-espiritual'),
       triggerId: id('proyeccion-astral'),
+    },
+  })
+  await prisma.elementUnlockTrigger.upsert({
+    where: {
+      elementId_triggerId: {
+        elementId: id('espacio'),
+        triggerId: id('seer'),
+      },
+    },
+    update: {},
+    create: {
+      elementId: id('espacio'),
+      triggerId: id('seer'),
+    },
+  })
+  await prisma.elementUnlockTrigger.upsert({
+    where: {
+      elementId_triggerId: {
+        elementId: id('magia'),
+        triggerId: id('trickmaster'),
+      },
+    },
+    update: {},
+    create: {
+      elementId: id('magia'),
+      triggerId: id('trickmaster'),
     },
   })
   const caminoVisionario = await prisma.pathway.upsert({
@@ -1336,6 +1494,15 @@ export async function seedGameData(prisma: PrismaClient) {
   // ---------- Secuencias ----------
   const secuencias: { camino: { id: string }; number: number; name: string; slug: string }[] = [
     { camino: caminoVidente, number: 9, name: 'Seer', slug: 'seer' },
+    { camino: caminoPuerta, number: 9, name: 'Aprendiz', slug: 'aprendiz' },
+    { camino: caminoPuerta, number: 8, name: 'Trickmaster', slug: 'trickmaster' },
+    { camino: caminoPuerta, number: 7, name: 'Astrólogo', slug: 'astrologo' },
+    { camino: caminoPuerta, number: 6, name: 'Escriba', slug: 'escriba' },
+    { camino: caminoError, number: 9, name: 'Marauder', slug: 'marauder' },
+    { camino: caminoError, number: 8, name: 'Swindler', slug: 'swindler' },
+    { camino: caminoError, number: 7, name: 'Cryptologist', slug: 'cryptologist' },
+    { camino: caminoError, number: 6, name: 'Prometheus', slug: 'prometheus' },
+    { camino: caminoError, number: 5, name: 'Dream Stealer', slug: 'dream-stealer' },
     {
       camino: caminoSuplicante,
       number: 9,
@@ -1444,6 +1611,9 @@ export async function seedGameData(prisma: PrismaClient) {
   const recetas: { ings: [string, number][]; outputs: string[] }[] = [
     // Camino del Vidente
     { ings: [['ojo', 2]], outputs: ['vision'] },
+    { ings: [['vision', 1], ['tiempo', 1]], outputs: ['observacion'] },
+    { ings: [['observacion', 1], ['tiempo', 1]], outputs: ['registro'] },
+    { ings: [['registro', 1], ['percepcion', 1]], outputs: ['dato'] },
     { ings: [['vision', 1], ['ojo', 1]], outputs: ['percepcion'] },
     { ings: [['moneda', 2]], outputs: ['fortuna'] },
     { ings: [['fortuna', 1], ['moneda', 1]], outputs: ['adivinacion'] },
@@ -1487,6 +1657,9 @@ export async function seedGameData(prisma: PrismaClient) {
     },
     { ings: [['conocimiento', 1], ['percepcion', 1]], outputs: ['claridad'] },
     { ings: [['claridad', 1], ['misticismo', 1]], outputs: ['luz'] },
+    { ings: [['luz', 1], ['canto', 1]], outputs: ['bard'] },
+    { ings: [['luz', 1], ['fuerza', 1]], outputs: ['fuego'] },
+    { ings: [['fuego', 1], ['bendicion', 1]], outputs: ['solar-high-priest'] },
     { ings: [['vision', 1], ['ocultamiento', 1]], outputs: ['silueta'] },
     { ings: [['silueta', 1], ['luz', 1]], outputs: ['sombra'] },
     { ings: [['peligro', 1], ['cambio-cualitativo', 1]], outputs: ['calamidad'] },
@@ -1563,7 +1736,29 @@ export async function seedGameData(prisma: PrismaClient) {
     { ings: [['fuerza', 1], ['influencia', 1]], outputs: ['dominacion'] },
     { ings: [['sombra', 1], ['separacion', 1]], outputs: ['sombra-independiente'] },
     { ings: [['sombra-independiente', 1], ['dominacion', 1]], outputs: ['sombra-dominada'] },
-    { ings: [['nacion', 2]], outputs: ['continente'] },
+    { ings: [['tierra', 2]], outputs: ['campo'] },
+    { ings: [['campo', 2]], outputs: ['continente'] },
+    // Camino de la Puerta
+    { ings: [['espacio', 2]], outputs: ['vacio'] },
+    { ings: [['espacio', 1], ['vacio', 1]], outputs: ['separacion'] },
+    { ings: [['separacion', 1], ['espacio', 1]], outputs: ['apertura'] },
+    { ings: [['tierra', 1], ['espacio', 1]], outputs: ['puerta'] },
+    { ings: [['puerta', 1], ['apertura', 1]], outputs: ['aprendiz'] },
+    { ings: [['percepcion', 1], ['vacio', 1]], outputs: ['ilusion'] },
+    { ings: [['percepcion', 1], ['ilusion', 1]], outputs: ['truco'] },
+    { ings: [['registro', 1], ['truco', 1]], outputs: ['trickmaster'] },
+    { ings: [['vacio', 2]], outputs: ['espacio-exterior'] },
+    { ings: [['espacio-exterior', 1], ['observacion', 1]], outputs: ['cuerpo-celeste'] },
+    { ings: [['beyonder', 1], ['misticismo', 1]], outputs: ['poder-beyonder'] },
+    { ings: [['poder-beyonder', 1], ['registro', 1]], outputs: ['escriba'] },
+    // Camino del Error
+    { ings: [['separacion', 1], ['moneda', 1]], outputs: ['robo'] },
+    { ings: [['robo', 1], ['percepcion', 1]], outputs: ['marauder'] },
+    { ings: [['fortuna', 1], ['truco', 1]], outputs: ['swindler'] },
+    { ings: [['dato', 1], ['misticismo', 1]], outputs: ['cryptologist'] },
+    { ings: [['robo', 1], ['poder-beyonder', 1]], outputs: ['prometheus'] },
+    { ings: [['humano', 1], ['robo', 1]], outputs: ['robo-de-identidad'] },
+    { ings: [['robo-de-identidad', 1], ['divinidad', 1]], outputs: ['blasfemia'] },
     { ings: [['continente', 2]], outputs: ['mundo'] },
     { ings: [['mundo', 1], ['sombra', 1]], outputs: ['mundo-de-sombra'] },
     { ings: [['mundo-de-sombra', 1], ['dominacion', 1]], outputs: ['dominio-en-el-mundo-de-sombras'] },
@@ -1619,6 +1814,22 @@ export async function seedGameData(prisma: PrismaClient) {
     { ings: [['familia', 2]], outputs: ['comunidad'] },
     { ings: [['comunidad', 2]], outputs: ['ciudad'] },
   ]
+
+  // Fórmulas sustituidas. El borrado explícito mantiene idempotente una base
+  // que ya hubiera ejecutado una versión anterior del seed.
+  await prisma.recipe.deleteMany({
+    where: {
+      inputKey: {
+        in: [
+          buildRecipeInputKey([{ slug: 'nacion', quantity: 2 }]),
+          buildRecipeInputKey([
+            { slug: 'robo', quantity: 1 },
+            { slug: 'ojo', quantity: 1 },
+          ]),
+        ],
+      },
+    },
+  })
 
   for (const r of recetas) {
     const inputKey = buildRecipeInputKey(
@@ -1685,6 +1896,18 @@ export async function seedGameData(prisma: PrismaClient) {
       ingredients: ['ilusion', 'magia'],
       source: 'clown',
       target: 'mago',
+    },
+    {
+      internalName: 'Avance a Astrólogo',
+      ingredients: ['adivinacion', 'cuerpo-celeste'],
+      source: 'trickmaster',
+      target: 'astrologo',
+    },
+    {
+      internalName: 'Avance a Dream Stealer',
+      ingredients: ['blasfemia', 'secreto'],
+      source: 'prometheus',
+      target: 'dream-stealer',
     },
     {
       internalName: 'Avance a Lucky One',
@@ -2122,6 +2345,12 @@ export async function seedGameData(prisma: PrismaClient) {
       advanceName: 'Avance a Sea King',
       ingredients: ['torre', 'dominacion'],
       requiredSequenceNumber: 4,
+    },
+    {
+      name: 'Ritual de avance a Dream Stealer',
+      advanceName: 'Avance a Dream Stealer',
+      ingredients: ['sueno', 'multitud'],
+      requiredSequenceNumber: 6,
     },
   ]
   for (const ritual of nuevosRituales) {

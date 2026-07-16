@@ -4,7 +4,7 @@ import { importDocumentoSchema, type ImportDocumento } from '../schemas'
 
 export class ImportError extends Error {}
 
-// ---------- Exportación ----------
+// ---------- Exportación nominal (v2) ----------
 
 // Lista de nombres por unidad ("Ojo ×2" → ["Ojo", "Ojo"]), ordenada en español.
 function nombresPorUnidad(
@@ -15,15 +15,105 @@ function nombresPorUnidad(
     .sort((a, b) => a.localeCompare(b, 'es'))
 }
 
-// Exportación ligera para lectura humana (o para dársela a un LLM): solo
-// nombres. Cada elemento lista las recetas que lo crean e indica su camino y
-// secuencia si representa una; la sección «caminos» recorre cada escalera de
-// secuencias con sus ascensiones (avance + secuencia de origen + ritual).
-export async function exportarElementosYCombinaciones(db: PrismaClient) {
+function nombresElementos(elementos: { element: { name: string } }[]): string[] {
+  return elementos.map((e) => e.element.name).sort((a, b) => a.localeCompare(b, 'es'))
+}
+
+export type RecetaNominal = {
+  tipo: 'RECETA'
+  nombre?: string
+  ingredientes: string[]
+  isActive: boolean
+}
+
+export type ElementoNominal = {
+  tipo: 'ELEMENTO'
+  nombre: string
+  tipoElemento: string
+  isActive: boolean
+  desbloqueadoPorTipo: string | null
+  desbloqueadoPorSecuencia: number | null
+  desbloqueadoPorCualquieraDe: string[]
+  desbloqueadoPorTodos: string[]
+  camino?: string
+  secuencia?: number
+  combinaciones: RecetaNominal[]
+}
+
+export type RitualNominal = {
+  tipo: 'RITUAL'
+  nombre: string
+  isActive: boolean
+  requiredSequenceNumber: number
+  ingredientes: string[]
+  consecuenciasFallo: string[]
+}
+
+export type AvanceNominal = {
+  tipo: 'AVANCE'
+  nombreInterno: string
+  isActive: boolean
+  ingredientes: string[]
+}
+
+export type SecuenciaResumida = {
+  tipo: 'SECUENCIA'
+  numero: number
+  nombre: string
+  elemento: string
+}
+
+export type AscensionNominal = {
+  tipo: 'ASCENSION'
+  origen: SecuenciaResumida
+  destino: SecuenciaResumida
+  avance: AvanceNominal
+  rituales: RitualNominal[]
+}
+
+export type SecuenciaNominal = {
+  tipo: 'SECUENCIA'
+  numero: number
+  nombre: string
+  elemento: string
+  ascensiones: AscensionNominal[]
+}
+
+export type CaminoNominal = {
+  tipo: 'CAMINO'
+  nombre: string
+  isActive: boolean
+  secuencias: SecuenciaNominal[]
+}
+
+export type NodoNominal =
+  | ElementoNominal
+  | RecetaNominal
+  | CaminoNominal
+  | SecuenciaNominal
+  | AscensionNominal
+  | AvanceNominal
+  | RitualNominal
+
+export type DocumentoElementosNominal = {
+  version: 2
+  exportadoEn: string
+  elementos: ElementoNominal[]
+  caminos: CaminoNominal[]
+}
+
+// Exportación nominal para lectura humana o LLM: contrato TypeScript explícito,
+// sin garantías de compatibilidad con la forma v1. Cada nodo lleva un
+// discriminador literal para que el tipo sea inequívoco.
+export async function exportarElementosYCombinaciones(
+  db: PrismaClient,
+): Promise<DocumentoElementosNominal> {
   const [elementos, caminos] = await Promise.all([
     db.element.findMany({
       include: {
         sequence: { include: { pathway: { select: { name: true } } } },
+        unlockTriggers: { include: { trigger: { select: { name: true } } } },
+        unlockRequirements: { include: { required: { select: { name: true } } } },
         outputs: {
           include: {
             recipe: {
@@ -52,7 +142,9 @@ export async function exportarElementosYCombinaciones(db: PrismaClient) {
                 rituals: {
                   include: {
                     ingredients: { include: { element: { select: { name: true } } } },
+                    failureOutputs: { include: { element: { select: { name: true } } } },
                   },
+                  orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
                 },
               },
             },
@@ -64,41 +156,82 @@ export async function exportarElementosYCombinaciones(db: PrismaClient) {
   ])
 
   return {
+    version: 2 as const,
     exportadoEn: new Date().toISOString(),
     elementos: elementos.map((elemento) => ({
+      tipo: 'ELEMENTO' as const,
       nombre: elemento.name,
+      tipoElemento: elemento.type,
+      isActive: elemento.isActive,
+      desbloqueadoPorTipo: elemento.unlockedByType,
+      desbloqueadoPorSecuencia: elemento.unlockedBySequenceNumber,
+      desbloqueadoPorCualquieraDe: elemento.unlockTriggers
+        .map((trigger) => trigger.trigger.name)
+        .sort((a, b) => a.localeCompare(b, 'es')),
+      desbloqueadoPorTodos: elemento.unlockRequirements
+        .map((requirement) => requirement.required.name)
+        .sort((a, b) => a.localeCompare(b, 'es')),
       ...(elemento.sequence
         ? {
             camino: elemento.sequence.pathway.name,
             secuencia: elemento.sequence.number,
           }
         : {}),
-      combinaciones: elemento.outputs.map((output) =>
-        nombresPorUnidad(output.recipe.ingredients),
-      ),
+      combinaciones: elemento.outputs
+        .slice()
+        .sort((a, b) => a.recipe.inputKey.localeCompare(b.recipe.inputKey))
+        .map((output) => ({
+          tipo: 'RECETA' as const,
+          ...(output.recipe.name ? { nombre: output.recipe.name } : {}),
+          ingredientes: nombresPorUnidad(output.recipe.ingredients),
+          isActive: output.recipe.isActive,
+        })),
     })),
     caminos: caminos.map((camino) => ({
+      tipo: 'CAMINO' as const,
       nombre: camino.name,
-      secuencias: camino.sequences.map((secuencia) => ({
-        numero: secuencia.number,
-        nombre: secuencia.name,
-        elemento: secuencia.element.name,
-        // Cómo se llega a esta secuencia desde otra: primero se crea el avance
-        // con estos ingredientes y luego se combina con el elemento de origen.
-        ascensiones: secuencia.advancesTo.map((avance) => ({
-          desdeSecuencia: avance.sourceSequence.number,
-          desdeElemento: avance.sourceSequence.element.name,
-          avance: nombresPorUnidad(avance.ingredients),
-          ...(avance.rituals.length > 0
-            ? {
-                rituales: avance.rituals.map((ritual) => ({
-                  nombre: ritual.name,
-                  ingredientes: nombresPorUnidad(ritual.ingredients),
-                })),
-              }
-            : {}),
-        })),
-      })),
+      isActive: camino.isActive,
+      secuencias: camino.sequences.map((secuencia) => {
+        const destino: SecuenciaResumida = {
+          tipo: 'SECUENCIA',
+          numero: secuencia.number,
+          nombre: secuencia.name,
+          elemento: secuencia.element.name,
+        }
+        return {
+          tipo: 'SECUENCIA' as const,
+          numero: secuencia.number,
+          nombre: secuencia.name,
+          elemento: secuencia.element.name,
+          ascensiones: secuencia.advancesTo
+            .slice()
+            .sort((a, b) => a.sourceSequence.number - b.sourceSequence.number)
+            .map((avance) => ({
+              tipo: 'ASCENSION' as const,
+              origen: {
+                tipo: 'SECUENCIA' as const,
+                numero: avance.sourceSequence.number,
+                nombre: avance.sourceSequence.name,
+                elemento: avance.sourceSequence.element.name,
+              },
+              destino,
+              avance: {
+                tipo: 'AVANCE' as const,
+                nombreInterno: avance.internalName,
+                isActive: avance.isActive,
+                ingredientes: nombresPorUnidad(avance.ingredients),
+              },
+              rituales: avance.rituals.map((ritual) => ({
+                tipo: 'RITUAL' as const,
+                nombre: ritual.name,
+                isActive: ritual.isActive,
+                requiredSequenceNumber: ritual.requiredSequenceNumber,
+                ingredientes: nombresPorUnidad(ritual.ingredients),
+                consecuenciasFallo: nombresElementos(ritual.failureOutputs),
+              })),
+            })),
+        }
+      }),
     })),
   }
 }
@@ -110,6 +243,7 @@ export async function exportarContenido(db: PrismaClient) {
       include: {
         categories: { include: { category: { select: { slug: true } } } },
         unlockTriggers: { include: { trigger: { select: { slug: true } } } },
+        unlockRequirements: { include: { required: { select: { slug: true } } } },
       },
       orderBy: { slug: 'asc' },
     }),
@@ -178,6 +312,7 @@ export async function exportarContenido(db: PrismaClient) {
       unlockedByType: e.unlockedByType,
       unlockedBySequenceNumber: e.unlockedBySequenceNumber,
       unlockedByElements: e.unlockTriggers.map((t) => t.trigger.slug),
+      unlockedByAllElements: e.unlockRequirements.map((r) => r.required.slug),
       isActive: e.isActive,
       categorias: e.categories.map((ec) => ({
         slug: ec.category.slug,
@@ -316,6 +451,12 @@ export function validarDocumento(raw: unknown): { doc: ImportDocumento; resumen:
         problemas.push(`El elemento «${e.slug}» tiene el desencadenante inexistente «${t}».`)
       if (t === e.slug)
         problemas.push(`El elemento «${e.slug}» se desencadena a sí mismo.`)
+    }
+    for (const t of e.unlockedByAllElements) {
+      if (!elSlugs.has(t))
+        problemas.push(`El elemento «${e.slug}» tiene el requisito AND inexistente «${t}».`)
+      if (t === e.slug)
+        problemas.push(`El elemento «${e.slug}» se requiere a sí mismo en un AND.`)
     }
   }
   for (const p of doc.caminos) {
@@ -535,6 +676,21 @@ export async function importarContenido(
         if (!trigger) throw new ImportError(`Desencadenante no encontrado: ${slug}`)
         await tx.elementUnlockTrigger.create({
           data: { elementId: el.id, triggerId: trigger.id },
+        })
+      }
+    }
+
+    // Requisitos AND: sincronizar en una segunda pasada, cuando ya existen todos los elementos.
+    for (const e of doc.elementos) {
+      const el = await tx.element.findUnique({ where: { slug: e.slug } })
+      if (!el) continue
+      await tx.elementUnlockRequirement.deleteMany({ where: { elementId: el.id } })
+      for (const slug of new Set(e.unlockedByAllElements)) {
+        if (slug === e.slug) continue
+        const required = await tx.element.findUnique({ where: { slug } })
+        if (!required) throw new ImportError(`Requisito AND no encontrado: ${slug}`)
+        await tx.elementUnlockRequirement.create({
+          data: { elementId: el.id, requiredElementId: required.id },
         })
       }
     }

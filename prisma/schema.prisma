@@ -50,6 +50,9 @@ model Element {
   // Desencadenantes que desbloquean ESTE elemento / elementos que este desbloquea.
   unlockTriggers     ElementUnlockTrigger[] @relation("ElementoDesbloqueado")
   desencadena        ElementUnlockTrigger[] @relation("ElementoDesencadenante")
+  // Requisitos AND para desbloquear ESTE elemento / elementos de los que este es requisito.
+  unlockRequirements ElementUnlockRequirement[] @relation("ElementoConRequisitos")
+  requiredFor        ElementUnlockRequirement[] @relation("ElementoRequisito")
 }
 
 // Desbloqueo espontáneo por elemento concreto: `element` se desbloquea cuando
@@ -62,6 +65,18 @@ model ElementUnlockTrigger {
   trigger Element @relation("ElementoDesencadenante", fields: [triggerId], references: [id], onDelete: Cascade)
 
   @@id([elementId, triggerId])
+}
+
+// Requisitos AND para desbloqueo espontáneo: `element` se desbloquea solo
+// cuando el jugador ha descubierto TODOS los elementos `required`.
+model ElementUnlockRequirement {
+  elementId         String
+  requiredElementId String
+
+  element  Element @relation("ElementoConRequisitos", fields: [elementId], references: [id], onDelete: Cascade)
+  required Element @relation("ElementoRequisito", fields: [requiredElementId], references: [id], onDelete: Cascade)
+
+  @@id([elementId, requiredElementId])
 }
 
 model Category {

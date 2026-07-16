@@ -214,6 +214,7 @@ export const importElementoSchema = z.object({
   unlockedByType: elementTypeSchema.nullish(),
   unlockedBySequenceNumber: z.number().int().min(0).max(99).nullish(),
   unlockedByElements: z.array(slugSchema).default([]),
+  unlockedByAllElements: z.array(slugSchema).max(50).default([]),
   isActive: z.boolean().default(true),
   categorias: z
     .array(z.object({ slug: slugSchema, isPrimary: z.boolean().default(false) }))

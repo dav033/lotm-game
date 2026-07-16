@@ -59,6 +59,7 @@ async function combinarAvanceConSecuencia(
             players: { where: { profileId }, select: { profileId: true } },
             failureOutputs: { include: { element: true } },
           },
+          orderBy: { id: 'asc' },
         },
       },
     }),
@@ -134,7 +135,12 @@ async function combinarAvanceConSecuencia(
 
     if (missingRitual) {
       const results: RecipeOutputData[] = []
-      for (const consequence of activeRituals[0].failureOutputs) {
+      const consequences = new Map(
+        activeRituals
+          .flatMap((ritual) => ritual.failureOutputs)
+          .map((consequence) => [consequence.elementId, consequence]),
+      )
+      for (const consequence of consequences.values()) {
         const previous = await tx.playerDiscovery.findUnique({
           where: {
             profileId_elementId: { profileId, elementId: consequence.elementId },

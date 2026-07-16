@@ -5,10 +5,10 @@ import type { RecetaPendiente } from './tipos'
 // Descubrimientos espontáneos: elementos que ninguna receta fabrica y que se
 // desbloquean solos cuando el jugador descubre (a) cualquier elemento de un
 // tipo (Element.unlockedByType), (b) un elemento concreto de su lista de
-// desencadenantes o (c) cualquier secuencia de un número configurado. Procesa
-// en cascada — un desbloqueo puede habilitar otros — y cada tipo/elemento se
-// consulta una sola vez, así que termina siempre. Devuelve los elementos
-// recién desbloqueados.
+// desencadenantes, (c) cualquier secuencia de un número configurado o (d) el
+// conjunto completo de requisitos AND. Procesa en cascada — un desbloqueo
+// puede habilitar otros — y cada tipo/elemento se consulta una sola vez, así
+// que termina siempre. Devuelve los elementos recién desbloqueados.
 export async function desbloquearEspontaneos(
   db: Db,
   profileId: string,
@@ -16,6 +16,18 @@ export async function desbloquearEspontaneos(
   now: Date,
 ) {
   const desbloqueados = []
+
+  // Caché única de descubrimientos previos para evitar findUnique N+1.
+  const descubiertosSet = new Set<string>(
+    (
+      await db.playerDiscovery.findMany({
+        where: { profileId },
+        select: { elementId: true },
+      })
+    ).map((d) => d.elementId),
+  )
+  for (const d of descubiertos) descubiertosSet.add(d.id)
+
   const tiposProcesados = new Set<string>()
   const idsProcesados = new Set<string>()
   let tipos = [...new Set(descubiertos.map((d) => d.type))]
@@ -39,7 +51,7 @@ export async function desbloquearEspontaneos(
           ]
         : []
 
-    const candidatos = await db.element.findMany({
+    const candidatosOR = await db.element.findMany({
       where: {
         isActive: true,
         OR: [
@@ -54,20 +66,48 @@ export async function desbloquearEspontaneos(
       },
     })
 
+    const candidatosAND = await db.element.findMany({
+      where: {
+        isActive: true,
+        unlockRequirements: { some: {} },
+      },
+      include: {
+        unlockRequirements: { select: { requiredElementId: true } },
+      },
+    })
+
     const tiposNuevos = new Set<string>()
     const idsNuevos = new Set<string>()
-    for (const el of candidatos) {
-      const previo = await db.playerDiscovery.findUnique({
-        where: { profileId_elementId: { profileId, elementId: el.id } },
-      })
-      if (previo) continue
+    const procesadosEstaRonda = new Set<string>()
+
+    for (const el of candidatosOR) {
+      if (procesadosEstaRonda.has(el.id)) continue
+      procesadosEstaRonda.add(el.id)
+      if (descubiertosSet.has(el.id)) continue
       await db.playerDiscovery.create({
         data: { profileId, elementId: el.id, firstDiscoveredAt: now, lastCreatedAt: now },
       })
+      descubiertosSet.add(el.id)
       desbloqueados.push(el)
       tiposNuevos.add(el.type)
       idsNuevos.add(el.id)
     }
+
+    for (const el of candidatosAND) {
+      if (procesadosEstaRonda.has(el.id)) continue
+      if (descubiertosSet.has(el.id)) continue
+      const requiredIds = el.unlockRequirements.map((r) => r.requiredElementId)
+      if (requiredIds.every((id) => descubiertosSet.has(id))) {
+        await db.playerDiscovery.create({
+          data: { profileId, elementId: el.id, firstDiscoveredAt: now, lastCreatedAt: now },
+        })
+        descubiertosSet.add(el.id)
+        desbloqueados.push(el)
+        tiposNuevos.add(el.type)
+        idsNuevos.add(el.id)
+      }
+    }
+
     tipos = [...tiposNuevos].filter((t) => !tiposProcesados.has(t))
     ids = [...idsNuevos].filter((i) => !idsProcesados.has(i))
   }
@@ -127,18 +167,28 @@ export async function obtenerRecetasPendientes(db: Db, profileId: string): Promi
   return conPrioridad.map((p) => p.receta)
 }
 
-// Marca como descubiertos todos los elementos iniciales (Ojo, Moneda, Humano).
+// Marca como descubiertos todos los elementos iniciales (Ojo, Moneda, Tiempo, Tierra)
+// y dispara los desbloqueos espontáneos que esos starters puedan causar.
 // Vive en el dominio (sin dependencias de Next) para poder probarse aislado.
 export async function descubrirIniciales(db: Db, profileId: string) {
+  const now = new Date()
   const starters = await db.element.findMany({
     where: { isStarter: true, isActive: true },
-    select: { id: true },
+    select: { id: true, type: true },
   })
   for (const s of starters) {
     await db.playerDiscovery.upsert({
       where: { profileId_elementId: { profileId, elementId: s.id } },
-      create: { profileId, elementId: s.id },
+      create: { profileId, elementId: s.id, firstDiscoveredAt: now, lastCreatedAt: now },
       update: {},
     })
+  }
+  if (starters.length > 0) {
+    await desbloquearEspontaneos(
+      db,
+      profileId,
+      starters.map((s) => ({ id: s.id, type: s.type })),
+      now,
+    )
   }
 }
