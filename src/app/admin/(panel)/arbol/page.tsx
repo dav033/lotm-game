@@ -80,6 +80,9 @@ export default async function PaginaArbolAdmin() {
           a: `el:${salida.elementId}`,
           tipo: 'receta',
           via,
+          // Todas las aristas de la receta comparten grupo: el cliente las
+          // dibuja convergiendo en un punto de unión en lugar de sueltas.
+          grupo: `rec:${receta.id}`,
         })
       }
     }
