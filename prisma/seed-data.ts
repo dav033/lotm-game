@@ -1242,6 +1242,30 @@ export async function seedGameData(prisma: PrismaClient) {
     { slug: 'manipulator', name: 'Manipulator', description: 'Secuencia 4 del Camino del Visionario. Domina el subconsciente colectivo.', iconKey: 'waves', type: 'BEYONDER', tier: 6, isMajorDiscovery: true, categoryId: beyonder.id },
     { slug: 'dream-weaver', name: 'Dream Weaver', description: 'Secuencia 3 del Camino del Visionario. Teje imaginación y sueño en una sola realidad.', iconKey: 'wand-sparkles', type: 'BEYONDER', tier: 7, isMajorDiscovery: true, categoryId: beyonder.id },
     { slug: 'discerner', name: 'Discerner', description: 'Secuencia 2 del Camino del Visionario. Distingue la verdad dentro de cualquier psique.', iconKey: 'scan-eye', type: 'BEYONDER', tier: 8, isMajorDiscovery: true, categoryId: beyonder.id },
+    // ----- Mar, tormentas y Camino del Tirano -----
+    { slug: 'dolor', name: 'Dolor', description: 'La percepción consciente de una herida o una pérdida.', iconKey: 'bandage', type: 'CONCEPTO', tier: 2, categoryId: conceptos.id },
+    { slug: 'carta-nautica', name: 'Carta náutica', description: 'El mar convertido en un registro de rutas y peligros.', iconKey: 'file-text', type: 'OBJETO', tier: 3, categoryId: mundano.id },
+    { slug: 'navegacion', name: 'Navegación', description: 'La percepción aplicada a la lectura de una carta náutica.', iconKey: 'radar', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
+    { slug: 'magia-acuatica', name: 'Magia acuática', description: 'La magia que fluye y adopta las propiedades del agua.', iconKey: 'droplets', type: 'MISTICISMO', tier: 4, categoryId: misticismo.id },
+    { slug: 'tormenta', name: 'Tormenta', description: 'El mar agitado por una calamidad.', iconKey: 'cloud-lightning', type: 'MISTICISMO', tier: 5, categoryId: misticismo.id },
+    { slug: 'viento', name: 'Viento', description: 'La parte aérea de una tormenta después de separarse.', iconKey: 'wind', type: 'MUNDANO', tier: 3, categoryId: mundano.id },
+    { slug: 'lluvia', name: 'Lluvia', description: 'El agua que una tormenta separa del cielo.', iconKey: 'cloud-rain', type: 'MUNDANO', tier: 3, categoryId: mundano.id },
+    { slug: 'relampago', name: 'Relámpago', description: 'La luz concentrada y liberada por una tormenta.', iconKey: 'zap', type: 'MISTICISMO', tier: 6, categoryId: misticismo.id },
+    { slug: 'obninsk', name: 'Obninsk', description: 'Una criatura Beyonder acuática transformada por la devoración.', iconKey: 'anchor', type: 'CRIATURA', tier: 7, categoryId: misticismo.id },
+    { slug: 'rey', name: 'Rey', description: 'La dominación reconocida por toda una comunidad.', iconKey: 'crown', type: 'CONCEPTO', tier: 5, categoryId: conceptos.id },
+    { slug: 'construccion', name: 'Construcción', description: 'El trabajo convertido en un procedimiento capaz de levantar estructuras.', iconKey: 'hammer', type: 'CONCEPTO', tier: 4, categoryId: conceptos.id },
+    { slug: 'torre', name: 'Torre', description: 'Una construcción extendida hacia lo alto.', iconKey: 'landmark', type: 'OBJETO', tier: 5, categoryId: mundano.id },
+    { slug: 'oficiante', name: 'Oficiante', description: 'El humano que aprende a conducir un ritual.', iconKey: 'scroll-text', type: 'MISTICISMO', tier: 5, categoryId: misticismo.id },
+    { slug: 'tierra', name: 'Tierra', description: 'El elemento firme bajo toda construcción y toda frontera.', iconKey: 'mountain', type: 'MUNDANO', tier: 0, unlockedBySequenceNumber: 5, categoryId: mundano.id },
+    { slug: 'terremoto', name: 'Terremoto', description: 'La tierra sacudida por una calamidad.', iconKey: 'activity', type: 'MISTICISMO', tier: 7, categoryId: misticismo.id },
+    { slug: 'tsunami', name: 'Tsunami', description: 'El mar elevado por una calamidad hasta devorar la costa.', iconKey: 'waves', type: 'MISTICISMO', tier: 7, categoryId: misticismo.id },
+    { slug: 'sailor', name: 'Sailor', description: 'Secuencia 9 del Camino del Tirano. Su cuerpo aprende a obedecer al mar.', iconKey: 'anchor', type: 'BEYONDER', tier: 1, isMajorDiscovery: true, categoryId: beyonder.id },
+    { slug: 'folk-of-rage', name: 'Folk of Rage', description: 'Secuencia 8 del Camino del Tirano. Convierte la ira en fuerza oceánica.', iconKey: 'flame', type: 'BEYONDER', tier: 2, isMajorDiscovery: true, categoryId: beyonder.id },
+    { slug: 'seafarer', name: 'Seafarer', description: 'Secuencia 7 del Camino del Tirano. Navega mediante magia acuática.', iconKey: 'radar', type: 'BEYONDER', tier: 3, isMajorDiscovery: true, categoryId: beyonder.id },
+    { slug: 'wind-blessed', name: 'Wind-blessed', description: 'Secuencia 6 del Camino del Tirano. Recibe la bendición del viento.', iconKey: 'wind', type: 'BEYONDER', tier: 4, isMajorDiscovery: true, categoryId: beyonder.id },
+    { slug: 'ocean-songster', name: 'Ocean Songster', description: 'Secuencia 5 del Camino del Tirano. Su canto lleva la voz del relámpago.', iconKey: 'music', type: 'BEYONDER', tier: 5, isMajorDiscovery: true, categoryId: beyonder.id },
+    { slug: 'cataclysmic-interrer', name: 'Cataclysmic Interrer', description: 'Secuencia 4 del Camino del Tirano. Oficia terremotos y tsunamis como rituales.', iconKey: 'cloud-lightning', type: 'BEYONDER', tier: 6, isMajorDiscovery: true, categoryId: beyonder.id },
+    { slug: 'sea-king', name: 'Sea King', description: 'Secuencia 3 del Camino del Tirano. Reina sobre el mar desde su dominio.', iconKey: 'crown', type: 'BEYONDER', tier: 7, isMajorDiscovery: true, categoryId: beyonder.id },
   ]
 
   const bySlug = new Map<string, { id: string }>()
@@ -1293,6 +1317,18 @@ export async function seedGameData(prisma: PrismaClient) {
       description: 'La senda que observa, comprende y finalmente gobierna la mente y los sueños.',
       categoryId: beyonder.id,
       iconKey: 'brain',
+      isHiddenUntilDiscovered: true,
+    },
+  })
+  const caminoTirano = await prisma.pathway.upsert({
+    where: { slug: 'camino-del-tirano' },
+    update: {},
+    create: {
+      slug: 'camino-del-tirano',
+      name: 'Camino del Tirano',
+      description: 'La senda del mar, las tormentas y el dominio absoluto sobre las fuerzas naturales.',
+      categoryId: beyonder.id,
+      iconKey: 'waves',
       isHiddenUntilDiscovered: true,
     },
   })
@@ -1381,6 +1417,13 @@ export async function seedGameData(prisma: PrismaClient) {
     { camino: caminoVisionario, number: 4, name: 'Manipulator', slug: 'manipulator' },
     { camino: caminoVisionario, number: 3, name: 'Dream Weaver', slug: 'dream-weaver' },
     { camino: caminoVisionario, number: 2, name: 'Discerner', slug: 'discerner' },
+    { camino: caminoTirano, number: 9, name: 'Sailor', slug: 'sailor' },
+    { camino: caminoTirano, number: 8, name: 'Folk of Rage', slug: 'folk-of-rage' },
+    { camino: caminoTirano, number: 7, name: 'Seafarer', slug: 'seafarer' },
+    { camino: caminoTirano, number: 6, name: 'Wind-blessed', slug: 'wind-blessed' },
+    { camino: caminoTirano, number: 5, name: 'Ocean Songster', slug: 'ocean-songster' },
+    { camino: caminoTirano, number: 4, name: 'Cataclysmic Interrer', slug: 'cataclysmic-interrer' },
+    { camino: caminoTirano, number: 3, name: 'Sea King', slug: 'sea-king' },
   ]
   const sequenceBySlug = new Map<string, { id: string }>()
   for (const s of secuencias) {
@@ -1542,7 +1585,7 @@ export async function seedGameData(prisma: PrismaClient) {
     { ings: [['humano', 1], ['fortuna', 1]], outputs: ['alegria'] },
     { ings: [['alegria', 1], ['fuerza', 1]], outputs: ['extasis'] },
     { ings: [['humano', 1], ['herida', 1]], outputs: ['ira'] },
-    { ings: [['ira', 1], ['fuerza', 1]], outputs: ['furia'] },
+    { ings: [['ira', 1], ['fuerza', 1]], outputs: ['furia', 'folk-of-rage'] },
     { ings: [['subconsciente', 1], ['comunidad', 1]], outputs: ['mar-del-subconsciente-colectivo'] },
     { ings: [['comunidad', 1], ['acumulacion', 1]], outputs: ['multitud'] },
     { ings: [['multitud', 1], ['procedimiento', 1]], outputs: ['gran-evento'] },
@@ -1553,6 +1596,21 @@ export async function seedGameData(prisma: PrismaClient) {
     { ings: [['pensamiento', 1], ['ilusion', 1]], outputs: ['imaginacion'] },
     { ings: [['sueno', 1], ['influencia', 1]], outputs: ['influencia-de-sueno'] },
     { ings: [['percepcion', 1], ['claridad', 1]], outputs: ['discernimiento'] },
+    // Mar, tormentas y Camino del Tirano
+    { ings: [['mar', 1], ['control-corporal', 1]], outputs: ['sailor'] },
+    { ings: [['dolor', 1], ['humano', 1]], outputs: ['ira'] },
+    { ings: [['mar', 1], ['registro', 1]], outputs: ['carta-nautica'] },
+    { ings: [['carta-nautica', 1], ['percepcion', 1]], outputs: ['navegacion'] },
+    { ings: [['agua', 1], ['magia', 1]], outputs: ['magia-acuatica'] },
+    { ings: [['mar', 1], ['calamidad', 1]], outputs: ['tormenta', 'tsunami'] },
+    { ings: [['tormenta', 1], ['separacion', 1]], outputs: ['viento', 'lluvia'] },
+    { ings: [['tormenta', 1], ['luz', 1]], outputs: ['relampago'] },
+    { ings: [['criatura-beyonder-acuatica', 1], ['devoracion', 1]], outputs: ['obninsk'] },
+    { ings: [['comunidad', 1], ['dominacion', 1]], outputs: ['rey'] },
+    { ings: [['trabajo', 1], ['procedimiento', 1]], outputs: ['construccion'] },
+    { ings: [['construccion', 1], ['extension', 1]], outputs: ['torre'] },
+    { ings: [['humano', 1], ['ritual', 1]], outputs: ['oficiante'] },
+    { ings: [['tierra', 1], ['calamidad', 1]], outputs: ['terremoto'] },
     // Cadena de la Corrupción, el Guerrero y la Comunidad
     { ings: [['locura', 1], ['beyonder', 1]], outputs: ['perdida-de-control', 'corrupcion'] },
     { ings: [['corrupcion', 1], ['tiempo', 1]], outputs: ['degeneracion'] },
@@ -1771,6 +1829,36 @@ export async function seedGameData(prisma: PrismaClient) {
       ingredients: ['discernimiento', 'psique'],
       source: 'dream-weaver',
       target: 'discerner',
+    },
+    {
+      internalName: 'Avance a Seafarer',
+      ingredients: ['navegacion', 'magia-acuatica'],
+      source: 'folk-of-rage',
+      target: 'seafarer',
+    },
+    {
+      internalName: 'Avance a Wind-blessed',
+      ingredients: ['viento', 'bendicion'],
+      source: 'seafarer',
+      target: 'wind-blessed',
+    },
+    {
+      internalName: 'Avance a Ocean Songster',
+      ingredients: ['canto', 'relampago'],
+      source: 'wind-blessed',
+      target: 'ocean-songster',
+    },
+    {
+      internalName: 'Avance a Cataclysmic Interrer',
+      ingredients: ['oficiante', 'calamidad'],
+      source: 'ocean-songster',
+      target: 'cataclysmic-interrer',
+    },
+    {
+      internalName: 'Avance a Sea King',
+      ingredients: ['rey', 'mar'],
+      source: 'cataclysmic-interrer',
+      target: 'sea-king',
     },
   ]
   const advanceByName = new Map<string, { id: string }>()
@@ -2016,6 +2104,24 @@ export async function seedGameData(prisma: PrismaClient) {
       advanceName: 'Avance a Discerner',
       ingredients: ['mar-del-subconsciente-colectivo', 'discernimiento'],
       requiredSequenceNumber: 3,
+    },
+    {
+      name: 'Ritual de avance a Ocean Songster',
+      advanceName: 'Avance a Ocean Songster',
+      ingredients: ['obninsk', 'canto'],
+      requiredSequenceNumber: 6,
+    },
+    {
+      name: 'Ritual de avance a Cataclysmic Interrer',
+      advanceName: 'Avance a Cataclysmic Interrer',
+      ingredients: ['terremoto', 'tsunami'],
+      requiredSequenceNumber: 5,
+    },
+    {
+      name: 'Ritual de avance a Sea King',
+      advanceName: 'Avance a Sea King',
+      ingredients: ['torre', 'dominacion'],
+      requiredSequenceNumber: 4,
     },
   ]
   for (const ritual of nuevosRituales) {

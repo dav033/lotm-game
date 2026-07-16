@@ -1,4 +1,5 @@
 import {
+  Activity,
   AlarmClock,
   Award,
   Anchor,
@@ -13,8 +14,11 @@ import {
   BriefcaseBusiness,
   CircleDotDashed,
   CircleHelp,
+  CloudLightning,
+  CloudRain,
   Clover,
   Coins,
+  Crown,
   Dices,
   Drama,
   Droplets,
@@ -29,6 +33,7 @@ import {
   Footprints,
   Gem,
   Ghost,
+  Hammer,
   History,
   Hourglass,
   KeyRound,
@@ -38,9 +43,11 @@ import {
   LockKeyhole,
   Moon,
   MoonStar,
+  Mountain,
   MoveUpRight,
   Medal,
   NotebookTabs,
+  Music,
   Orbit,
   Radar,
   ScanEye,
@@ -58,12 +65,15 @@ import {
   WandSparkles,
   Wand,
   Waves,
+  Wind,
+  Zap,
   type LucideIcon,
 } from 'lucide-react'
 
 // Catálogo de iconos genéricos disponibles para los elementos. El admin
 // selecciona una clave de esta lista; nada de recursos de franquicias.
 export const ELEMENT_ICONS: Record<string, LucideIcon> = {
+  'activity': Activity,
   'alarm-clock': AlarmClock,
   'award': Award,
   'bandage': Bandage,
@@ -88,6 +98,9 @@ export const ELEMENT_ICONS: Record<string, LucideIcon> = {
   'briefcase-business': BriefcaseBusiness,
   'circle-dot-dashed': CircleDotDashed,
   'circle-help': CircleHelp,
+  'cloud-lightning': CloudLightning,
+  'cloud-rain': CloudRain,
+  'crown': Crown,
   'dices': Dices,
   'drama': Drama,
   'droplets': Droplets,
@@ -101,6 +114,7 @@ export const ELEMENT_ICONS: Record<string, LucideIcon> = {
   'gem': Gem,
   'ghost': Ghost,
   'history': History,
+  'hammer': Hammer,
   'hourglass': Hourglass,
   'key-round': KeyRound,
   'landmark': Landmark,
@@ -108,8 +122,10 @@ export const ELEMENT_ICONS: Record<string, LucideIcon> = {
   'lightbulb': Lightbulb,
   'lock-keyhole': LockKeyhole,
   'moon': Moon,
+  'mountain': Mountain,
   'move-up-right': MoveUpRight,
   'notebook-tabs': NotebookTabs,
+  'music': Music,
   'orbit': Orbit,
   'scroll-text': ScrollText,
   'shield': Shield,
@@ -123,6 +139,8 @@ export const ELEMENT_ICONS: Record<string, LucideIcon> = {
   'wand-sparkles': WandSparkles,
   'wand': Wand,
   'waves': Waves,
+  'wind': Wind,
+  'zap': Zap,
 }
 
 export const ICON_KEYS = Object.keys(ELEMENT_ICONS)
