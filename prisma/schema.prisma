@@ -149,7 +149,7 @@ model Advance {
   ingredients AdvanceIngredient[]
   players     PlayerAdvance[]
   stats       PlayerCombinationStat[]
-  ritual      Ritual?
+  rituals     Ritual[]
 }
 
 model AdvanceIngredient {
@@ -167,7 +167,7 @@ model Ritual {
   id                     String   @id @default(cuid())
   name                   String
   inputKey               String   @unique
-  advanceId              String   @unique
+  advanceId              String
   advance                Advance  @relation(fields: [advanceId], references: [id], onDelete: Cascade)
   requiredSequenceNumber Int      @default(6)
   isActive               Boolean  @default(true)

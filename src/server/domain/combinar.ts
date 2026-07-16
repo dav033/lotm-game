@@ -54,7 +54,7 @@ async function combinarAvanceConSecuencia(
         },
         sourceSequence: { include: { element: true, pathway: true } },
         targetSequence: { include: { element: true, pathway: true } },
-        ritual: {
+        rituals: {
           include: {
             players: { where: { profileId }, select: { profileId: true } },
             failureOutputs: { include: { element: true } },
@@ -93,7 +93,9 @@ async function combinarAvanceConSecuencia(
     advance.sourceSequence.pathway.isActive &&
     advance.targetSequence.pathway.isActive &&
     advance.targetSequence.element.isActive
-  const missingRitual = isValid && advance.ritual?.isActive && advance.ritual.players.length === 0
+  const activeRituals = advance.rituals.filter((ritual) => ritual.isActive)
+  const missingRitual =
+    isValid && activeRituals.length > 0 && activeRituals.every((ritual) => ritual.players.length === 0)
   const now = new Date()
 
   return db.$transaction(async (tx) => {
@@ -130,9 +132,9 @@ async function combinarAvanceConSecuencia(
       } satisfies CombineResult
     }
 
-    if (missingRitual && advance.ritual) {
+    if (missingRitual) {
       const results: RecipeOutputData[] = []
-      for (const consequence of advance.ritual.failureOutputs) {
+      for (const consequence of activeRituals[0].failureOutputs) {
         const previous = await tx.playerDiscovery.findUnique({
           where: {
             profileId_elementId: { profileId, elementId: consequence.elementId },

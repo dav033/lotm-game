@@ -49,7 +49,7 @@ export async function exportarElementosYCombinaciones(db: PrismaClient) {
               include: {
                 ingredients: { include: { element: { select: { name: true } } } },
                 sourceSequence: { include: { element: { select: { name: true } } } },
-                ritual: {
+                rituals: {
                   include: {
                     ingredients: { include: { element: { select: { name: true } } } },
                   },
@@ -89,12 +89,12 @@ export async function exportarElementosYCombinaciones(db: PrismaClient) {
           desdeSecuencia: avance.sourceSequence.number,
           desdeElemento: avance.sourceSequence.element.name,
           avance: nombresPorUnidad(avance.ingredients),
-          ...(avance.ritual
+          ...(avance.rituals.length > 0
             ? {
-                ritual: {
-                  nombre: avance.ritual.name,
-                  ingredientes: nombresPorUnidad(avance.ritual.ingredients),
-                },
+                rituales: avance.rituals.map((ritual) => ({
+                  nombre: ritual.name,
+                  ingredientes: nombresPorUnidad(ritual.ingredients),
+                })),
               }
             : {}),
         })),
@@ -387,7 +387,6 @@ export function validarDocumento(raw: unknown): { doc: ImportDocumento; resumen:
     advanceKeys.add(key)
   }
   const ritualKeys = new Set<string>()
-  const ritualAdvanceKeys = new Set<string>()
   for (const ritual of doc.rituales) {
     for (const ingredient of [...ritual.ingredientes, ...ritual.advanceIngredients]) {
       if (!elSlugs.has(ingredient.elementSlug)) {
@@ -406,8 +405,6 @@ export function validarDocumento(raw: unknown): { doc: ImportDocumento; resumen:
       ritual.advanceIngredients.map((ingredient) => ({ slug: ingredient.elementSlug, quantity: ingredient.quantity })),
     )
     if (!advanceKeys.has(advanceKey)) problemas.push(`El ritual «${ritual.name}» usa un avance inexistente.`)
-    if (ritualAdvanceKeys.has(advanceKey)) problemas.push(`Más de un ritual protege el avance «${advanceKey}».`)
-    ritualAdvanceKeys.add(advanceKey)
   }
   const logroSlugs = new Set<string>()
   for (const achievement of doc.logros) {

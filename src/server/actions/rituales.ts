@@ -33,15 +33,13 @@ export async function guardarRitual(
     const data = parsed.data
     const ingredients = ingredientesDe(data.ingredientAId, data.ingredientBId)
     const inputKey = await derivarInputKey(prisma, ingredients)
-    const [recipe, advance, equivalent, linked] = await Promise.all([
+    const [recipe, advance, equivalent] = await Promise.all([
       prisma.recipe.findUnique({ where: { inputKey }, select: { id: true } }),
       prisma.advance.findUnique({ where: { inputKey }, select: { id: true } }),
       prisma.ritual.findUnique({ where: { inputKey }, select: { id: true } }),
-      prisma.ritual.findUnique({ where: { advanceId: data.advanceId }, select: { id: true } }),
     ])
     if (recipe || advance) return { ok: false, error: 'La fórmula ya pertenece a una receta o avance.' }
     if (equivalent && equivalent.id !== id) return { ok: false, error: 'Ya existe un ritual con esa fórmula.' }
-    if (linked && linked.id !== id) return { ok: false, error: 'Ese avance ya tiene un ritual asociado.' }
 
     await prisma.$transaction(async (tx) => {
       const values = {
