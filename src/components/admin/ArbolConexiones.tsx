@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Maximize2, Minimize2 } from 'lucide-react'
 
 // Mapa de progresión inspirado en los árboles de habilidades de juegos. El
 // color identifica el camino y la silueta distingue cada clase de nodo.
@@ -81,6 +82,8 @@ export function ArbolConexiones({
   const [seleccion, setSeleccion] = useState<string | null>(null)
   const [hover, setHover] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState('')
+  const [pantallaCompleta, setPantallaCompleta] = useState(false)
+  const raizRef = useRef<HTMLDivElement | null>(null)
   const contenedorRef = useRef<HTMLDivElement | null>(null)
   const arrastreRef = useRef<{ x: number; y: number; pointerId: number } | null>(null)
 
@@ -149,6 +152,30 @@ export function ArbolConexiones({
 
   const porId = useMemo(() => new Map(nodos.map((n) => [n.id, n])), [nodos])
 
+  // Al fijar un nodo, se abandona temporalmente la disposición global: las
+  // dependencias entrantes quedan a la izquierda y sus salidas a la derecha.
+  const disposicionActiva = useMemo(() => {
+    if (!seleccion) return disposicion
+    const entradas = [...new Set(aristas.filter((a) => a.a === seleccion).map((a) => a.de))]
+    const salidas = [...new Set(aristas.filter((a) => a.de === seleccion).map((a) => a.a))]
+    const soloSalidas = salidas.filter((id) => !entradas.includes(id))
+    const filas = Math.max(entradas.length, soloSalidas.length, 1)
+    const posiciones = new Map<string, { x: number; y: number }>()
+    const centrarFila = (indice: number, total: number) => (indice + (filas - total) / 2) * PASO_Y
+
+    entradas.forEach((id, indice) => posiciones.set(id, { x: 0, y: centrarFila(indice, entradas.length) }))
+    posiciones.set(seleccion, { x: PASO_X, y: ((filas - 1) * PASO_Y) / 2 })
+    soloSalidas.forEach((id, indice) =>
+      posiciones.set(id, { x: PASO_X * 2, y: centrarFila(indice, soloSalidas.length) }),
+    )
+
+    return {
+      posiciones,
+      ancho: PASO_X * 2 + NODO_W,
+      alto: filas * PASO_Y,
+    }
+  }, [seleccion, disposicion, aristas])
+
   // Vecindad para el foco: al señalar un nodo se atenúa todo lo no conectado.
   const vecinos = useMemo(() => {
     const mapa = new Map<string, Set<string>>()
@@ -164,8 +191,9 @@ export function ArbolConexiones({
   }, [aristas])
 
   const consulta = busqueda.trim().toLowerCase()
-  const foco = hover ?? seleccion
+  const foco = seleccion ?? hover
   const nodoVisible = (id: string): boolean => {
+    if (seleccion) return id === seleccion || (vecinos.get(seleccion)?.has(id) ?? false)
     if (consulta) {
       const nodo = porId.get(id)
       return nodo ? nodo.nombre.toLowerCase().includes(consulta) : false
@@ -174,6 +202,7 @@ export function ArbolConexiones({
     return id === foco || (vecinos.get(foco)?.has(id) ?? false)
   }
   const aristaVisible = (arista: AristaArbol): boolean => {
+    if (seleccion) return arista.de === seleccion || arista.a === seleccion
     if (consulta) return nodoVisible(arista.de) && nodoVisible(arista.a)
     if (!foco) return true
     return arista.de === foco || arista.a === foco
@@ -202,13 +231,46 @@ export function ArbolConexiones({
     return () => contenedor.removeEventListener('wheel', alRodar)
   }, [])
 
-  // Encuadre inicial: que el grafo entre a lo ancho del contenedor.
   useEffect(() => {
+    const alCambiarPantalla = () => setPantallaCompleta(document.fullscreenElement === raizRef.current)
+    document.addEventListener('fullscreenchange', alCambiarPantalla)
+    return () => document.removeEventListener('fullscreenchange', alCambiarPantalla)
+  }, [])
+
+  // Encuadre inicial: que el grafo entre a lo ancho del contenedor.
+  const encuadrar = () => {
     const contenedor = contenedorRef.current
     if (!contenedor) return
-    const k = Math.min(1, (contenedor.clientWidth - MARGEN * 2) / disposicion.ancho)
-    setVista({ x: MARGEN, y: MARGEN, k })
-  }, [disposicion.ancho])
+    const espacioVertical = contenedor.clientHeight - 64
+    const k = Math.min(
+      seleccion ? 1.15 : 1,
+      (contenedor.clientWidth - MARGEN * 2) / disposicionActiva.ancho,
+      (espacioVertical - MARGEN * 2) / disposicionActiva.alto,
+    )
+    setVista({
+      x: Math.max(MARGEN, (contenedor.clientWidth - disposicionActiva.ancho * k) / 2),
+      y: 60 + Math.max(MARGEN, (espacioVertical - disposicionActiva.alto * k) / 2),
+      k,
+    })
+  }
+
+  useEffect(() => {
+    encuadrar()
+    // La selección cambia tanto la disposición como el encuadre de la vista.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [disposicionActiva])
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(encuadrar)
+    return () => cancelAnimationFrame(frame)
+    // La geometría del contenedor cambia al entrar o salir de pantalla completa.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pantallaCompleta])
+
+  const alternarPantallaCompleta = async () => {
+    if (document.fullscreenElement) await document.exitFullscreen()
+    else await raizRef.current?.requestFullscreen()
+  }
 
   const iniciarPan = (e: React.PointerEvent) => {
     arrastreRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId }
@@ -229,7 +291,7 @@ export function ArbolConexiones({
   const salidas = seleccion ? aristas.filter((a) => a.de === seleccion) : []
 
   return (
-    <div>
+    <div ref={raizRef} className={pantallaCompleta ? 'overflow-auto bg-ink p-4' : ''}>
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-panel/70 p-3 shadow-[inset_0_1px_0_rgba(201,163,92,0.06)]">
         <input
           value={busqueda}
@@ -259,15 +321,19 @@ export function ArbolConexiones({
             type="button"
             className="btn-ghost px-3 py-1"
             onClick={() => {
-              const contenedor = contenedorRef.current
-              const k = contenedor
-                ? Math.min(1, (contenedor.clientWidth - MARGEN * 2) / disposicion.ancho)
-                : 1
-              setVista({ x: MARGEN, y: MARGEN, k })
-              setSeleccion(null)
+              if (seleccion) setSeleccion(null)
+              else encuadrar()
             }}
           >
             Reencuadrar
+          </button>
+          <button
+            type="button"
+            className="btn-ghost flex items-center gap-1.5 px-3 py-1"
+            onClick={alternarPantallaCompleta}
+          >
+            {pantallaCompleta ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            {pantallaCompleta ? 'Salir' : 'Pantalla completa'}
           </button>
         </div>
         <p className="text-xs text-fog lg:ml-auto">
@@ -295,7 +361,9 @@ export function ArbolConexiones({
 
       <div
         ref={contenedorRef}
-        className="relative h-[72vh] min-h-[520px] touch-none overflow-hidden rounded-2xl border border-line2 bg-[#090c12] shadow-[inset_0_0_80px_rgba(0,0,0,0.85),0_20px_60px_-35px_rgba(0,0,0,0.9)]"
+        className={`relative touch-none overflow-hidden rounded-2xl border border-line2 bg-[#090c12] shadow-[inset_0_0_80px_rgba(0,0,0,0.85),0_20px_60px_-35px_rgba(0,0,0,0.9)] ${
+          pantallaCompleta ? 'h-[calc(100vh-10rem)] min-h-[420px]' : 'h-[72vh] min-h-[520px]'
+        }`}
       >
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between border-b border-line/60 bg-ink/55 px-4 py-2 backdrop-blur-sm">
           <div>
@@ -338,8 +406,8 @@ export function ArbolConexiones({
           <rect width="100%" height="100%" fill="url(#skill-grid)" />
           <g transform={`translate(${vista.x} ${vista.y}) scale(${vista.k})`}>
             {aristas.map((arista, i) => {
-              const de = disposicion.posiciones.get(arista.de)
-              const a = disposicion.posiciones.get(arista.a)
+              const de = disposicionActiva.posiciones.get(arista.de)
+              const a = disposicionActiva.posiciones.get(arista.a)
               if (!de || !a) return null
               const x1 = de.x + CENTRO_X + RADIO
               const y1 = de.y + CENTRO_Y
@@ -385,7 +453,7 @@ export function ArbolConexiones({
             })}
 
             {nodos.map((nodo) => {
-              const pos = disposicion.posiciones.get(nodo.id)
+              const pos = disposicionActiva.posiciones.get(nodo.id)
               if (!pos) return null
               const color = colorDeCamino(nodo.caminoIndex)
               const borde = color ?? COLOR_NEUTRO
