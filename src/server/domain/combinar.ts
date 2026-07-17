@@ -371,13 +371,12 @@ export async function combinarParaPerfil(
       : null
 
   // Una receta cuyos todos los resultados están desactivados se comporta como inexistente.
-  const recipeOutputs = advance
-    ? []
-    : (found?.outputs.filter(
-        (output) =>
-          output.element.isActive && (output.element.sequence?.advancesTo.length ?? 0) === 0,
-      ) ?? [])
-  const recipe = !advance && recipeOutputs.length > 0 ? found : null
+  const recipeOutputs =
+    found?.outputs.filter(
+      (output) =>
+        output.element.isActive && (output.element.sequence?.advancesTo.length ?? 0) === 0,
+    ) ?? []
+  const recipe = recipeOutputs.length > 0 ? found : null
   const now = new Date()
 
   return db.$transaction(async (tx) => {
@@ -411,6 +410,7 @@ export async function combinarParaPerfil(
       },
     })
 
+    let advanceResult: RecipeOutputData | null = null
     if (advance) {
       const previous = await tx.playerAdvance.findUnique({
         where: { profileId_advanceId: { profileId, advanceId: advance.id } },
@@ -430,25 +430,26 @@ export async function combinarParaPerfil(
           lastObtainedAt: now,
         },
       })
-      return {
-        success: true,
-        message: 'Has obtenido un avance desconocido.',
-        inputKey,
-        results: [
-          {
-            element: toPublicAdvance(advance),
-            quantity: 1,
-            isNewDiscovery: !previous,
-          },
-        ],
-        isNewPathwayUnlock: false,
-        pathwayReveal: null,
-        consumedSlugs: [],
-        unlockedAchievements: [],
-      } satisfies CombineResult
+      advanceResult = {
+        element: toPublicAdvance(advance),
+        quantity: 1,
+        isNewDiscovery: !previous,
+      }
     }
 
     if (!recipe || recipeOutputs.length === 0) {
+      if (advanceResult) {
+        return {
+          success: true,
+          message: 'Has obtenido un avance desconocido.',
+          inputKey,
+          results: [advanceResult],
+          isNewPathwayUnlock: false,
+          pathwayReveal: null,
+          consumedSlugs: [],
+          unlockedAchievements: [],
+        } satisfies CombineResult
+      }
       return {
         success: false,
         message: MENSAJE_SIN_RECETA,
@@ -462,7 +463,7 @@ export async function combinarParaPerfil(
     }
 
     // Procesar cada resultado de la receta
-    const results: RecipeOutputData[] = []
+    const results: RecipeOutputData[] = advanceResult ? [advanceResult] : []
     let isNewPathwayUnlock = false
     let pathwayReveal: PathwayReveal | null = null
 
@@ -516,10 +517,11 @@ export async function combinarParaPerfil(
     // elementos de cierto tipo o elementos concretos. Se dispara con todos los
     // resultados (no solo los nuevos) para que una regla añadida después
     // también llegue a los jugadores.
+    const craftedElements = results.filter((result) => result.element.kind === 'ELEMENT')
     const desbloqueados = await desbloquearEspontaneos(
       tx,
       profileId,
-      results.map((r) => ({ id: r.element.id, type: r.element.type })),
+      craftedElements.map((result) => ({ id: result.element.id, type: result.element.type })),
       now,
     )
     for (const el of desbloqueados) {
@@ -533,10 +535,17 @@ export async function combinarParaPerfil(
     )
 
     // Construir mensaje basado en los descubrimientos
-    const newDiscoveries = results.filter((r) => r.isNewDiscovery)
+    const newDiscoveries = results.filter(
+      (result) => result.element.kind === 'ELEMENT' && result.isNewDiscovery,
+    )
     let message: string
-    if (newDiscoveries.length === 0) {
-      const names = results.map((r) => r.element.name).join(' y ')
+    if (advanceResult) {
+      message =
+        newDiscoveries.length > 0
+          ? `Has obtenido un avance desconocido y descubierto ${newDiscoveries.map((result) => result.element.name).join(', ')}.`
+          : 'Has obtenido un avance desconocido.'
+    } else if (newDiscoveries.length === 0) {
+      const names = craftedElements.map((result) => result.element.name).join(' y ')
       message = `${names} vuelve a formarse entre tus manos.`
     } else if (newDiscoveries.length === 1) {
       message = `Has descubierto ${newDiscoveries[0].element.name}.`

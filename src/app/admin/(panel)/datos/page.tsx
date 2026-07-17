@@ -29,7 +29,7 @@ export default async function PaginaDatosAdmin() {
             Descargar backup completo
           </a>
           <a href="/api/admin/exportar-elementos" className="btn-ghost inline-block" download>
-            Exportar nombres y combinaciones
+            Exportar nombres, combinaciones y orígenes
           </a>
         </div>
       </section>

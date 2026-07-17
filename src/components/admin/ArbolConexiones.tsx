@@ -33,9 +33,10 @@ import {
   recortar,
   type AristaArbol,
   type CaminoLeyenda,
+  type Combinacion,
   type NodoArbol,
 } from './arbol/tipos'
-import { calcularDisposicion } from './arbol/disposicion'
+import { calcularDisposicion, calcularDisposicionCamino } from './arbol/disposicion'
 import {
   ComboLinea,
   DefsArbol,
@@ -80,31 +81,77 @@ export function ArbolConexiones({
 
   const combinaciones = useMemo(() => agruparCombinaciones(aristas), [aristas])
 
+  const indiceCombinaciones = useMemo(() => {
+    const porSalida = new Map<string, Combinacion[]>()
+    const porEntrada = new Map<string, Combinacion[]>()
+    for (const combo of combinaciones) {
+      for (const id of combo.salidas) {
+        porSalida.set(id, [...(porSalida.get(id) ?? []), combo])
+      }
+      for (const id of combo.entradas) {
+        porEntrada.set(id, [...(porEntrada.get(id) ?? []), combo])
+      }
+    }
+    return { porSalida, porEntrada }
+  }, [combinaciones])
+
   // Componentes de un camino: parte de sus secuencias, avances y rituales, y
-  // recorre todas las combinaciones hacia atrás. Si una receta tiene varios
-  // resultados, todos se incluyen porque se descubren en la misma operación.
+  // recorre sus prerrequisitos hacia atrás. Los resultados secundarios no se
+  // expanden y una secuencia de otro camino actúa como hoja: ambas reglas
+  // impiden que ciclos compartidos absorban casi todo el grafo.
   const componentesCaminos = useMemo(() => {
     const porCamino = new Map<number, Set<string>>()
+    const combinacionesPorCamino = new Map<number, Set<Combinacion>>()
     const union = new Set<string>()
 
     for (const caminoIndex of caminosSeleccionados) {
-      const incluidos = new Set(
-        nodos.filter((nodo) => nodo.caminoIndex === caminoIndex).map((nodo) => nodo.id),
-      )
-      let cambio = true
-      while (cambio) {
-        cambio = false
-        for (const combo of combinaciones) {
-          if (!combo.salidas.some((id) => incluidos.has(id))) continue
-          for (const id of [...combo.entradas, ...combo.salidas]) {
-            if (!incluidos.has(id)) {
-              incluidos.add(id)
-              cambio = true
-            }
+      const raices = nodos
+        .filter((nodo) => nodo.caminoIndex === caminoIndex)
+        .map((nodo) => nodo.id)
+      const incluidos = new Set(raices)
+      const combosIncluidos = new Set<Combinacion>()
+      const procesados = new Set<string>()
+      const pendientes = [...raices]
+
+      while (pendientes.length > 0) {
+        const actual = pendientes.pop()!
+        if (procesados.has(actual)) continue
+        procesados.add(actual)
+        const nodo = porId.get(actual)
+        if (
+          nodo &&
+          nodo.caminoIndex !== null &&
+          nodo.caminoIndex !== caminoIndex &&
+          nodo.clase !== 'elemento'
+        ) {
+          continue
+        }
+        for (const combo of indiceCombinaciones.porSalida.get(actual) ?? []) {
+          if (combo.tipo === 'fallo') continue
+          combosIncluidos.add(combo)
+          for (const id of combo.entradas) {
+            incluidos.add(id)
+            if (!procesados.has(id)) pendientes.push(id)
           }
         }
       }
+
+      // Los fallos de los rituales y desbloqueos OR disparados por una
+      // secuencia pertenecen al camino, pero se muestran como hojas y no como
+      // requisitos. Un AND global no pertenece a un camino por contener uno
+      // solo de sus requisitos.
+      for (const raiz of raices) {
+        for (const combo of indiceCombinaciones.porEntrada.get(raiz) ?? []) {
+          if (combo.tipo !== 'fallo' && combo.tipo !== 'desbloqueo') {
+            continue
+          }
+          combosIncluidos.add(combo)
+          for (const id of [...combo.entradas, ...combo.salidas]) incluidos.add(id)
+        }
+      }
+
       porCamino.set(caminoIndex, incluidos)
+      combinacionesPorCamino.set(caminoIndex, combosIncluidos)
       for (const id of incluidos) union.add(id)
     }
 
@@ -127,8 +174,8 @@ export function ArbolConexiones({
       }
     }
 
-    return { porCamino, porNodo, union, interseccion }
-  }, [caminosSeleccionados, combinaciones, nodos, porId])
+    return { porCamino, combinacionesPorCamino, porNodo, union, interseccion }
+  }, [caminosSeleccionados, indiceCombinaciones, nodos, porId])
 
   const mostrandoSoloInterseccion = caminosSeleccionados.length >= 2
   const nodosCaminosSeleccionados = caminosSeleccionados.length === 0
@@ -137,7 +184,46 @@ export function ArbolConexiones({
       ? componentesCaminos.interseccion
       : componentesCaminos.union
 
-  const disposicion = useMemo(() => calcularDisposicion(nodos, aristas), [nodos, aristas])
+  const combinacionesCaminosSeleccionados = useMemo(() => {
+    if (caminosSeleccionados.length === 0) return null
+    const [primero, ...resto] = caminosSeleccionados
+    const base =
+      componentesCaminos.combinacionesPorCamino.get(primero) ?? new Set<Combinacion>()
+    return new Set(
+      [...base].filter((combo) =>
+        resto.every((index) =>
+          componentesCaminos.combinacionesPorCamino.get(index)?.has(combo),
+        ),
+      ),
+    )
+  }, [caminosSeleccionados, componentesCaminos])
+
+  const disposicionGlobal = useMemo(() => calcularDisposicion(nodos, aristas), [nodos, aristas])
+  const subgrafoCamino = useMemo(() => {
+    if (!nodosCaminosSeleccionados || !combinacionesCaminosSeleccionados) return null
+    const aristasCamino: AristaArbol[] = []
+    for (const combo of combinacionesCaminosSeleccionados) {
+      for (const de of combo.entradas) {
+        if (!nodosCaminosSeleccionados.has(de)) continue
+        for (const a of combo.salidas) {
+          if (!nodosCaminosSeleccionados.has(a)) continue
+          aristasCamino.push({ de, a, tipo: combo.tipo, via: combo.via })
+        }
+      }
+    }
+    return {
+      nodos: nodos.filter((nodo) => nodosCaminosSeleccionados.has(nodo.id)),
+      aristas: aristasCamino,
+    }
+  }, [nodosCaminosSeleccionados, combinacionesCaminosSeleccionados, nodos])
+  const disposicion = useMemo(() => {
+    if (!subgrafoCamino) return disposicionGlobal
+    return calcularDisposicionCamino(
+      subgrafoCamino.nodos,
+      subgrafoCamino.aristas,
+      caminosSeleccionados.length === 1 ? caminosSeleccionados[0] : null,
+    )
+  }, [subgrafoCamino, disposicionGlobal, caminosSeleccionados])
 
   // Vista aislada opcional: solo el nodo fijado con sus dependencias a la
   // izquierda y sus resultados a la derecha.
@@ -346,9 +432,13 @@ export function ArbolConexiones({
   const hayResaltado = conjuntoResaltado !== null
 
   const comboResaltado = (participantes: string[], conectaRama: boolean): boolean => {
+    const participantesPresentes = participantes.filter((id) =>
+      disposicionMostrada.posiciones.has(id),
+    )
     const pertenece =
       nodosCaminosSeleccionados !== null &&
-      participantes.every((id) => nodosCaminosSeleccionados.has(id))
+      participantesPresentes.length > 0 &&
+      participantesPresentes.every((id) => nodosCaminosSeleccionados.has(id))
     if (seleccion) return pertenece || conectaRama
     if (hover) return pertenece || participantes.includes(hover)
     if (consulta) return participantes.some((id) => conjuntoResaltado?.has(id) ?? false)
@@ -552,6 +642,7 @@ export function ArbolConexiones({
   )
 
   const filtroRama = ramaAislada ? ramaDependienteSeleccionada : null
+  const filtroCamino = aislado || ramaAislada ? null : nodosCaminosSeleccionados
 
   return (
     <div ref={raizRef} className={pantallaCompleta ? 'overflow-auto bg-ink p-4' : ''}>
@@ -780,10 +871,7 @@ export function ArbolConexiones({
             />
             {combinaciones.map((combo, indiceCombo) => {
               const participantes = [...combo.entradas, ...combo.salidas]
-              if (
-                mostrandoSoloInterseccion &&
-                !participantes.every((id) => componentesCaminos.interseccion.has(id))
-              ) return null
+              if (filtroCamino && !combinacionesCaminosSeleccionados?.has(combo)) return null
               const conectaRama =
                 combo.entradas.some((id) => ramaDependienteSeleccionada?.has(id)) &&
                 combo.salidas.some((id) => ramaDependienteSeleccionada?.has(id))
@@ -791,7 +879,7 @@ export function ArbolConexiones({
 
               const resaltado = comboResaltado(participantes, conectaRama)
               const caminosDelCombo = caminosSeleccionados.filter((index) =>
-                participantes.every((id) => componentesCaminos.porCamino.get(index)?.has(id)),
+                componentesCaminos.combinacionesPorCamino.get(index)?.has(combo),
               )
               const esInterseccionCombo =
                 caminosSeleccionados.length >= 2 &&
@@ -843,9 +931,7 @@ export function ArbolConexiones({
             })}
 
             {nodos.map((nodo) => {
-              if (mostrandoSoloInterseccion && !componentesCaminos.interseccion.has(nodo.id)) {
-                return null
-              }
+              if (filtroCamino && !filtroCamino.has(nodo.id)) return null
               if (ramaAislada && !ramaDependienteSeleccionada?.has(nodo.id)) return null
               const pos = disposicionMostrada.posiciones.get(nodo.id)
               if (!pos) return null

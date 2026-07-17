@@ -26,6 +26,42 @@ export type RecetaNominal = {
   isActive: boolean
 }
 
+export type ElementoDesencadenanteNominal = {
+  elemento: string
+  camino?: string
+  secuencia?: number
+  nombreSecuencia?: string
+}
+
+export type OrigenElementoNominal =
+  | { tipo: 'INICIAL' }
+  | { tipo: 'SIN_ORIGEN_CONFIGURADO' }
+  | RecetaNominal
+  | {
+      tipo: 'AVANCE'
+      nombreInterno: string
+      camino: string
+      origen: SecuenciaResumida
+      destino: SecuenciaResumida
+      ingredientes: string[]
+      isActive: boolean
+    }
+  | {
+      tipo: 'FALLO_RITUAL'
+      nombre: string
+      avance: string
+      camino: string
+      origen: SecuenciaResumida
+      destino: SecuenciaResumida
+      requiredSequenceNumber: number
+      ingredientes: string[]
+      isActive: boolean
+    }
+  | { tipo: 'DESBLOQUEO_TIPO'; tipoElemento: string }
+  | { tipo: 'DESBLOQUEO_SECUENCIA'; secuencia: number; alcance: 'CUALQUIER_CAMINO' }
+  | { tipo: 'DESBLOQUEO_ELEMENTO'; desencadenante: ElementoDesencadenanteNominal }
+  | { tipo: 'DESBLOQUEO_CONJUNTO'; requisitos: ElementoDesencadenanteNominal[] }
+
 export type ElementoNominal = {
   tipo: 'ELEMENTO'
   nombre: string
@@ -38,6 +74,7 @@ export type ElementoNominal = {
   camino?: string
   secuencia?: number
   combinaciones: RecetaNominal[]
+  origenes: OrigenElementoNominal[]
 }
 
 export type RitualNominal = {
@@ -112,8 +149,38 @@ export async function exportarElementosYCombinaciones(
     db.element.findMany({
       include: {
         sequence: { include: { pathway: { select: { name: true } } } },
-        unlockTriggers: { include: { trigger: { select: { name: true } } } },
-        unlockRequirements: { include: { required: { select: { name: true } } } },
+        unlockTriggers: {
+          include: {
+            trigger: {
+              select: {
+                name: true,
+                sequence: {
+                  select: {
+                    number: true,
+                    name: true,
+                    pathway: { select: { name: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
+        unlockRequirements: {
+          include: {
+            required: {
+              select: {
+                name: true,
+                sequence: {
+                  select: {
+                    number: true,
+                    name: true,
+                    pathway: { select: { name: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
         outputs: {
           include: {
             recipe: {
@@ -134,7 +201,7 @@ export async function exportarElementosYCombinaciones(
           // De la secuencia más alta (donde se empieza) a la más profunda.
           orderBy: { number: 'desc' },
           include: {
-            element: { select: { name: true } },
+            element: { select: { id: true, name: true } },
             advancesTo: {
               include: {
                 ingredients: { include: { element: { select: { name: true } } } },
@@ -147,6 +214,7 @@ export async function exportarElementosYCombinaciones(
                   orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
                 },
               },
+              orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
             },
           },
         },
@@ -155,29 +223,80 @@ export async function exportarElementosYCombinaciones(
     }),
   ])
 
+  const avancesPorElemento = new Map<string, OrigenElementoNominal[]>()
+  const fallosPorElemento = new Map<string, OrigenElementoNominal[]>()
+  const agregarOrigen = (
+    mapa: Map<string, OrigenElementoNominal[]>,
+    elemento: string,
+    origen: OrigenElementoNominal,
+  ) => mapa.set(elemento, [...(mapa.get(elemento) ?? []), origen])
+
+  for (const camino of caminos) {
+    for (const secuencia of camino.sequences) {
+      const destino: SecuenciaResumida = {
+        tipo: 'SECUENCIA',
+        numero: secuencia.number,
+        nombre: secuencia.name,
+        elemento: secuencia.element.name,
+      }
+      for (const avance of secuencia.advancesTo) {
+        const origen: SecuenciaResumida = {
+          tipo: 'SECUENCIA',
+          numero: avance.sourceSequence.number,
+          nombre: avance.sourceSequence.name,
+          elemento: avance.sourceSequence.element.name,
+        }
+        agregarOrigen(avancesPorElemento, secuencia.element.id, {
+          tipo: 'AVANCE',
+          nombreInterno: avance.internalName,
+          camino: camino.name,
+          origen,
+          destino,
+          ingredientes: nombresPorUnidad(avance.ingredients),
+          isActive: avance.isActive,
+        })
+        for (const ritual of avance.rituals) {
+          for (const consecuencia of ritual.failureOutputs) {
+            agregarOrigen(fallosPorElemento, consecuencia.elementId, {
+              tipo: 'FALLO_RITUAL',
+              nombre: ritual.name,
+              avance: avance.internalName,
+              camino: camino.name,
+              origen,
+              destino,
+              requiredSequenceNumber: ritual.requiredSequenceNumber,
+              ingredientes: nombresPorUnidad(ritual.ingredients),
+              isActive: avance.isActive && ritual.isActive,
+            })
+          }
+        }
+      }
+    }
+  }
+
+  const referenciaDesencadenante = (elemento: {
+    name: string
+    sequence: null | {
+      number: number
+      name: string
+      pathway: { name: string }
+    }
+  }): ElementoDesencadenanteNominal => ({
+    elemento: elemento.name,
+    ...(elemento.sequence
+      ? {
+          camino: elemento.sequence.pathway.name,
+          secuencia: elemento.sequence.number,
+          nombreSecuencia: elemento.sequence.name,
+        }
+      : {}),
+  })
+
   return {
     version: 2 as const,
     exportadoEn: new Date().toISOString(),
-    elementos: elementos.map((elemento) => ({
-      tipo: 'ELEMENTO' as const,
-      nombre: elemento.name,
-      tipoElemento: elemento.type,
-      isActive: elemento.isActive,
-      desbloqueadoPorTipo: elemento.unlockedByType,
-      desbloqueadoPorSecuencia: elemento.unlockedBySequenceNumber,
-      desbloqueadoPorCualquieraDe: elemento.unlockTriggers
-        .map((trigger) => trigger.trigger.name)
-        .sort((a, b) => a.localeCompare(b, 'es')),
-      desbloqueadoPorTodos: elemento.unlockRequirements
-        .map((requirement) => requirement.required.name)
-        .sort((a, b) => a.localeCompare(b, 'es')),
-      ...(elemento.sequence
-        ? {
-            camino: elemento.sequence.pathway.name,
-            secuencia: elemento.sequence.number,
-          }
-        : {}),
-      combinaciones: elemento.outputs
+    elementos: elementos.map((elemento) => {
+      const combinaciones: RecetaNominal[] = elemento.outputs
         .slice()
         .sort((a, b) => a.recipe.inputKey.localeCompare(b.recipe.inputKey))
         .map((output) => ({
@@ -185,8 +304,64 @@ export async function exportarElementosYCombinaciones(
           ...(output.recipe.name ? { nombre: output.recipe.name } : {}),
           ingredientes: nombresPorUnidad(output.recipe.ingredients),
           isActive: output.recipe.isActive,
+        }))
+      const origenes: OrigenElementoNominal[] = [
+        ...(elemento.isStarter ? [{ tipo: 'INICIAL' as const }] : []),
+        ...combinaciones,
+        ...(avancesPorElemento.get(elemento.id) ?? []),
+        ...(fallosPorElemento.get(elemento.id) ?? []),
+        ...(elemento.unlockedByType
+          ? [{ tipo: 'DESBLOQUEO_TIPO' as const, tipoElemento: elemento.unlockedByType }]
+          : []),
+        ...(elemento.unlockedBySequenceNumber !== null
+          ? [
+              {
+                tipo: 'DESBLOQUEO_SECUENCIA' as const,
+                secuencia: elemento.unlockedBySequenceNumber,
+                alcance: 'CUALQUIER_CAMINO' as const,
+              },
+            ]
+          : []),
+        ...elemento.unlockTriggers.map((trigger) => ({
+          tipo: 'DESBLOQUEO_ELEMENTO' as const,
+          desencadenante: referenciaDesencadenante(trigger.trigger),
         })),
-    })),
+        ...(elemento.unlockRequirements.length > 0
+          ? [
+              {
+                tipo: 'DESBLOQUEO_CONJUNTO' as const,
+                requisitos: elemento.unlockRequirements
+                  .map((requirement) => referenciaDesencadenante(requirement.required))
+                  .sort((a, b) => a.elemento.localeCompare(b.elemento, 'es')),
+              },
+            ]
+          : []),
+      ]
+      if (origenes.length === 0) origenes.push({ tipo: 'SIN_ORIGEN_CONFIGURADO' })
+
+      return {
+        tipo: 'ELEMENTO' as const,
+        nombre: elemento.name,
+        tipoElemento: elemento.type,
+        isActive: elemento.isActive,
+        desbloqueadoPorTipo: elemento.unlockedByType,
+        desbloqueadoPorSecuencia: elemento.unlockedBySequenceNumber,
+        desbloqueadoPorCualquieraDe: elemento.unlockTriggers
+          .map((trigger) => trigger.trigger.name)
+          .sort((a, b) => a.localeCompare(b, 'es')),
+        desbloqueadoPorTodos: elemento.unlockRequirements
+          .map((requirement) => requirement.required.name)
+          .sort((a, b) => a.localeCompare(b, 'es')),
+        ...(elemento.sequence
+          ? {
+              camino: elemento.sequence.pathway.name,
+              secuencia: elemento.sequence.number,
+            }
+          : {}),
+        combinaciones,
+        origenes,
+      }
+    }),
     caminos: caminos.map((camino) => ({
       tipo: 'CAMINO' as const,
       nombre: camino.name,

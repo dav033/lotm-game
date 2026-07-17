@@ -112,6 +112,23 @@ export async function desbloquearEspontaneos(
     ids = [...idsNuevos].filter((i) => !idsProcesados.has(i))
   }
 
+  if (desbloqueados.length > 0) {
+    const sequences = await db.sequence.findMany({
+      where: {
+        elementId: { in: desbloqueados.map((element) => element.id) },
+        pathway: { isActive: true },
+      },
+      select: { pathwayId: true },
+    })
+    for (const pathwayId of new Set(sequences.map((sequence) => sequence.pathwayId))) {
+      await db.playerPathwayUnlock.upsert({
+        where: { profileId_pathwayId: { profileId, pathwayId } },
+        create: { profileId, pathwayId, unlockedAt: now },
+        update: {},
+      })
+    }
+  }
+
   return desbloqueados
 }
 

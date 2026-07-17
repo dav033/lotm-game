@@ -163,3 +163,222 @@ export function calcularDisposicion(
     alto: maxY - minY + NODO_H,
   }
 }
+
+// Disposición enfocada para uno o varios caminos. El tier define columnas
+// estables y evita que los ciclos de recetas empujen nodos a profundidades
+// arbitrarias. En un camino individual, su secuencia y sus avances forman una
+// espina horizontal; rituales y dependencias se ordenan debajo.
+export function calcularDisposicionCamino(
+  nodos: NodoArbol[],
+  aristas: AristaArbol[],
+  caminoPrincipal: number | null,
+): Disposicion {
+  if (nodos.length === 0) {
+    return { posiciones: new Map(), ancho: NODO_W, alto: NODO_H }
+  }
+
+  const porId = new Map(nodos.map((nodo) => [nodo.id, nodo]))
+  const destinoDeAvance = new Map<string, string>()
+  const avanceDeRitual = new Map<string, string>()
+  const anteriores = new Map<string, string[]>()
+  const siguientes = new Map<string, string[]>()
+
+  for (const arista of aristas) {
+    if (!porId.has(arista.de) || !porId.has(arista.a)) continue
+    anteriores.set(arista.a, [...(anteriores.get(arista.a) ?? []), arista.de])
+    siguientes.set(arista.de, [...(siguientes.get(arista.de) ?? []), arista.a])
+    if (arista.tipo === 'ascension') destinoDeAvance.set(arista.de, arista.a)
+    if (
+      arista.tipo === 'ritual' &&
+      porId.get(arista.de)?.clase === 'ritual' &&
+      porId.get(arista.a)?.clase === 'avance'
+    ) {
+      avanceDeRitual.set(arista.de, arista.a)
+    }
+  }
+
+  const capa = new Map<string, number>()
+  const capaDeAvance = (id: string): number => {
+    const destino = porId.get(destinoDeAvance.get(id) ?? '')
+    return destino ? destino.tier * 2 - 1 : 0
+  }
+  const esSecuenciaPrincipal = (nodo: NodoArbol) =>
+    caminoPrincipal !== null &&
+    nodo.caminoIndex === caminoPrincipal &&
+    nodo.clase === 'secuencia'
+  const nodosFlexibles: NodoArbol[] = []
+  for (const nodo of nodos) {
+    if (nodo.clase === 'avance') {
+      capa.set(nodo.id, capaDeAvance(nodo.id))
+    } else if (nodo.clase === 'ritual') {
+      capa.set(nodo.id, capaDeAvance(avanceDeRitual.get(nodo.id) ?? '') - 1)
+    } else if (esSecuenciaPrincipal(nodo)) {
+      capa.set(nodo.id, nodo.tier * 2)
+    } else {
+      nodosFlexibles.push(nodo)
+    }
+  }
+
+  // Cada tier dispone de dos columnas. Repartir sus elementos entre ambas
+  // evita pilas verticales enormes sin alterar el orden general de progreso.
+  const ocupacion = new Map<number, number>()
+  for (const columna of capa.values()) {
+    ocupacion.set(columna, (ocupacion.get(columna) ?? 0) + 1)
+  }
+  nodosFlexibles.sort(
+    (a, b) =>
+      a.tier - b.tier ||
+      a.nombre.localeCompare(b.nombre, 'es'),
+  )
+  for (const nodo of nodosFlexibles) {
+    const izquierda = nodo.tier * 2 - 1
+    const derecha = nodo.tier * 2
+    const columna =
+      (ocupacion.get(izquierda) ?? 0) <= (ocupacion.get(derecha) ?? 0)
+        ? izquierda
+        : derecha
+    capa.set(nodo.id, columna)
+    ocupacion.set(columna, (ocupacion.get(columna) ?? 0) + 1)
+  }
+
+  for (const nodo of nodosFlexibles) {
+    const entradas = aristas.filter((arista) => arista.a === nodo.id)
+    if (
+      entradas.length === 0 ||
+      !entradas.every(
+        (arista) => arista.tipo === 'fallo' || arista.tipo === 'desbloqueo',
+      )
+    ) {
+      continue
+    }
+    const capasOrigen = entradas
+      .map((arista) => capa.get(arista.de))
+      .filter((columna): columna is number => columna !== undefined)
+    if (capasOrigen.length > 0) capa.set(nodo.id, Math.max(...capasOrigen) + 1)
+  }
+
+  const minCapa = Math.min(...capa.values())
+  const columnas = new Map<number, NodoArbol[]>()
+  for (const nodo of nodos) {
+    const columna = (capa.get(nodo.id) ?? 0) - minCapa
+    columnas.set(columna, [...(columnas.get(columna) ?? []), nodo])
+  }
+  const capasOrdenadas = [...columnas.keys()].sort((a, b) => a - b)
+
+  const esEspina = (nodo: NodoArbol) =>
+    caminoPrincipal !== null &&
+    nodo.caminoIndex === caminoPrincipal &&
+    (nodo.clase === 'secuencia' || nodo.clase === 'avance')
+  const esRitualPrincipal = (nodo: NodoArbol) =>
+    caminoPrincipal !== null &&
+    nodo.caminoIndex === caminoPrincipal &&
+    nodo.clase === 'ritual'
+  const ordenClase: Record<NodoArbol['clase'], number> = {
+    secuencia: 0,
+    avance: 1,
+    ritual: 2,
+    elemento: 3,
+  }
+  const fila = new Map<string, number>()
+
+  const asignarFilas = (lista: NodoArbol[]) => {
+    const espina = lista.filter(esEspina)
+    const rituales = lista.filter(esRitualPrincipal)
+    const resto = lista.filter((nodo) => !esEspina(nodo) && !esRitualPrincipal(nodo))
+    lista.splice(0, lista.length, ...espina, ...rituales, ...resto)
+    espina.forEach((nodo) => fila.set(nodo.id, 0))
+    rituales.forEach((nodo, indice) => fila.set(nodo.id, indice + 1))
+    const inicioResto = caminoPrincipal === null ? 0 : Math.max(2, rituales.length + 1)
+    resto.forEach((nodo, indice) => fila.set(nodo.id, inicioResto + indice))
+  }
+
+  for (const columna of capasOrdenadas) {
+    const lista = columnas.get(columna)!
+    lista.sort(
+      (a, b) =>
+        Number(esEspina(b)) - Number(esEspina(a)) ||
+        Number(esRitualPrincipal(b)) - Number(esRitualPrincipal(a)) ||
+        (a.caminoIndex ?? 99) - (b.caminoIndex ?? 99) ||
+        ordenClase[a.clase] - ordenClase[b.clase] ||
+        a.nombre.localeCompare(b.nombre, 'es'),
+    )
+    asignarFilas(lista)
+  }
+
+  const ordenarPorVecinos = (lista: NodoArbol[], vecindario: Map<string, string[]>) => {
+    const fijas = lista.filter((nodo) => esEspina(nodo) || esRitualPrincipal(nodo))
+    const moviles = lista.filter((nodo) => !esEspina(nodo) && !esRitualPrincipal(nodo))
+    const baricentro = (nodo: NodoArbol) => {
+      const filas = (vecindario.get(nodo.id) ?? [])
+        .map((id) => fila.get(id))
+        .filter((valor): valor is number => valor !== undefined)
+      return filas.length > 0
+        ? filas.reduce((suma, valor) => suma + valor, 0) / filas.length
+        : (fila.get(nodo.id) ?? 0)
+    }
+    moviles.sort(
+      (a, b) =>
+        baricentro(a) - baricentro(b) ||
+        ordenClase[a.clase] - ordenClase[b.clase] ||
+        a.nombre.localeCompare(b.nombre, 'es'),
+    )
+    lista.splice(0, lista.length, ...fijas, ...moviles)
+    asignarFilas(lista)
+  }
+
+  for (let pasada = 0; pasada < 4; pasada++) {
+    for (const columna of capasOrdenadas) {
+      ordenarPorVecinos(columnas.get(columna)!, anteriores)
+    }
+    for (const columna of [...capasOrdenadas].reverse()) {
+      ordenarPorVecinos(columnas.get(columna)!, siguientes)
+    }
+  }
+
+  const PASO_CAMINO_X = 185
+  const filaRelativa = new Map<string, number>()
+  let filaMinima = 0
+  let filaMaxima = 0
+  for (const columna of capasOrdenadas) {
+    const lista = columnas.get(columna)!
+    const espina = lista.filter(esEspina)
+    const rituales = lista.filter(esRitualPrincipal)
+    const resto = lista.filter((nodo) => !esEspina(nodo) && !esRitualPrincipal(nodo))
+    espina.forEach((nodo) => filaRelativa.set(nodo.id, 0))
+    rituales.forEach((nodo, indice) => filaRelativa.set(nodo.id, indice + 1))
+
+    // Repartir dependencias a ambos lados de la espina reduce la altura a la
+    // mitad y permite encuadrar el camino sin volver ilegibles sus nodos.
+    const superiores = Math.ceil(resto.length / 2)
+    resto.forEach((nodo, indice) => {
+      const numeroFila =
+        indice < superiores
+          ? indice - superiores
+          : rituales.length + 1 + indice - superiores
+      filaRelativa.set(nodo.id, numeroFila)
+    })
+    for (const nodo of lista) {
+      const numeroFila = filaRelativa.get(nodo.id) ?? 0
+      filaMinima = Math.min(filaMinima, numeroFila)
+      filaMaxima = Math.max(filaMaxima, numeroFila)
+    }
+  }
+
+  const posiciones = new Map<string, { x: number; y: number }>()
+  for (const columna of capasOrdenadas) {
+    for (const nodo of columnas.get(columna)!) {
+      const numeroFila = filaRelativa.get(nodo.id) ?? 0
+      posiciones.set(nodo.id, {
+        x: columna * PASO_CAMINO_X,
+        y: (numeroFila - filaMinima) * PASO_Y,
+      })
+    }
+  }
+
+  const ultimaCapa = capasOrdenadas[capasOrdenadas.length - 1] ?? 0
+  return {
+    posiciones,
+    ancho: ultimaCapa * PASO_CAMINO_X + NODO_W,
+    alto: (filaMaxima - filaMinima) * PASO_Y + NODO_H,
+  }
+}
