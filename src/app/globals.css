@@ -139,3 +139,66 @@ body {
     animation: none;
   }
 }
+
+/* ===== Árbol de habilidades (admin) =====
+   El atenuado por foco se resuelve aquí y no re-renderizando React: el
+   contenedor marca data-foco cuando hay hover/selección/búsqueda/caminos y
+   cada nodo o combinación solo lleva la clase .arbol-resaltado. */
+.arbol-nodo {
+  opacity: var(--op, 1);
+  transition: opacity 0.22s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  cursor: pointer;
+}
+[data-foco] .arbol-nodo:not(.arbol-resaltado) { opacity: 0.08; }
+
+/* Botones ⊕/⊖ del explorador, anclados a cada nodo. */
+.arbol-expansores {
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.arbol-expansor { cursor: pointer; }
+.arbol-expansor circle {
+  fill: #0b0d12;
+  stroke: var(--color-brass-deep);
+  stroke-width: 1.5;
+  transition: stroke 0.15s ease, fill 0.15s ease;
+}
+.arbol-expansor text {
+  fill: var(--color-brass);
+  user-select: none;
+}
+.arbol-expansor:hover circle {
+  stroke: var(--color-brass);
+  fill: #171307;
+}
+
+.arbol-combo {
+  opacity: 0.58;
+  transition: opacity 0.22s ease;
+}
+[data-foco] .arbol-combo:not(.arbol-resaltado) { opacity: 0.05; }
+[data-foco] .arbol-combo.arbol-resaltado { opacity: 1; }
+[data-foco] .arbol-combo.arbol-resaltado .arbol-trazo { filter: url(#line-glow); }
+[data-foco] .arbol-combo.arbol-resaltado .arbol-union { filter: url(#skill-glow); }
+/* Las relaciones punteadas resaltadas fluyen hacia su destino. */
+[data-foco] .arbol-combo.arbol-resaltado .arbol-trazo-guiones {
+  animation: arbol-fluir 1.4s linear infinite;
+}
+@keyframes arbol-fluir {
+  to { stroke-dashoffset: var(--ciclo-guiones, -12px); }
+}
+
+/* El anillo punteado de la selección gira lentamente. */
+.arbol-anillo-seleccion {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: arbol-rotar 26s linear infinite;
+}
+@keyframes arbol-rotar {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arbol-nodo, .arbol-combo, .arbol-expansores { transition: none; }
+  .arbol-anillo-seleccion { animation: none; }
+  [data-foco] .arbol-combo.arbol-resaltado .arbol-trazo-guiones { animation: none; }
+}

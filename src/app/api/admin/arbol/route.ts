@@ -1,0 +1,61 @@
+import { NextResponse } from 'next/server'
+import { haySesionAdmin } from '@/server/adminAuth'
+import {
+  buscarNodos,
+  construirGrafo,
+  datosIniciales,
+  espinaCamino,
+  grafoCamino,
+  vecinosDeNodo,
+} from '@/server/services/arbolGrafo'
+
+export const runtime = 'nodejs'
+
+// Subgrafos del árbol de habilidades bajo demanda (requiere sesión admin):
+//   ?vista=inicial                 → elementos iniciales + leyenda + totales
+//   ?vista=vecinos&id=el:...       → combinaciones que tocan un nodo
+//   ?vista=camino-grafo&indice=N   → esqueleto de un camino para el explorador
+//   ?vista=espina&id=<pathwayId>   → espina estructurada para la vista de camino
+//   ?vista=buscar&q=texto          → nodos por nombre
+//   ?vista=completo                → grafo entero (solo lo pide el mapa completo)
+export async function GET(req: Request) {
+  if (!(await haySesionAdmin())) {
+    return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
+  }
+  const { searchParams } = new URL(req.url)
+  const vista = searchParams.get('vista') ?? 'completo'
+  try {
+    switch (vista) {
+      case 'completo':
+        return NextResponse.json(await construirGrafo())
+      case 'inicial':
+        return NextResponse.json(await datosIniciales())
+      case 'vecinos': {
+        const id = searchParams.get('id')
+        if (!id) return NextResponse.json({ error: 'Falta el parámetro id.' }, { status: 400 })
+        return NextResponse.json(await vecinosDeNodo(id))
+      }
+      case 'camino-grafo': {
+        const indice = Number(searchParams.get('indice'))
+        if (!Number.isInteger(indice) || indice < 0) {
+          return NextResponse.json({ error: 'Índice de camino inválido.' }, { status: 400 })
+        }
+        return NextResponse.json(await grafoCamino(indice))
+      }
+      case 'espina': {
+        const id = searchParams.get('id')
+        if (!id) return NextResponse.json({ error: 'Falta el parámetro id.' }, { status: 400 })
+        const espina = await espinaCamino(id)
+        if (!espina) return NextResponse.json({ error: 'Camino no encontrado.' }, { status: 404 })
+        return NextResponse.json(espina)
+      }
+      case 'buscar':
+        return NextResponse.json(await buscarNodos(searchParams.get('q') ?? ''))
+      default:
+        return NextResponse.json({ error: `Vista desconocida: ${vista}.` }, { status: 400 })
+    }
+  } catch (err) {
+    console.error('[api/admin/arbol]', err)
+    return NextResponse.json({ error: 'No se pudo construir el árbol.' }, { status: 500 })
+  }
+}

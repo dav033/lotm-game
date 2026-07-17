@@ -1746,17 +1746,12 @@ export async function seedGameData(prisma: PrismaClient) {
     { ings: [['puerta', 1], ['apertura', 1]], outputs: ['aprendiz'] },
     { ings: [['percepcion', 1], ['vacio', 1]], outputs: ['ilusion'] },
     { ings: [['percepcion', 1], ['ilusion', 1]], outputs: ['truco'] },
-    { ings: [['registro', 1], ['truco', 1]], outputs: ['trickmaster'] },
     { ings: [['vacio', 2]], outputs: ['espacio-exterior'] },
     { ings: [['espacio-exterior', 1], ['observacion', 1]], outputs: ['cuerpo-celeste'] },
     { ings: [['beyonder', 1], ['misticismo', 1]], outputs: ['poder-beyonder'] },
-    { ings: [['poder-beyonder', 1], ['registro', 1]], outputs: ['escriba'] },
     // Camino del Error
     { ings: [['separacion', 1], ['moneda', 1]], outputs: ['robo'] },
     { ings: [['robo', 1], ['percepcion', 1]], outputs: ['marauder'] },
-    { ings: [['fortuna', 1], ['truco', 1]], outputs: ['swindler'] },
-    { ings: [['dato', 1], ['misticismo', 1]], outputs: ['cryptologist'] },
-    { ings: [['robo', 1], ['poder-beyonder', 1]], outputs: ['prometheus'] },
     { ings: [['humano', 1], ['robo', 1]], outputs: ['robo-de-identidad'] },
     { ings: [['robo-de-identidad', 1], ['divinidad', 1]], outputs: ['blasfemia'] },
     { ings: [['continente', 2]], outputs: ['mundo'] },
@@ -1780,7 +1775,7 @@ export async function seedGameData(prisma: PrismaClient) {
     { ings: [['humano', 1], ['fortuna', 1]], outputs: ['alegria'] },
     { ings: [['alegria', 1], ['fuerza', 1]], outputs: ['extasis'] },
     { ings: [['humano', 1], ['herida', 1]], outputs: ['ira'] },
-    { ings: [['ira', 1], ['fuerza', 1]], outputs: ['furia', 'folk-of-rage'] },
+    { ings: [['ira', 1], ['fuerza', 1]], outputs: ['furia'] },
     { ings: [['subconsciente', 1], ['comunidad', 1]], outputs: ['mar-del-subconsciente-colectivo'] },
     { ings: [['comunidad', 1], ['acumulacion', 1]], outputs: ['multitud'] },
     { ings: [['multitud', 1], ['procedimiento', 1]], outputs: ['gran-evento'] },
@@ -1825,6 +1820,28 @@ export async function seedGameData(prisma: PrismaClient) {
           buildRecipeInputKey([
             { slug: 'robo', quantity: 1 },
             { slug: 'ojo', quantity: 1 },
+          ]),
+          // Estas fórmulas ahora fabrican avances y no descubren directamente
+          // la secuencia de destino.
+          buildRecipeInputKey([
+            { slug: 'registro', quantity: 1 },
+            { slug: 'truco', quantity: 1 },
+          ]),
+          buildRecipeInputKey([
+            { slug: 'poder-beyonder', quantity: 1 },
+            { slug: 'registro', quantity: 1 },
+          ]),
+          buildRecipeInputKey([
+            { slug: 'fortuna', quantity: 1 },
+            { slug: 'truco', quantity: 1 },
+          ]),
+          buildRecipeInputKey([
+            { slug: 'dato', quantity: 1 },
+            { slug: 'misticismo', quantity: 1 },
+          ]),
+          buildRecipeInputKey([
+            { slug: 'robo', quantity: 1 },
+            { slug: 'poder-beyonder', quantity: 1 },
           ]),
         ],
       },
@@ -1871,8 +1888,58 @@ export async function seedGameData(prisma: PrismaClient) {
     }
   }
 
+  // Una versión anterior entregaba Folk of Rage junto con Furia. Se conserva
+  // la receta y su identidad, retirando únicamente el resultado migrado.
+  await prisma.recipeOutput.deleteMany({
+    where: {
+      elementId: id('folk-of-rage'),
+      recipe: {
+        inputKey: buildRecipeInputKey([
+          { slug: 'ira', quantity: 1 },
+          { slug: 'fuerza', quantity: 1 },
+        ]),
+      },
+    },
+  })
+
   // ---------- Avances ----------
   const avances = [
+    {
+      internalName: 'Avance a Trickmaster',
+      ingredients: ['registro', 'truco'],
+      source: 'aprendiz',
+      target: 'trickmaster',
+    },
+    {
+      internalName: 'Avance a Escriba',
+      ingredients: ['poder-beyonder', 'registro'],
+      source: 'astrologo',
+      target: 'escriba',
+    },
+    {
+      internalName: 'Avance a Swindler',
+      ingredients: ['fortuna', 'truco'],
+      source: 'marauder',
+      target: 'swindler',
+    },
+    {
+      internalName: 'Avance a Cryptologist',
+      ingredients: ['dato', 'misticismo'],
+      source: 'swindler',
+      target: 'cryptologist',
+    },
+    {
+      internalName: 'Avance a Prometheus',
+      ingredients: ['robo', 'poder-beyonder'],
+      source: 'cryptologist',
+      target: 'prometheus',
+    },
+    {
+      internalName: 'Avance a Folk of Rage',
+      ingredients: ['furia', 'mar'],
+      source: 'sailor',
+      target: 'folk-of-rage',
+    },
     {
       internalName: 'Avance a Robot',
       ingredients: ['fuerza', 'adivinacion'],

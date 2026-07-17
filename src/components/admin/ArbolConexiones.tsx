@@ -1,107 +1,51 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+// Mapa completo de progresión: todos los nodos y relaciones a la vez, con
+// comparación de caminos, vista aislada y árbol dependiente. Es la vista
+// «avanzada»; el explorador y la espina de camino cubren el uso diario.
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { GitBranch, Maximize2, Minimize2, Network, X } from 'lucide-react'
+import {
+  CENTRO_X,
+  CENTRO_Y,
+  COLOR_ARISTA_RECETA,
+  COLOR_DEPENDIENTE,
+  COLOR_DESBLOQUEO,
+  COLOR_FALLO,
+  COLOR_INTERSECCION,
+  COLOR_NEUTRO,
+  COLOR_RAIZ_DEPENDENCIA,
+  ESTILO_ARISTA,
+  ETIQUETA_ARISTA,
+  MARGEN,
+  NODO_H,
+  NODO_W,
+  ORDEN_PANEL,
+  PASO_X,
+  PASO_Y,
+  RADIO,
+  agruparCombinaciones,
+  colorDeCamino,
+  colorDeNivelDependencia,
+  curva,
+  glifoTexto,
+  recortar,
+  type AristaArbol,
+  type CaminoLeyenda,
+  type NodoArbol,
+} from './arbol/tipos'
+import { calcularDisposicion } from './arbol/disposicion'
+import {
+  ComboLinea,
+  DefsArbol,
+  MuestraArista,
+  NodoItem,
+  detenerPuntero,
+  usePanZoom,
+} from './arbol/primitivas'
 
-// Mapa de progresión inspirado en los árboles de habilidades de juegos. El
-// color identifica el camino y la silueta distingue cada clase de nodo.
-
-export type NodoArbol = {
-  id: string
-  nombre: string
-  clase: 'elemento' | 'secuencia' | 'avance' | 'ritual'
-  tipo: string | null
-  tier: number
-  caminoIndex: number | null
-  secuencia: number | null
-  inicial: boolean
-  activo: boolean
-  espontaneo: boolean
-}
-
-export type AristaArbol = {
-  de: string
-  a: string
-  tipo: 'receta' | 'creacion' | 'ascension' | 'requisito' | 'ritual'
-  via: string
-  // Aristas con el mismo grupo forman una sola combinación (p. ej. los
-  // ingredientes de una receta) y se dibujan convergiendo en un punto de unión.
-  grupo?: string
-}
-
-export type CaminoLeyenda = { nombre: string; index: number }
-
-// Paleta categórica por camino sobre fondo oscuro. Se repite solo si el
-// contenido supera diez caminos.
-const COLORES_CAMINO = [
-  '#3f96c9',
-  '#c2841f',
-  '#c94f75',
-  '#6fae5a',
-  '#8d70c9',
-  '#d06f43',
-  '#4ba6a0',
-  '#b8659d',
-  '#8f9f42',
-  '#6c8fd1',
-]
-const COLOR_NEUTRO = '#57492f' // line2: nodos sin camino
-const COLOR_ARISTA_RECETA = '#7d6f57'
-const COLOR_INTERSECCION = '#f2d58a'
-const COLOR_DEPENDIENTE = '#77c7e8'
-const COLOR_RAIZ_DEPENDENCIA = '#f3d68d'
-const COLORES_NIVEL_DEPENDENCIA = ['#77d5ea', '#71bdf0', '#829ff0', '#9a89e8', '#b57edc']
-
-const NODO_W = 128
-const NODO_H = 104
-const PASO_X = 210
-const PASO_Y = 116
-const MARGEN = 40
-const CENTRO_X = NODO_W / 2
-const CENTRO_Y = 38
-const RADIO = 29
-
-const ETIQUETA_ARISTA: Record<AristaArbol['tipo'], string> = {
-  receta: 'Receta',
-  creacion: 'Crea el avance',
-  ascension: 'Asciende a',
-  requisito: 'Se combina con',
-  ritual: 'Ritual',
-}
-
-function colorDeCamino(index: number | null): string | null {
-  return index !== null && index >= 0
-    ? COLORES_CAMINO[index % COLORES_CAMINO.length]
-    : null
-}
-
-function colorDeNivelDependencia(nivel: number): string {
-  return COLORES_NIVEL_DEPENDENCIA[Math.min(Math.max(nivel - 1, 0), COLORES_NIVEL_DEPENDENCIA.length - 1)]
-}
-
-function recortar(texto: string, max: number): string {
-  return texto.length > max ? `${texto.slice(0, max - 1)}…` : texto
-}
-
-function glifoNodo(nodo: NodoArbol): string {
-  if (nodo.clase === 'secuencia') return String(nodo.secuencia)
-  if (nodo.clase === 'avance') return '↑'
-  if (nodo.clase === 'ritual') return '✦'
-  if (nodo.inicial) return '★'
-  return nodo.nombre.slice(0, 1).toUpperCase()
-}
-
-type Combinacion = {
-  entradas: string[]
-  salidas: string[]
-  tipo: AristaArbol['tipo']
-  via: string
-}
-
-function curva(x1: number, y1: number, x2: number, y2: number): string {
-  const xm = x1 + (x2 - x1) / 2
-  return `M ${x1} ${y1} C ${xm} ${y1}, ${xm} ${y2}, ${x2} ${y2}`
-}
+export type { AristaArbol, CaminoLeyenda, NodoArbol }
 
 export function ArbolConexiones({
   nodos,
@@ -112,7 +56,6 @@ export function ArbolConexiones({
   aristas: AristaArbol[]
   caminos: CaminoLeyenda[]
 }) {
-  const [vista, setVista] = useState({ x: MARGEN, y: MARGEN, k: 1 })
   const [seleccion, setSeleccion] = useState<string | null>(null)
   const [caminosSeleccionados, setCaminosSeleccionados] = useState<number[]>([])
   const [aislado, setAislado] = useState(false)
@@ -127,30 +70,15 @@ export function ArbolConexiones({
   const [pantallaCompleta, setPantallaCompleta] = useState(false)
   const raizRef = useRef<HTMLDivElement | null>(null)
   const contenedorRef = useRef<HTMLDivElement | null>(null)
-  const arrastreRef = useRef<{ x: number; y: number; pointerId: number; movio: boolean } | null>(null)
+  const escenaRef = useRef<SVGGElement | null>(null)
+  const { fijarVista, zoomEscalonado, iniciarPan, moverPan, terminarPan } = usePanZoom(
+    contenedorRef,
+    escenaRef,
+  )
 
   const porId = useMemo(() => new Map(nodos.map((n) => [n.id, n])), [nodos])
 
-  // Las aristas del mismo grupo (los ingredientes de una receta) se funden en
-  // una combinación; el resto se dibuja como enlace directo.
-  const combinaciones = useMemo(() => {
-    const porGrupo = new Map<string, Combinacion>()
-    const sueltas: Combinacion[] = []
-    for (const arista of aristas) {
-      if (!arista.grupo) {
-        sueltas.push({ entradas: [arista.de], salidas: [arista.a], tipo: arista.tipo, via: arista.via })
-        continue
-      }
-      let combo = porGrupo.get(arista.grupo)
-      if (!combo) {
-        combo = { entradas: [], salidas: [], tipo: arista.tipo, via: arista.via }
-        porGrupo.set(arista.grupo, combo)
-      }
-      if (!combo.entradas.includes(arista.de)) combo.entradas.push(arista.de)
-      if (!combo.salidas.includes(arista.a)) combo.salidas.push(arista.a)
-    }
-    return [...porGrupo.values(), ...sueltas]
-  }, [aristas])
+  const combinaciones = useMemo(() => agruparCombinaciones(aristas), [aristas])
 
   // Componentes de un camino: parte de sus secuencias, avances y rituales, y
   // recorre todas las combinaciones hacia atrás. Si una receta tiene varios
@@ -209,155 +137,7 @@ export function ArbolConexiones({
       ? componentesCaminos.interseccion
       : componentesCaminos.union
 
-  // Posiciones: capa por camino más largo desde las fuentes (con tope por si
-  // los datos formaran un ciclo). Dentro de cada capa, varias pasadas de
-  // baricentro acercan cada nodo a sus vecinos para reducir cruces de líneas,
-  // y la coordenada vertical final se alinea con la media de sus entradas.
-  const disposicion = useMemo(() => {
-    const profundidad = new Map<string, number>(nodos.map((n) => [n.id, 0]))
-    const clasePorId = new Map(nodos.map((n) => [n.id, n.clase]))
-    // Los rituales son puertas sobre un avance, no productores: sus aristas de
-    // salida no empujan la profundidad y después se anclan junto a su avance.
-    const aristasDeCapa = aristas.filter((a) => clasePorId.get(a.de) !== 'ritual')
-    for (let pasada = 0; pasada < 60; pasada++) {
-      let cambio = false
-      for (const arista of aristasDeCapa) {
-        const desde = profundidad.get(arista.de)
-        const hasta = profundidad.get(arista.a)
-        if (desde === undefined || hasta === undefined) continue
-        const candidata = desde + 1
-        if (candidata > hasta && candidata < 40) {
-          profundidad.set(arista.a, candidata)
-          cambio = true
-        }
-      }
-      if (!cambio) break
-    }
-    for (const arista of aristas) {
-      if (clasePorId.get(arista.de) === 'ritual' && clasePorId.get(arista.a) === 'avance') {
-        profundidad.set(arista.de, profundidad.get(arista.a) ?? 0)
-      }
-    }
-
-    const anteriores = new Map<string, string[]>()
-    const siguientes = new Map<string, string[]>()
-    for (const arista of aristas) {
-      if (!porId.has(arista.de) || !porId.has(arista.a)) continue
-      anteriores.set(arista.a, [...(anteriores.get(arista.a) ?? []), arista.de])
-      siguientes.set(arista.de, [...(siguientes.get(arista.de) ?? []), arista.a])
-    }
-
-    const ordenClase: Record<NodoArbol['clase'], number> = {
-      secuencia: 0,
-      avance: 1,
-      ritual: 2,
-      elemento: 3,
-    }
-    const columnas = new Map<number, NodoArbol[]>()
-    for (const nodo of nodos) {
-      const capa = profundidad.get(nodo.id) ?? 0
-      const lista = columnas.get(capa) ?? []
-      lista.push(nodo)
-      columnas.set(capa, lista)
-    }
-    const capasOrdenadas = [...columnas.keys()].sort((a, b) => a - b)
-    const fila = new Map<string, number>()
-    for (const capa of capasOrdenadas) {
-      const lista = columnas.get(capa)!
-      // Semilla: agrupar por camino y clase mantiene las ramas juntas.
-      lista.sort(
-        (a, b) =>
-          (a.caminoIndex ?? 99) - (b.caminoIndex ?? 99) ||
-          ordenClase[a.clase] - ordenClase[b.clase] ||
-          a.nombre.localeCompare(b.nombre, 'es'),
-      )
-      lista.forEach((nodo, indice) => fila.set(nodo.id, indice))
-    }
-
-    const ordenarPorVecinos = (lista: NodoArbol[], vecindario: Map<string, string[]>) => {
-      const clave = new Map<string, number>()
-      for (const nodo of lista) {
-        const filasVecinas = (vecindario.get(nodo.id) ?? [])
-          .map((id) => fila.get(id))
-          .filter((f): f is number => f !== undefined)
-        clave.set(
-          nodo.id,
-          filasVecinas.length
-            ? filasVecinas.reduce((suma, f) => suma + f, 0) / filasVecinas.length
-            : fila.get(nodo.id)!,
-        )
-      }
-      lista.sort((a, b) => clave.get(a.id)! - clave.get(b.id)! || fila.get(a.id)! - fila.get(b.id)!)
-      lista.forEach((nodo, indice) => fila.set(nodo.id, indice))
-    }
-    for (let pasada = 0; pasada < 4; pasada++) {
-      for (const capa of capasOrdenadas) ordenarPorVecinos(columnas.get(capa)!, anteriores)
-      for (const capa of [...capasOrdenadas].reverse()) ordenarPorVecinos(columnas.get(capa)!, siguientes)
-    }
-
-    const posiciones = new Map<string, { x: number; y: number }>()
-    const desplazarColumna = (lista: NodoArbol[], residuos: number[]) => {
-      if (residuos.length === 0) return
-      const delta = residuos.reduce((suma, r) => suma + r, 0) / residuos.length
-      for (const nodo of lista) {
-        const pos = posiciones.get(nodo.id)!
-        posiciones.set(nodo.id, { x: pos.x, y: pos.y + delta })
-      }
-    }
-    for (const capa of capasOrdenadas) {
-      const lista = columnas.get(capa)!
-      let yPrevia = -Infinity
-      const residuos: number[] = []
-      for (const nodo of lista) {
-        const ysEntrantes = (anteriores.get(nodo.id) ?? [])
-          .map((id) => posiciones.get(id)?.y)
-          .filter((y): y is number => y !== undefined)
-        const deseada = ysEntrantes.length
-          ? ysEntrantes.reduce((suma, y) => suma + y, 0) / ysEntrantes.length
-          : fila.get(nodo.id)! * PASO_Y
-        const y = Math.max(deseada, yPrevia + PASO_Y)
-        if (ysEntrantes.length) residuos.push(deseada - y)
-        posiciones.set(nodo.id, { x: capa * PASO_X, y })
-        yPrevia = y
-      }
-      // La resolución de colisiones solo empuja hacia abajo; recentrar la
-      // columna hacia sus entradas evita que el mapa derive en diagonal.
-      desplazarColumna(lista, residuos)
-    }
-    for (const capa of [...capasOrdenadas].reverse()) {
-      const lista = columnas.get(capa)!
-      const residuos: number[] = []
-      for (const nodo of lista) {
-        const ysSalientes = (siguientes.get(nodo.id) ?? [])
-          .map((id) => posiciones.get(id)?.y)
-          .filter((y): y is number => y !== undefined)
-        if (ysSalientes.length) {
-          const media = ysSalientes.reduce((suma, y) => suma + y, 0) / ysSalientes.length
-          residuos.push(media - posiciones.get(nodo.id)!.y)
-        }
-      }
-      desplazarColumna(lista, residuos)
-    }
-    let minY = Infinity
-    let maxY = -Infinity
-    for (const { y } of posiciones.values()) {
-      minY = Math.min(minY, y)
-      maxY = Math.max(maxY, y)
-    }
-    if (!Number.isFinite(minY)) {
-      minY = 0
-      maxY = 0
-    }
-    for (const [id, pos] of posiciones) {
-      posiciones.set(id, { x: pos.x, y: pos.y - minY })
-    }
-    const capas = (capasOrdenadas[capasOrdenadas.length - 1] ?? 0) + 1
-    return {
-      posiciones,
-      ancho: capas * PASO_X + NODO_W,
-      alto: maxY - minY + NODO_H,
-    }
-  }, [nodos, aristas, porId])
+  const disposicion = useMemo(() => calcularDisposicion(nodos, aristas), [nodos, aristas])
 
   // Vista aislada opcional: solo el nodo fijado con sus dependencias a la
   // izquierda y sus resultados a la derecha.
@@ -385,29 +165,29 @@ export function ArbolConexiones({
     }
   }, [seleccion, aislado, disposicion, aristas])
 
-  const cancelarCierreRevelado = () => {
+  const cancelarCierreRevelado = useCallback(() => {
     if (temporizadorRevelado.current !== null) {
       clearTimeout(temporizadorRevelado.current)
       temporizadorRevelado.current = null
     }
-  }
-  const abrirRevelado = (id: string) => {
+  }, [])
+  const abrirRevelado = useCallback((id: string) => {
     cancelarCierreRevelado()
     setReveladoDe(id)
-  }
-  const soltarRevelado = () => {
+  }, [cancelarCierreRevelado])
+  const soltarRevelado = useCallback(() => {
     cancelarCierreRevelado()
     temporizadorRevelado.current = setTimeout(() => setReveladoDe(null), 350)
-  }
+  }, [cancelarCierreRevelado])
 
-  useEffect(() => () => cancelarCierreRevelado(), [])
+  useEffect(() => () => cancelarCierreRevelado(), [cancelarCierreRevelado])
 
   // Cambiar de nodo aislado (o salir del modo) descarta el revelado actual.
   useEffect(() => {
     cancelarCierreRevelado()
     setReveladoDe(null)
     setFantasmaHover(null)
-  }, [seleccion, aislado])
+  }, [seleccion, aislado, cancelarCierreRevelado])
 
   // En la vista aislada, señalar un vecino revela temporalmente sus propias
   // conexiones que no están en pantalla: un adelanto antes de navegar a él.
@@ -534,40 +314,47 @@ export function ArbolConexiones({
     : disposicionActiva
 
   const consulta = busqueda.trim().toLowerCase()
-  const focoId = seleccion ?? hover
-  const nodoVisible = (id: string): boolean => {
-    const perteneceAlCamino = nodosCaminosSeleccionados?.has(id) ?? false
+
+  // Conjunto de nodos resaltados según el foco activo (selección > hover >
+  // búsqueda > caminos). `null` significa «sin foco»: todo a opacidad plena.
+  const conjuntoResaltado = useMemo(() => {
+    const caminoSet = nodosCaminosSeleccionados
     if (seleccion) {
-      return perteneceAlCamino || (ramaDependienteSeleccionada?.has(id) ?? false)
+      const conjunto = new Set(ramaDependienteSeleccionada ?? [])
+      if (caminoSet) for (const id of caminoSet) conjunto.add(id)
+      return conjunto
     }
     if (hover) {
-      return perteneceAlCamino || id === hover || (vecinos.get(hover)?.has(id) ?? false)
+      const conjunto = new Set<string>([hover])
+      for (const id of vecinos.get(hover) ?? []) conjunto.add(id)
+      if (caminoSet) for (const id of caminoSet) conjunto.add(id)
+      return conjunto
     }
     if (consulta) {
-      const nodo = porId.get(id)
-      const coincide = nodo ? nodo.nombre.toLowerCase().includes(consulta) : false
-      return coincide && (nodosCaminosSeleccionados === null || perteneceAlCamino)
+      const conjunto = new Set<string>()
+      for (const nodo of nodos) {
+        if (!nodo.nombre.toLowerCase().includes(consulta)) continue
+        if (caminoSet && !caminoSet.has(nodo.id)) continue
+        conjunto.add(nodo.id)
+      }
+      return conjunto
     }
-    if (nodosCaminosSeleccionados) return perteneceAlCamino
-    return true
-  }
-  const comboVisible = (combo: Combinacion): boolean => {
-    const participantes = [...combo.entradas, ...combo.salidas]
-    const perteneceAlCamino =
+    if (caminoSet) return caminoSet
+    return null
+  }, [seleccion, hover, consulta, nodosCaminosSeleccionados, ramaDependienteSeleccionada, vecinos, nodos])
+
+  const hayResaltado = conjuntoResaltado !== null
+
+  const comboResaltado = (participantes: string[], conectaRama: boolean): boolean => {
+    const pertenece =
       nodosCaminosSeleccionados !== null &&
       participantes.every((id) => nodosCaminosSeleccionados.has(id))
-    if (seleccion) {
-      const perteneceALaRama =
-        combo.entradas.some((id) => ramaDependienteSeleccionada?.has(id)) &&
-        combo.salidas.some((id) => ramaDependienteSeleccionada?.has(id))
-      return perteneceAlCamino || perteneceALaRama
-    }
-    if (hover) return perteneceAlCamino || participantes.includes(hover)
-    if (consulta) return participantes.some((id) => nodoVisible(id))
-    if (nodosCaminosSeleccionados) return perteneceAlCamino
-    return true
+    if (seleccion) return pertenece || conectaRama
+    if (hover) return pertenece || participantes.includes(hover)
+    if (consulta) return participantes.some((id) => conjuntoResaltado?.has(id) ?? false)
+    if (nodosCaminosSeleccionados) return pertenece
+    return false
   }
-  const hayResaltado = focoId !== null || consulta.length > 0 || nodosCaminosSeleccionados !== null
 
   const resultadosBusqueda = useMemo(() => {
     if (!consulta) return []
@@ -576,29 +363,6 @@ export function ArbolConexiones({
       .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
       .slice(0, 8)
   }, [consulta, nodos])
-
-  // Zoom con rueda anclado al cursor; React registra wheel como pasivo, así
-  // que el listener se instala a mano para poder llamar a preventDefault.
-  useEffect(() => {
-    const contenedor = contenedorRef.current
-    if (!contenedor) return
-    const alRodar = (e: WheelEvent) => {
-      e.preventDefault()
-      const caja = contenedor.getBoundingClientRect()
-      const cx = e.clientX - caja.left
-      const cy = e.clientY - caja.top
-      setVista((v) => {
-        const k = Math.min(2.5, Math.max(0.2, v.k * Math.exp(-e.deltaY * 0.0012)))
-        return {
-          k,
-          x: cx - ((cx - v.x) * k) / v.k,
-          y: cy - ((cy - v.y) * k) / v.k,
-        }
-      })
-    }
-    contenedor.addEventListener('wheel', alRodar, { passive: false })
-    return () => contenedor.removeEventListener('wheel', alRodar)
-  }, [])
 
   useEffect(() => {
     const alCambiarPantalla = () => setPantallaCompleta(document.fullscreenElement === raizRef.current)
@@ -621,7 +385,7 @@ export function ArbolConexiones({
   // Encuadre inicial: que el grafo entre a lo ancho del contenedor.
   const encuadrar = () => {
     const contenedor = contenedorRef.current
-    if (!contenedor) return
+    if (!contenedor || contenedor.clientWidth === 0) return
     // El panel de detalle tapa el borde derecho; se descuenta del encuadre.
     const anchoUtil = contenedor.clientWidth - (seleccion ? 320 : 0)
     const espacioVertical = contenedor.clientHeight - 64
@@ -631,16 +395,17 @@ export function ArbolConexiones({
       (espacioVertical - MARGEN * 2) / disposicionMostrada.alto,
     )
     const k = Math.max(ramaAislada ? 0.55 : 0.2, kCalculada)
-    setVista({
+    fijarVista({
       x: Math.max(MARGEN, (anchoUtil - disposicionMostrada.ancho * k) / 2),
       y: 60 + Math.max(MARGEN, (espacioVertical - disposicionMostrada.alto * k) / 2),
       k,
-    })
+    }, true)
   }
 
   const encuadrarNodos = (ids: Set<string>) => {
     const contenedor = contenedorRef.current
-    if (!contenedor || ids.size === 0) return encuadrar()
+    if (!contenedor || contenedor.clientWidth === 0) return
+    if (ids.size === 0) return encuadrar()
     const posiciones = [...ids]
       .map((id) => disposicionMostrada.posiciones.get(id))
       .filter((pos): pos is { x: number; y: number } => pos !== undefined)
@@ -660,11 +425,11 @@ export function ArbolConexiones({
       (espacioVertical - MARGEN * 2) / alto,
     )
     const k = Math.max(ramaAislada ? 0.55 : 0.2, kCalculada)
-    setVista({
+    fijarVista({
       x: (anchoUtil - ancho * k) / 2 - minX * k,
       y: 60 + (espacioVertical - alto * k) / 2 - minY * k,
       k,
-    })
+    }, true)
   }
 
   const alternarCamino = (index: number) => {
@@ -722,23 +487,52 @@ export function ArbolConexiones({
     else await raizRef.current?.requestFullscreen()
   }
 
-  const iniciarPan = (e: React.PointerEvent) => {
-    arrastreRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId, movio: false }
-    ;(e.target as Element).setPointerCapture?.(e.pointerId)
-  }
-  const moverPan = (e: React.PointerEvent) => {
-    const inicio = arrastreRef.current
-    if (!inicio || inicio.pointerId !== e.pointerId) return
-    setVista((v) => ({ ...v, x: v.x + e.clientX - inicio.x, y: v.y + e.clientY - inicio.y }))
-    arrastreRef.current = { ...inicio, x: e.clientX, y: e.clientY, movio: true }
-  }
-  const finalizarPan = () => {
-    arrastreRef.current = null
-  }
+  // Manejadores estables para los nodos memoizados: leen el id del dataset,
+  // así todos los nodos comparten las mismas referencias.
+  const alEntrarNodo = useCallback(
+    (e: React.PointerEvent<SVGGElement>) => {
+      const id = e.currentTarget.dataset.id
+      if (!id) return
+      setHover(id)
+      if (aislado) abrirRevelado(id)
+    },
+    [aislado, abrirRevelado],
+  )
+  const alSalirNodo = useCallback(
+    () => {
+      setHover(null)
+      if (aislado) soltarRevelado()
+    },
+    [aislado, soltarRevelado],
+  )
+  const alClickNodo = useCallback((e: React.MouseEvent<SVGGElement>) => {
+    e.stopPropagation()
+    // El segundo clic de un doble clic no debe alternar la selección.
+    if (e.detail > 1) return
+    const id = e.currentTarget.dataset.id
+    if (!id) return
+    setSeleccion((previa) => (previa === id ? null : id))
+  }, [])
+  const alDobleClickNodo = useCallback((e: React.MouseEvent<SVGGElement>) => {
+    e.stopPropagation()
+    const id = e.currentTarget.dataset.id
+    if (!id) return
+    setSeleccion(id)
+    setAislado(true)
+    setRamaAislada(false)
+  }, [])
 
   const nodoSeleccionado = seleccion ? (porId.get(seleccion) ?? null) : null
-  const entradas = seleccion ? aristas.filter((a) => a.a === seleccion) : []
-  const salidas = seleccion ? aristas.filter((a) => a.de === seleccion) : []
+  const entradas = seleccion
+    ? aristas
+        .filter((a) => a.a === seleccion)
+        .sort((a, b) => ORDEN_PANEL[a.tipo] - ORDEN_PANEL[b.tipo])
+    : []
+  const salidas = seleccion
+    ? aristas
+        .filter((a) => a.de === seleccion)
+        .sort((a, b) => ORDEN_PANEL[a.tipo] - ORDEN_PANEL[b.tipo])
+    : []
   const dependientesSeleccionados = seleccion
     ? [...(dependientesDirectos.get(seleccion) ?? [])]
     : []
@@ -756,6 +550,8 @@ export function ArbolConexiones({
       </button>
     </li>
   )
+
+  const filtroRama = ramaAislada ? ramaDependienteSeleccionada : null
 
   return (
     <div ref={raizRef} className={pantallaCompleta ? 'overflow-auto bg-ink p-4' : ''}>
@@ -823,7 +619,7 @@ export function ArbolConexiones({
             type="button"
             className="btn-ghost px-3 py-1"
             aria-label="Acercar"
-            onClick={() => setVista((v) => ({ ...v, k: Math.min(2.5, v.k * 1.25) }))}
+            onClick={() => zoomEscalonado(1.25)}
           >
             +
           </button>
@@ -831,7 +627,7 @@ export function ArbolConexiones({
             type="button"
             className="btn-ghost px-3 py-1"
             aria-label="Alejar"
-            onClick={() => setVista((v) => ({ ...v, k: Math.max(0.2, v.k / 1.25) }))}
+            onClick={() => zoomEscalonado(1 / 1.25)}
           >
             −
           </button>
@@ -884,7 +680,7 @@ export function ArbolConexiones({
           <span aria-hidden className="inline-block h-3 w-3 rounded-full border border-line2" />
           Sin camino
         </span>
-        <span className="text-parchment/70">○ elemento · ◎ secuencia · ◇ avance · ⬡ ritual · ★ inicial</span>
+        <span className="text-parchment/70">○ elemento · ◎ secuencia · ◇ avance · ⬡ ritual · ★ inicial · ● espontáneo</span>
         {caminosSeleccionados.length >= 2 && (
           <span className="font-semibold" style={{ color: COLOR_INTERSECCION }}>
             ∩ compartido por todos los caminos seleccionados
@@ -892,8 +688,32 @@ export function ArbolConexiones({
         )}
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-fog">
+        <span className="flex items-center gap-1.5">
+          <MuestraArista color={COLOR_ARISTA_RECETA} />
+          Receta
+        </span>
+        <span className="flex items-center gap-1.5">
+          <MuestraArista color="#a2947a" grosor={2.4} />
+          Ascensión
+        </span>
+        <span className="flex items-center gap-1.5">
+          <MuestraArista color={COLOR_DESBLOQUEO} guiones="1 4" />
+          Desbloqueo espontáneo (basta uno)
+        </span>
+        <span className="flex items-center gap-1.5">
+          <MuestraArista color={COLOR_DESBLOQUEO} guiones="1 4" union />
+          Desbloqueo conjunto (todos)
+        </span>
+        <span className="flex items-center gap-1.5">
+          <MuestraArista color={COLOR_FALLO} guiones="5 3" />
+          Fallo de ritual
+        </span>
+      </div>
+
       <div
         ref={contenedorRef}
+        data-foco={hayResaltado ? '' : undefined}
         className={`relative touch-none overflow-hidden rounded-2xl border bg-[#090c12] transition-[border-color,box-shadow] duration-300 ${
           ramaAislada
             ? 'border-[#77c7e8]/50 shadow-[inset_0_0_100px_rgba(35,92,126,0.18),0_20px_70px_-30px_rgba(90,178,225,0.35)]'
@@ -936,85 +756,47 @@ export function ArbolConexiones({
         </div>
         <svg
           role="img"
-          aria-label="Grafo de conexiones entre elementos, recetas, avances y caminos"
+          aria-label="Grafo de conexiones entre elementos, recetas, avances, rituales y desbloqueos"
           className="h-full w-full cursor-grab active:cursor-grabbing"
           onPointerDown={iniciarPan}
           onPointerMove={moverPan}
           onPointerUp={() => {
-            const arrastro = arrastreRef.current?.movio
-            finalizarPan()
-            if (!arrastro) setSeleccion(null)
+            if (!terminarPan()) setSeleccion(null)
           }}
-          onPointerCancel={finalizarPan}
+          onPointerCancel={terminarPan}
         >
-          <defs>
-            <pattern id="skill-grid" width="44" height="44" patternUnits="userSpaceOnUse">
-              <path d="M 44 0 L 0 0 0 44" fill="none" stroke="#57492f" strokeWidth="0.45" opacity="0.2" />
-              <circle cx="0" cy="0" r="1" fill="#c9a35c" opacity="0.25" />
-            </pattern>
-            <radialGradient id="skill-node" cx="35%" cy="25%" r="75%">
-              <stop offset="0" stopColor="#302819" />
-              <stop offset="0.55" stopColor="#191711" />
-              <stop offset="1" stopColor="#090b0e" />
-            </radialGradient>
-            <radialGradient id="branch-background" cx="45%" cy="42%" r="72%">
-              <stop offset="0" stopColor="#122b3b" />
-              <stop offset="0.48" stopColor="#0b1722" />
-              <stop offset="1" stopColor="#070a10" />
-            </radialGradient>
-            <filter id="skill-glow" x="-80%" y="-80%" width="260%" height="260%">
-              <feGaussianBlur stdDeviation="5" result="blur" />
-              <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-            </filter>
-            <filter id="line-glow" x="-20%" y="-100%" width="140%" height="300%">
-              <feGaussianBlur stdDeviation="2" result="blur" />
-              <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-            </filter>
-          </defs>
+          <DefsArbol />
           <rect width="100%" height="100%" fill={ramaAislada ? 'url(#branch-background)' : '#090c12'} />
-          <rect width="100%" height="100%" fill="url(#skill-grid)" opacity={ramaAislada ? 0.65 : 1} />
-          <g transform={`translate(${vista.x} ${vista.y}) scale(${vista.k})`}>
+          <g ref={escenaRef} style={{ transformOrigin: '0 0', transform: 'translate(40px, 40px)' }}>
+            {/* La retícula viaja y escala con la escena: se siente un mapa físico. */}
+            <rect
+              x={-4400}
+              y={-4400}
+              width={disposicionMostrada.ancho + 8800}
+              height={disposicionMostrada.alto + 8800}
+              fill="url(#skill-grid)"
+              opacity={ramaAislada ? 0.65 : 1}
+              pointerEvents="none"
+            />
             {combinaciones.map((combo, indiceCombo) => {
-              const participantesCombo = [...combo.entradas, ...combo.salidas]
+              const participantes = [...combo.entradas, ...combo.salidas]
               if (
                 mostrandoSoloInterseccion &&
-                !participantesCombo.every((id) => componentesCaminos.interseccion.has(id))
+                !participantes.every((id) => componentesCaminos.interseccion.has(id))
               ) return null
-              const conectaRamaDependiente =
+              const conectaRama =
                 combo.entradas.some((id) => ramaDependienteSeleccionada?.has(id)) &&
                 combo.salidas.some((id) => ramaDependienteSeleccionada?.has(id))
-              if (ramaAislada && !conectaRamaDependiente) return null
-              const posiciones = disposicionMostrada.posiciones
-              const entradasPos = combo.entradas
-                .map((id) => ({ id, pos: posiciones.get(id) }))
-                .filter(
-                  (p): p is { id: string; pos: { x: number; y: number } } =>
-                    !!p.pos && (!ramaAislada || ramaDependienteSeleccionada?.has(p.id) === true),
-                )
-              const salidasPos = combo.salidas
-                .map((id) => ({ id, pos: posiciones.get(id) }))
-                .filter(
-                  (p): p is { id: string; pos: { x: number; y: number } } =>
-                    !!p.pos && (!ramaAislada || ramaDependienteSeleccionada?.has(p.id) === true),
-                )
-              if (entradasPos.length === 0 || salidasPos.length === 0) return null
+              if (ramaAislada && !conectaRama) return null
 
-              const visible = comboVisible(combo)
-              const nodoCamino =
-                combo.tipo === 'receta'
-                  ? null
-                  : (porId.get(
-                      combo.tipo === 'ascension' || combo.tipo === 'requisito'
-                        ? combo.entradas[0]
-                        : combo.salidas[0],
-                    ) ?? null)
+              const resaltado = comboResaltado(participantes, conectaRama)
               const caminosDelCombo = caminosSeleccionados.filter((index) =>
-                participantesCombo.every((id) => componentesCaminos.porCamino.get(index)?.has(id)),
+                participantes.every((id) => componentesCaminos.porCamino.get(index)?.has(id)),
               )
               const esInterseccionCombo =
                 caminosSeleccionados.length >= 2 &&
                 caminosSeleccionados.every((index) => caminosDelCombo.includes(index))
-              const esDependenciaSeleccionada = seleccion !== null && conectaRamaDependiente
+              const esDependenciaSeleccionada = seleccion !== null && conectaRama
               const nivelDependencia = Math.min(
                 ...combo.salidas
                   .map((id) => profundidadRamaSeleccionada.get(id))
@@ -1023,99 +805,40 @@ export function ArbolConexiones({
               const colorSeleccionado = esInterseccionCombo
                 ? COLOR_INTERSECCION
                 : colorDeCamino(caminosDelCombo[0] ?? null)
-              const color =
-                esDependenciaSeleccionada
-                  ? colorDeNivelDependencia(Number.isFinite(nivelDependencia) ? nivelDependencia : 1)
-                  : caminosDelCombo.length > 0 && visible && colorSeleccionado
-                  ? colorSeleccionado
-                  : combo.tipo === 'receta'
-                    ? COLOR_ARISTA_RECETA
-                    : (colorDeCamino(nodoCamino?.caminoIndex ?? null) ?? COLOR_ARISTA_RECETA)
-              const grosorBase =
-                combo.tipo === 'ascension' ? 2.2 : combo.tipo === 'receta' ? 1.1 : combo.tipo === 'ritual' ? 1.8 : 1.5
-              const grosor = grosorBase + (esDependenciaSeleccionada ? 0.8 : 0)
-              const guiones =
-                combo.tipo === 'creacion' ? '6 4' : combo.tipo === 'requisito' || combo.tipo === 'ritual' ? '2 4' : undefined
-              const titulo = `${ETIQUETA_ARISTA[combo.tipo]}: ${combo.via}`
-
-              const salidasDe = (x1: number, y1: number) =>
-                salidasPos.map(({ pos }, i) => {
-                  const x2 = pos.x + CENTRO_X - RADIO
-                  const y2 = pos.y + CENTRO_Y
-                  return (
-                    <g key={`s${i}`}>
-                      <path d={curva(x1, y1, x2, y2)} fill="none" stroke="#050608" strokeWidth={grosor + 5} strokeLinecap="round" />
-                      <path
-                        d={curva(x1, y1, x2, y2)}
-                        fill="none"
-                        stroke={color}
-                        strokeWidth={grosor}
-                        strokeDasharray={guiones}
-                        strokeLinecap="round"
-                        filter={visible && hayResaltado ? 'url(#line-glow)' : undefined}
-                      />
-                      <path
-                        d={`M ${x2 - 7} ${y2 - 4.5} L ${x2 - 0.5} ${y2} L ${x2 - 7} ${y2 + 4.5}`}
-                        fill="none"
-                        stroke={color}
-                        strokeWidth={grosor + 0.5}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </g>
-                  )
-                })
-
-              if (entradasPos.length <= 1) {
-                const { pos } = entradasPos[0]
-                const x1 = pos.x + CENTRO_X + RADIO
-                const y1 = pos.y + CENTRO_Y
-                return (
-                  <g key={indiceCombo} opacity={visible ? (hayResaltado ? 1 : 0.58) : 0.05}>
-                    {salidasDe(x1, y1)}
-                    <title>{titulo}</title>
-                  </g>
+              let color: string
+              if (esDependenciaSeleccionada) {
+                color = colorDeNivelDependencia(Number.isFinite(nivelDependencia) ? nivelDependencia : 1)
+              } else if (caminosDelCombo.length > 0 && resaltado && colorSeleccionado) {
+                color = colorSeleccionado
+              } else if (combo.tipo === 'receta') {
+                color = COLOR_ARISTA_RECETA
+              } else if (combo.tipo === 'desbloqueo' || combo.tipo === 'requisito-conjunto') {
+                color = COLOR_DESBLOQUEO
+              } else if (combo.tipo === 'fallo') {
+                color = COLOR_FALLO
+              } else {
+                const nodoCamino = porId.get(
+                  combo.tipo === 'ascension' || combo.tipo === 'requisito'
+                    ? combo.entradas[0]
+                    : combo.salidas[0],
                 )
+                color = colorDeCamino(nodoCamino?.caminoIndex ?? null) ?? COLOR_ARISTA_RECETA
               }
+              const estilo = ESTILO_ARISTA[combo.tipo]
+              const grosor = estilo.grosor + (esDependenciaSeleccionada ? 0.8 : 0)
 
-              // Punto de unión: los ingredientes convergen antes del resultado.
-              const maxSalidaEntrada = Math.max(...entradasPos.map(({ pos }) => pos.x + CENTRO_X + RADIO))
-              const minEntradaSalida = Math.min(...salidasPos.map(({ pos }) => pos.x + CENTRO_X - RADIO))
-              const todasY = [...entradasPos, ...salidasPos].map(({ pos }) => pos.y + CENTRO_Y)
-              const jx = (maxSalidaEntrada + minEntradaSalida) / 2
-              const jy = todasY.reduce((suma, y) => suma + y, 0) / todasY.length
               return (
-                <g key={indiceCombo} opacity={visible ? (hayResaltado ? 1 : 0.58) : 0.05}>
-                  {entradasPos.map(({ pos }, i) => {
-                    const x1 = pos.x + CENTRO_X + RADIO
-                    const y1 = pos.y + CENTRO_Y
-                    return (
-                      <g key={`e${i}`}>
-                        <path d={curva(x1, y1, jx, jy)} fill="none" stroke="#050608" strokeWidth={grosor + 5} strokeLinecap="round" />
-                        <path
-                          d={curva(x1, y1, jx, jy)}
-                          fill="none"
-                          stroke={color}
-                          strokeWidth={grosor}
-                          strokeDasharray={guiones}
-                          strokeLinecap="round"
-                          filter={visible && hayResaltado ? 'url(#line-glow)' : undefined}
-                        />
-                      </g>
-                    )
-                  })}
-                  {salidasDe(jx, jy)}
-                  <circle
-                    cx={jx}
-                    cy={jy}
-                    r={4}
-                    fill={color}
-                    stroke="#050608"
-                    strokeWidth={1.5}
-                    filter={visible && hayResaltado ? 'url(#skill-glow)' : undefined}
-                  />
-                  <title>{titulo}</title>
-                </g>
+                <ComboLinea
+                  key={indiceCombo}
+                  combo={combo}
+                  posiciones={disposicionMostrada.posiciones}
+                  filtroRama={filtroRama}
+                  color={color}
+                  grosor={grosor}
+                  guiones={estilo.guiones}
+                  resaltado={resaltado}
+                  titulo={`${ETIQUETA_ARISTA[combo.tipo]}: ${combo.via}`}
+                />
               )
             })}
 
@@ -1126,7 +849,6 @@ export function ArbolConexiones({
               if (ramaAislada && !ramaDependienteSeleccionada?.has(nodo.id)) return null
               const pos = disposicionMostrada.posiciones.get(nodo.id)
               if (!pos) return null
-              const color = colorDeCamino(nodo.caminoIndex)
               const caminosDelNodo = componentesCaminos.porNodo.get(nodo.id) ?? []
               const resaltadoCamino = caminosDelNodo.length > 0
               const esInterseccion = componentesCaminos.interseccion.has(nodo.id)
@@ -1143,210 +865,34 @@ export function ArbolConexiones({
                   ? COLOR_INTERSECCION
                   : resaltadoCamino
                     ? colorDeCamino(caminosDelNodo[0])
-                    : color) ?? COLOR_NEUTRO
-              const visible = nodoVisible(nodo.id)
+                    : colorDeCamino(nodo.caminoIndex)) ?? COLOR_NEUTRO
+              const esFoco = hover === nodo.id || seleccion === nodo.id
+              const halo = esFoco
+                ? ('foco' as const)
+                : esDependienteSeleccionado
+                  ? ('dependiente' as const)
+                  : resaltadoCamino
+                    ? ('camino' as const)
+                    : null
+
               return (
-                <g
+                <NodoItem
                   key={nodo.id}
-                  transform={`translate(${pos.x} ${pos.y})`}
-                  opacity={visible ? (nodo.activo ? 1 : 0.55) : 0.08}
-                  className="cursor-pointer"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  // Sin esto, el pointerup llega al fondo del SVG y deselecciona
-                  // un instante, lo que sacaría del modo aislado al navegar.
-                  onPointerUp={(e) => e.stopPropagation()}
-                  onPointerEnter={() => {
-                    setHover(nodo.id)
-                    if (aislado) abrirRevelado(nodo.id)
-                  }}
-                  onPointerLeave={() => {
-                    setHover(null)
-                    if (aislado) soltarRevelado()
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    // El segundo clic de un doble clic no debe alternar la selección.
-                    if (e.detail > 1) return
-                    if (seleccion === nodo.id) setSeleccion(null)
-                    else seleccionar(nodo.id)
-                  }}
-                  onDoubleClick={(e) => {
-                    e.stopPropagation()
-                    seleccionar(nodo.id)
-                    setAislado(true)
-                    setRamaAislada(false)
-                  }}
-                >
-                  {esRaizDependencia && (
-                    <g pointerEvents="none">
-                      <circle
-                        cx={CENTRO_X}
-                        cy={CENTRO_Y}
-                        r={44}
-                        fill="none"
-                        stroke={COLOR_RAIZ_DEPENDENCIA}
-                        strokeWidth={7}
-                        opacity={0.1}
-                        filter="url(#skill-glow)"
-                      />
-                      <circle
-                        cx={CENTRO_X}
-                        cy={CENTRO_Y}
-                        r={41}
-                        fill="none"
-                        stroke={COLOR_RAIZ_DEPENDENCIA}
-                        strokeWidth={1.5}
-                        strokeDasharray="3 6"
-                        opacity={0.9}
-                      />
-                    </g>
-                  )}
-                  {(seleccion === nodo.id || hover === nodo.id || resaltadoCamino || esDependienteSeleccionado) && (
-                    <circle
-                      cx={CENTRO_X}
-                      cy={CENTRO_Y}
-                      r={39}
-                      fill={borde}
-                      opacity={seleccion === nodo.id || hover === nodo.id ? 0.22 : esDependienteSeleccionado ? 0.18 : 0.12}
-                      filter="url(#skill-glow)"
-                    />
-                  )}
-                  {nodo.clase === 'avance' ? (
-                    <path
-                      d={`M ${CENTRO_X} ${CENTRO_Y - 33} L ${CENTRO_X + 33} ${CENTRO_Y} L ${CENTRO_X} ${CENTRO_Y + 33} L ${CENTRO_X - 33} ${CENTRO_Y} Z`}
-                      fill="url(#skill-node)"
-                      stroke={seleccion === nodo.id ? '#e9dcbe' : borde}
-                      strokeWidth={seleccion === nodo.id || resaltadoCamino || esDependienteSeleccionado ? 3 : 2}
-                    />
-                  ) : nodo.clase === 'ritual' ? (
-                    <path
-                      d={`M ${CENTRO_X - 27} ${CENTRO_Y - 20} L ${CENTRO_X} ${CENTRO_Y - 35} L ${CENTRO_X + 27} ${CENTRO_Y - 20} L ${CENTRO_X + 27} ${CENTRO_Y + 20} L ${CENTRO_X} ${CENTRO_Y + 35} L ${CENTRO_X - 27} ${CENTRO_Y + 20} Z`}
-                      fill="url(#skill-node)"
-                      stroke={seleccion === nodo.id ? '#e9dcbe' : borde}
-                      strokeWidth={seleccion === nodo.id || resaltadoCamino || esDependienteSeleccionado ? 3 : 2}
-                      strokeDasharray="3 3"
-                    />
-                  ) : (
-                    <>
-                      {nodo.clase === 'secuencia' && (
-                        <circle
-                          cx={CENTRO_X}
-                          cy={CENTRO_Y}
-                          r={35}
-                          fill="none"
-                          stroke={borde}
-                          strokeWidth={2}
-                          opacity={0.65}
-                        />
-                      )}
-                      <circle
-                        cx={CENTRO_X}
-                        cy={CENTRO_Y}
-                        r={nodo.clase === 'secuencia' ? 29 : RADIO}
-                        fill="url(#skill-node)"
-                        stroke={seleccion === nodo.id ? '#e9dcbe' : borde}
-                        strokeWidth={nodo.clase === 'secuencia' || seleccion === nodo.id || resaltadoCamino || esDependienteSeleccionado ? 3 : 2}
-                      />
-                    </>
-                  )}
-                  <circle cx={CENTRO_X} cy={CENTRO_Y} r={21} fill="none" stroke={borde} strokeWidth={0.7} opacity={0.45} />
-                  <text
-                    x={CENTRO_X}
-                    y={CENTRO_Y + 6}
-                    fill="#e9dcbe"
-                    fontSize={nodo.clase === 'secuencia' ? 18 : 17}
-                    fontWeight="600"
-                    textAnchor="middle"
-                    style={{ userSelect: 'none', fontFamily: 'var(--font-display)' }}
-                  >
-                    {glifoNodo(nodo)}
-                  </text>
-                  {nodo.espontaneo && (
-                    <circle cx={CENTRO_X + 25} cy={CENTRO_Y - 23} r={4} fill="#e9dcbe" stroke={borde} strokeWidth={2} />
-                  )}
-                  {esDependienteSeleccionado && (
-                    <g aria-label={`Nivel ${nivelDependenciaNodo} de dependencia`}>
-                      <circle
-                        cx={CENTRO_X - 39}
-                        cy={CENTRO_Y}
-                        r={9}
-                        fill="#0b1119"
-                        stroke={borde}
-                        strokeWidth={1.5}
-                      />
-                      <text
-                        x={CENTRO_X - 39}
-                        y={CENTRO_Y + 3.5}
-                        fill={borde}
-                        fontSize={9}
-                        fontWeight="700"
-                        textAnchor="middle"
-                      >
-                        {nivelDependenciaNodo}
-                      </text>
-                    </g>
-                  )}
-                  {esInterseccion && (
-                    <g aria-label="Elemento compartido por los caminos seleccionados">
-                      <circle
-                        cx={CENTRO_X - 27}
-                        cy={CENTRO_Y - 25}
-                        r={9}
-                        fill="#111016"
-                        stroke={COLOR_INTERSECCION}
-                        strokeWidth={1.5}
-                      />
-                      <text
-                        x={CENTRO_X - 27}
-                        y={CENTRO_Y - 21.5}
-                        fill={COLOR_INTERSECCION}
-                        fontSize={11}
-                        fontWeight="700"
-                        textAnchor="middle"
-                      >
-                        ∩
-                      </text>
-                    </g>
-                  )}
-                  <text
-                    x={CENTRO_X}
-                    y={82}
-                    fill="#e9dcbe"
-                    fontSize={11.5}
-                    fontWeight="600"
-                    textAnchor="middle"
-                    style={{ userSelect: 'none' }}
-                  >
-                    {recortar(nodo.nombre, 19)}
-                  </text>
-                  <text
-                    x={CENTRO_X}
-                    y={98}
-                    fill={borde}
-                    fontSize={8.5}
-                    textAnchor="middle"
-                    letterSpacing="1.1"
-                    style={{ userSelect: 'none', textTransform: 'uppercase' }}
-                  >
-                    {nodo.activo
-                      ? nodo.clase === 'secuencia'
-                        ? `SECUENCIA ${nodo.secuencia}`
-                        : esDependienteSeleccionado
-                          ? `N${nivelDependenciaNodo} · ${nodo.tipo ?? nodo.clase}`
-                          : nodo.tipo ?? nodo.clase
-                      : 'INACTIVO'}
-                  </text>
-                  {nodo.inicial && nodo.clase !== 'elemento' && (
-                    <text x={CENTRO_X - 31} y={CENTRO_Y - 25} fill="#e9dcbe" fontSize={10}>★</text>
-                  )}
-                  <title>
-                    {`${nodo.nombre}${nodo.activo ? '' : ' (inactivo)'} — ${nodo.clase}` +
-                      (nodo.tipo ? ` · ${nodo.tipo}` : '') +
-                      (nodo.espontaneo ? ' · desbloqueo espontáneo' : '') +
-                      (esInterseccion ? ' · compartido por los caminos seleccionados' : '') +
-                      (esDependienteSeleccionado ? ' · depende directa o indirectamente de la selección' : '')}
-                  </title>
-                </g>
+                  nodo={nodo}
+                  x={pos.x}
+                  y={pos.y}
+                  borde={borde}
+                  resaltado={conjuntoResaltado?.has(nodo.id) ?? false}
+                  destacado={esRaizDependencia || resaltadoCamino || esDependienteSeleccionado}
+                  seleccionado={esRaizDependencia}
+                  halo={halo}
+                  nivelDependencia={esDependienteSeleccionado ? nivelDependenciaNodo : undefined}
+                  esInterseccion={esInterseccion}
+                  onEntrar={alEntrarNodo}
+                  onSalir={alSalirNodo}
+                  onClickNodo={alClickNodo}
+                  onDobleClick={alDobleClickNodo}
+                />
               )
             })}
 
@@ -1389,8 +935,8 @@ export function ArbolConexiones({
                       key={fantasma.id}
                       opacity={activo ? 1 : 0.85}
                       className="cursor-pointer"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onPointerUp={(e) => e.stopPropagation()}
+                      onPointerDown={detenerPuntero}
+                      onPointerUp={detenerPuntero}
                       onPointerEnter={() => {
                         // Mientras el puntero esté sobre un fantasma, el
                         // revelado no se cierra.
@@ -1446,7 +992,7 @@ export function ArbolConexiones({
                         textAnchor="middle"
                         style={{ userSelect: 'none', fontFamily: 'var(--font-display)' }}
                       >
-                        {glifoNodo(nodo)}
+                        {glifoTexto(nodo)}
                       </text>
                       <text
                         x={gx}
@@ -1497,9 +1043,18 @@ export function ArbolConexiones({
               {nodoSeleccionado.tipo ? ` · ${nodoSeleccionado.tipo}` : ''}
               {nodoSeleccionado.secuencia !== null ? ` · Secuencia ${nodoSeleccionado.secuencia}` : ''}
             </p>
-            {nodoSeleccionado.espontaneo && (
-              <p className="mt-1 text-xs text-fog">Se desbloquea de forma espontánea.</p>
+            {nodoSeleccionado.descripcion && (
+              <p className="mt-2 text-xs italic leading-relaxed text-fog">
+                {nodoSeleccionado.descripcion}
+              </p>
             )}
+            {nodoSeleccionado.desbloqueo ? (
+              <p className="mt-2 rounded-md border border-brass-deep/40 bg-brass/5 px-2 py-1.5 text-xs text-brass">
+                {nodoSeleccionado.desbloqueo}
+              </p>
+            ) : nodoSeleccionado.espontaneo ? (
+              <p className="mt-1 text-xs text-fog">Se desbloquea de forma espontánea.</p>
+            ) : null}
             <div className="mt-3 overflow-hidden rounded-lg border border-[#77c7e8]/25 bg-gradient-to-br from-[#77c7e8]/10 via-[#121a25]/80 to-[#9a89e8]/10">
               <div className="flex items-center gap-2 border-b border-[#77c7e8]/15 px-3 py-2">
                 <Network className="h-3.5 w-3.5 text-[#9de5f5]" />
