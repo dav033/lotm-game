@@ -1,6 +1,8 @@
 import type { PrismaClient } from '@/generated/prisma/client'
 import { buildRecipeInputKey } from '../domain/inputKey'
+import { DIFICULTAD_LABELS, etiquetaRuta } from '../domain/diagnostico'
 import { importDocumentoSchema, type ImportDocumento } from '../schemas'
+import { cargarAnalisisProgresion } from './progresion'
 
 export class ImportError extends Error {}
 
@@ -62,18 +64,65 @@ export type OrigenElementoNominal =
   | { tipo: 'DESBLOQUEO_ELEMENTO'; desencadenante: ElementoDesencadenanteNominal }
   | { tipo: 'DESBLOQUEO_CONJUNTO'; requisitos: ElementoDesencadenanteNominal[] }
 
+// Receta donde el elemento participa como ingrediente (la otra dirección de
+// `combinaciones`: no quién lo produce, sino qué ayuda a producir).
+export type UsoRecetaNominal = {
+  tipo: 'USO_RECETA'
+  nombre?: string
+  ingredientes: string[]
+  produce: string[]
+  isActive: boolean
+}
+
+export type UsoAvanceNominal = {
+  tipo: 'USO_AVANCE'
+  nombreInterno: string
+  camino: string
+  origen: SecuenciaResumida
+  destino: SecuenciaResumida
+  isActive: boolean
+}
+
+export type UsoRitualNominal = {
+  tipo: 'USO_RITUAL'
+  nombre: string
+  avance: string
+  isActive: boolean
+}
+
 export type ElementoNominal = {
   tipo: 'ELEMENTO'
+  slug: string
   nombre: string
+  descripcion: string
   tipoElemento: string
+  nivel: number
+  categorias: string[]
   isActive: boolean
+  // Progresión: el mismo análisis que alimenta el panel de diagnóstico.
+  alcanzable: boolean
+  /** Pasos encadenados de la ruta más corta desde un elemento inicial. */
+  profundidad: number | null
+  dificultad: string
+  /** Mejor forma de conseguirlo hoy, en lenguaje humano. */
+  rutaMasFacil: string
+  /** Resumen de vías alternativas ("2 recetas · 1 avance"). */
+  resumenRutas: string
+  // Bloqueos espontáneos (qué lo despierta) y su reverso (a quién despierta).
   desbloqueadoPorTipo: string | null
   desbloqueadoPorSecuencia: number | null
   desbloqueadoPorCualquieraDe: string[]
   desbloqueadoPorTodos: string[]
+  desbloquea: string[]
+  esRequisitoDe: string[]
   camino?: string
   secuencia?: number
+  nombreSecuencia?: string
+  // Combinaciones en ambas direcciones: quién lo produce y dónde participa.
   combinaciones: RecetaNominal[]
+  usosEnRecetas: UsoRecetaNominal[]
+  usosEnAvances: UsoAvanceNominal[]
+  usosEnRituales: UsoRitualNominal[]
   origenes: OrigenElementoNominal[]
 }
 
@@ -133,22 +182,25 @@ export type NodoNominal =
   | RitualNominal
 
 export type DocumentoElementosNominal = {
-  version: 2
+  version: 3
   exportadoEn: string
   elementos: ElementoNominal[]
   caminos: CaminoNominal[]
 }
 
 // Exportación nominal para lectura humana o LLM: contrato TypeScript explícito,
-// sin garantías de compatibilidad con la forma v1. Cada nodo lleva un
-// discriminador literal para que el tipo sea inequívoco.
+// sin garantías de compatibilidad con formas anteriores. Cada nodo lleva un
+// discriminador literal para que el tipo sea inequívoco. La v3 añade
+// procedencia completa en ambos sentidos (quién produce cada cosa y dónde se
+// usa) más la profundidad y dificultad del análisis de progresión.
 export async function exportarElementosYCombinaciones(
   db: PrismaClient,
 ): Promise<DocumentoElementosNominal> {
-  const [elementos, caminos] = await Promise.all([
+  const [elementos, caminos, progresion] = await Promise.all([
     db.element.findMany({
       include: {
         sequence: { include: { pathway: { select: { name: true } } } },
+        categories: { include: { category: { select: { name: true } } } },
         unlockTriggers: {
           include: {
             trigger: {
@@ -181,6 +233,9 @@ export async function exportarElementosYCombinaciones(
             },
           },
         },
+        // Reverso de los bloqueos: a quién despierta este elemento.
+        desencadena: { include: { element: { select: { name: true } } } },
+        requiredFor: { include: { element: { select: { name: true } } } },
         outputs: {
           include: {
             recipe: {
@@ -190,6 +245,37 @@ export async function exportarElementosYCombinaciones(
                 },
               },
             },
+          },
+        },
+        // Usos: dónde participa como ingrediente.
+        usedIn: {
+          include: {
+            recipe: {
+              include: {
+                ingredients: { include: { element: { select: { name: true } } } },
+                outputs: { include: { element: { select: { name: true } } } },
+              },
+            },
+          },
+        },
+        advanceIngredients: {
+          include: {
+            advance: {
+              include: {
+                sourceSequence: {
+                  include: {
+                    element: { select: { name: true } },
+                    pathway: { select: { name: true } },
+                  },
+                },
+                targetSequence: { include: { element: { select: { name: true } } } },
+              },
+            },
+          },
+        },
+        ritualIngredients: {
+          include: {
+            ritual: { include: { advance: { select: { internalName: true } } } },
           },
         },
       },
@@ -221,6 +307,7 @@ export async function exportarElementosYCombinaciones(
       },
       orderBy: { createdAt: 'asc' },
     }),
+    cargarAnalisisProgresion(db),
   ])
 
   const avancesPorElemento = new Map<string, OrigenElementoNominal[]>()
@@ -293,9 +380,11 @@ export async function exportarElementosYCombinaciones(
   })
 
   return {
-    version: 2 as const,
+    version: 3 as const,
     exportadoEn: new Date().toISOString(),
     elementos: elementos.map((elemento) => {
+      const res = progresion.analisis.get(elemento.id)
+
       const combinaciones: RecetaNominal[] = elemento.outputs
         .slice()
         .sort((a, b) => a.recipe.inputKey.localeCompare(b.recipe.inputKey))
@@ -305,6 +394,44 @@ export async function exportarElementosYCombinaciones(
           ingredientes: nombresPorUnidad(output.recipe.ingredients),
           isActive: output.recipe.isActive,
         }))
+
+      const usosEnRecetas: UsoRecetaNominal[] = elemento.usedIn
+        .slice()
+        .sort((a, b) => a.recipe.inputKey.localeCompare(b.recipe.inputKey))
+        .map((uso) => ({
+          tipo: 'USO_RECETA' as const,
+          ...(uso.recipe.name ? { nombre: uso.recipe.name } : {}),
+          ingredientes: nombresPorUnidad(uso.recipe.ingredients),
+          produce: nombresElementos(uso.recipe.outputs),
+          isActive: uso.recipe.isActive,
+        }))
+
+      const usosEnAvances: UsoAvanceNominal[] = elemento.advanceIngredients.map((uso) => ({
+        tipo: 'USO_AVANCE' as const,
+        nombreInterno: uso.advance.internalName,
+        camino: uso.advance.sourceSequence.pathway.name,
+        origen: {
+          tipo: 'SECUENCIA' as const,
+          numero: uso.advance.sourceSequence.number,
+          nombre: uso.advance.sourceSequence.name,
+          elemento: uso.advance.sourceSequence.element.name,
+        },
+        destino: {
+          tipo: 'SECUENCIA' as const,
+          numero: uso.advance.targetSequence.number,
+          nombre: uso.advance.targetSequence.name,
+          elemento: uso.advance.targetSequence.element.name,
+        },
+        isActive: uso.advance.isActive,
+      }))
+
+      const usosEnRituales: UsoRitualNominal[] = elemento.ritualIngredients.map((uso) => ({
+        tipo: 'USO_RITUAL' as const,
+        nombre: uso.ritual.name,
+        avance: uso.ritual.advance.internalName,
+        isActive: uso.ritual.isActive,
+      }))
+
       const origenes: OrigenElementoNominal[] = [
         ...(elemento.isStarter ? [{ tipo: 'INICIAL' as const }] : []),
         ...combinaciones,
@@ -341,9 +468,20 @@ export async function exportarElementosYCombinaciones(
 
       return {
         tipo: 'ELEMENTO' as const,
+        slug: elemento.slug,
         nombre: elemento.name,
+        descripcion: elemento.description,
         tipoElemento: elemento.type,
+        nivel: elemento.tier,
+        categorias: elemento.categories
+          .map((c) => c.category.name)
+          .sort((a, b) => a.localeCompare(b, 'es')),
         isActive: elemento.isActive,
+        alcanzable: res?.reachable ?? false,
+        profundidad: res?.depth ?? null,
+        dificultad: DIFICULTAD_LABELS[res?.difficulty ?? 'impossible'],
+        rutaMasFacil: res ? etiquetaRuta(res.bestRoute) : 'Sin ruta válida',
+        resumenRutas: res?.routeSummary ?? '—',
         desbloqueadoPorTipo: elemento.unlockedByType,
         desbloqueadoPorSecuencia: elemento.unlockedBySequenceNumber,
         desbloqueadoPorCualquieraDe: elemento.unlockTriggers
@@ -352,13 +490,23 @@ export async function exportarElementosYCombinaciones(
         desbloqueadoPorTodos: elemento.unlockRequirements
           .map((requirement) => requirement.required.name)
           .sort((a, b) => a.localeCompare(b, 'es')),
+        desbloquea: elemento.desencadena
+          .map((t) => t.element.name)
+          .sort((a, b) => a.localeCompare(b, 'es')),
+        esRequisitoDe: elemento.requiredFor
+          .map((r) => r.element.name)
+          .sort((a, b) => a.localeCompare(b, 'es')),
         ...(elemento.sequence
           ? {
               camino: elemento.sequence.pathway.name,
               secuencia: elemento.sequence.number,
+              nombreSecuencia: elemento.sequence.name,
             }
           : {}),
         combinaciones,
+        usosEnRecetas,
+        usosEnAvances,
+        usosEnRituales,
         origenes,
       }
     }),

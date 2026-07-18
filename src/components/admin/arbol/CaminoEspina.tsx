@@ -1,6 +1,6 @@
 'use client'
 
-// Vista por camino: la espina vertical de secuencias (9 → 0) con los avances
+// Vista por camino: la espina vertical de secuencias disponibles con los avances
 // y rituales entre tramos y las recetas/desbloqueos de cada secuencia
 // plegados. HTML plano: legible, accesible y sin coste de layout.
 
@@ -13,50 +13,73 @@ import type { EspinaCamino } from '@/server/services/arbolGrafo'
 export function CaminoEspina({
   caminos,
   onAbrirEnExplorador,
+  activo,
 }: {
   caminos: CaminoLeyenda[]
   onAbrirEnExplorador: (nodoId: string) => void
+  activo: boolean
 }) {
   const [caminoId, setCaminoId] = useState<string>(caminos[0]?.id ?? '')
   const [espina, setEspina] = useState<EspinaCamino | null>(null)
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const cacheRef = useRef<Map<string, EspinaCamino>>(new Map())
+  const controladorRef = useRef<AbortController | null>(null)
 
-  const cargar = useCallback(async (id: string) => {
+  const cargar = useCallback(async (id: string, signal: AbortSignal) => {
     if (!id) return
     const enCache = cacheRef.current.get(id)
     if (enCache) {
+      setError(null)
+      setCargando(false)
       setEspina(enCache)
       return
     }
     setCargando(true)
     setError(null)
     try {
-      const res = await fetch(`/api/admin/arbol?vista=espina&id=${encodeURIComponent(id)}`)
+      const res = await fetch(`/api/admin/arbol?vista=espina&id=${encodeURIComponent(id)}`, {
+        signal,
+      })
       if (!res.ok) throw new Error()
       const datos = (await res.json()) as EspinaCamino
+      if (signal.aborted) return
       cacheRef.current.set(id, datos)
       setEspina(datos)
     } catch {
+      if (signal.aborted) return
       setError('No se pudo cargar el camino.')
     } finally {
-      setCargando(false)
+      if (!signal.aborted) setCargando(false)
     }
   }, [])
 
-  useEffect(() => {
-    void cargar(caminoId)
-  }, [caminoId, cargar])
+  const solicitar = useCallback((id: string) => {
+    controladorRef.current?.abort()
+    const controlador = new AbortController()
+    controladorRef.current = controlador
+    void cargar(id, controlador.signal)
+  }, [cargar])
 
-  const color = espina ? (colorDeCamino(espina.camino.index) ?? COLOR_NEUTRO) : COLOR_NEUTRO
+  useEffect(() => {
+    if (!activo || !caminoId) return
+    solicitar(caminoId)
+    return () => controladorRef.current?.abort()
+  }, [activo, caminoId, solicitar])
+
+  const espinaActual = espina?.camino.id === caminoId ? espina : null
+  const color = espinaActual
+    ? (colorDeCamino(espinaActual.camino.index) ?? COLOR_NEUTRO)
+    : COLOR_NEUTRO
   // Avances agrupados por la secuencia de la que parten.
-  const avancesDesde = new Map<number, NonNullable<typeof espina>['avances']>()
-  if (espina) {
-    for (const avance of espina.avances) {
+  const avancesDesde = new Map<number, NonNullable<typeof espinaActual>['avances']>()
+  if (espinaActual) {
+    for (const avance of espinaActual.avances) {
       avancesDesde.set(avance.deNumero, [...(avancesDesde.get(avance.deNumero) ?? []), avance])
     }
   }
+  const primeraSecuencia = espinaActual?.secuencias[0]?.numero
+  const ultimaSecuencia = espinaActual?.secuencias[espinaActual.secuencias.length - 1]?.numero
 
   return (
     <div>
@@ -68,6 +91,7 @@ export function CaminoEspina({
             onChange={(e) => setCaminoId(e.target.value)}
             className="campo min-w-56"
             aria-label="Elegir el camino a inspeccionar"
+            disabled={caminos.length === 0}
           >
             {caminos.map((camino) => (
               <option key={camino.id ?? camino.index} value={camino.id ?? ''}>
@@ -76,24 +100,37 @@ export function CaminoEspina({
             ))}
           </select>
         </label>
-        {espina?.camino.descripcion && (
-          <p className="text-xs italic text-fog lg:ml-2">{espina.camino.descripcion}</p>
+        {espinaActual?.camino.descripcion && (
+          <p className="text-xs italic text-fog lg:ml-2">{espinaActual.camino.descripcion}</p>
         )}
-        <p className="text-xs text-fog lg:ml-auto">
-          Secuencia 9 arriba, 0 abajo · los bloques ⇈ son los avances entre tramos.
-        </p>
+        {primeraSecuencia !== undefined && ultimaSecuencia !== undefined && (
+          <p className="text-xs text-fog lg:ml-auto">
+            Secuencia {primeraSecuencia} arriba, {ultimaSecuencia} abajo · los bloques ⇈ son los avances entre tramos.
+          </p>
+        )}
       </div>
 
-      {error && (
-        <p role="alert" className="mb-3 rounded-md border border-wine bg-wine/20 px-3 py-2 text-sm">
-          {error}
-        </p>
+      {caminos.length === 0 && (
+        <p className="text-sm italic text-fog">Todavía no hay caminos configurados.</p>
       )}
-      {cargando && !espina && <p className="text-sm text-fog">Cargando camino…</p>}
 
-      {espina && (
-        <ol className="relative mx-auto max-w-3xl space-y-0" aria-label={`Espina del camino ${espina.camino.nombre}`}>
-          {espina.secuencias.map((secuencia, indice) => (
+      {error && (
+        <div role="alert" className="mb-3 flex flex-wrap items-center gap-3 rounded-md border border-wine bg-wine/20 px-3 py-2 text-sm">
+          <p>{error}</p>
+          <button
+            type="button"
+            className="btn-ghost px-2 py-1 text-xs"
+            onClick={() => solicitar(caminoId)}
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
+      {cargando && !espinaActual && <p className="text-sm text-fog">Cargando camino…</p>}
+
+      {espinaActual && (
+        <ol className="relative mx-auto max-w-3xl space-y-0" aria-label={`Espina del camino ${espinaActual.camino.nombre}`}>
+          {espinaActual.secuencias.map((secuencia, indice) => (
             <li key={secuencia.numero}>
               <article
                 className="mist-card relative rounded-xl p-4"
@@ -173,7 +210,7 @@ export function CaminoEspina({
                 </div>
               </article>
 
-              {indice < espina.secuencias.length - 1 && (
+              {indice < espinaActual.secuencias.length - 1 && (
                 <div className="relative mx-auto w-fit py-1 pl-6">
                   <div
                     aria-hidden
@@ -222,8 +259,8 @@ export function CaminoEspina({
               )}
             </li>
           ))}
-          {espina.secuencias.length === 0 && (
-            <p className="text-sm italic text-fog">Este camino todavía no tiene secuencias.</p>
+          {espinaActual.secuencias.length === 0 && (
+            <li className="text-sm italic text-fog">Este camino todavía no tiene secuencias.</li>
           )}
         </ol>
       )}

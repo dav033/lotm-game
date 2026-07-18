@@ -13,6 +13,7 @@ const bodySchema = z.object({
     z.string().trim().min(1).max(80),
     z.string().trim().min(1).max(80),
   ]),
+  confirmRitualRisk: z.boolean().optional().default(false),
 })
 
 export async function POST(req: Request) {
@@ -23,7 +24,9 @@ export async function POST(req: Request) {
     if (!parsed.success) {
       return NextResponse.json({ error: 'Petición inválida.' }, { status: 400 })
     }
-    const result = await combinarParaPerfil(prisma, profile.id, parsed.data.elementos)
+    const result = await combinarParaPerfil(prisma, profile.id, parsed.data.elementos, {
+      confirmRitualRisk: parsed.data.confirmRitualRisk,
+    })
     return NextResponse.json(result)
   } catch (err) {
     if (err instanceof CombinationError) {

@@ -13,7 +13,15 @@ type PathwayUnlockUpsertArgs = {
 
 describe('desbloquearEspontaneos', () => {
   it('crea PlayerPathwayUnlock cuando un elemento de secuencia se desbloquea espontáneamente', async () => {
-    const ELEM_SEQ = { id: 'elem-seq-1', isActive: true, type: 'SECUENCIA', unlockedByType: 'SECUENCIA' }
+    const ELEM_SEQ = {
+      id: 'elem-seq-1',
+      isActive: true,
+      type: 'SECUENCIA',
+      unlockedByType: 'SECUENCIA',
+      unlockedBySequenceNumber: null,
+      unlockTriggers: [],
+      unlockRequirements: [],
+    }
     const SECUENCIA = { id: 'seq-1', elementId: 'elem-seq-1', pathwayId: 'pathway-seq-1', number: 1, isActive: true }
     const upsertCalls: PathwayUnlockUpsertArgs[] = []
 
@@ -55,7 +63,15 @@ describe('desbloquearEspontaneos', () => {
   })
 
   it('no crea PlayerPathwayUnlock cuando se desbloquean elementos sin secuencia', async () => {
-    const elemNormal = { id: 'elem-normal', isActive: true, type: 'NORMAL', unlockedByType: 'NORMAL' }
+    const elemNormal = {
+      id: 'elem-normal',
+      isActive: true,
+      type: 'NORMAL',
+      unlockedByType: 'NORMAL',
+      unlockedBySequenceNumber: null,
+      unlockTriggers: [],
+      unlockRequirements: [],
+    }
     let upsertLlamado = false
 
     const mockDb = {
@@ -77,8 +93,24 @@ describe('desbloquearEspontaneos', () => {
   })
 
   it('evita duplicados de PlayerPathwayUnlock para mismo pathway', async () => {
-    const ELEM1 = { id: 'elem-1', isActive: true, type: 'SEQ', unlockedByType: 'SEQ' }
-    const ELEM2 = { id: 'elem-2', isActive: true, type: 'SEQ', unlockedByType: 'SEQ' }
+    const ELEM1 = {
+      id: 'elem-1',
+      isActive: true,
+      type: 'SEQ',
+      unlockedByType: 'SEQ',
+      unlockedBySequenceNumber: null,
+      unlockTriggers: [],
+      unlockRequirements: [],
+    }
+    const ELEM2 = {
+      id: 'elem-2',
+      isActive: true,
+      type: 'SEQ',
+      unlockedByType: 'SEQ',
+      unlockedBySequenceNumber: null,
+      unlockTriggers: [],
+      unlockRequirements: [],
+    }
     const SEQ1 = { id: 'seq-1', elementId: 'elem-1', pathwayId: 'pathway-1', number: 1, isActive: true }
     const SEQ2 = { id: 'seq-2', elementId: 'elem-2', pathwayId: 'pathway-1', number: 2, isActive: true }
     const upsertCalls: PathwayUnlockUpsertArgs[] = []

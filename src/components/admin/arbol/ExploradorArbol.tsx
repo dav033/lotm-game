@@ -16,6 +16,7 @@ import {
   COLOR_NEUTRO,
   COLOR_RAIZ_DEPENDENCIA,
   ESTILO_ARISTA,
+  ETIQUETA_FAMILIA,
   ETIQUETA_ARISTA,
   FAMILIA_ARISTA,
   MARGEN,
@@ -41,13 +42,6 @@ import {
 } from './primitivas'
 
 type RespuestaGrafo = { nodos: NodoArbol[]; aristas: AristaArbol[] }
-
-const ETIQUETA_FILTRO: Record<FamiliaArista, string> = {
-  receta: 'Recetas',
-  desbloqueo: 'Desbloqueos',
-  progresion: 'Avances y rituales',
-  fallo: 'Fallos de ritual',
-}
 
 export function ExploradorArbol({
   inicial,
@@ -79,10 +73,14 @@ export function ExploradorArbol({
   })
   const [busqueda, setBusqueda] = useState('')
   const [resultados, setResultados] = useState<NodoArbol[]>([])
+  const [buscando, setBuscando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // Vecindarios ya descargados: expandir de nuevo no repite la petición.
   const vecindarioPedido = useRef<Set<string>>(new Set())
+  const peticionesVecindario = useRef<Map<string, Promise<RespuestaGrafo | null>>>(new Map())
+  const caminosCache = useRef<Map<number, RespuestaGrafo>>(new Map())
   const nonceBusqueda = useRef(0)
+  const primeraVistaRef = useRef(true)
 
   const contenedorRef = useRef<HTMLDivElement | null>(null)
   const escenaRef = useRef<SVGGElement | null>(null)
@@ -166,6 +164,10 @@ export function ExploradorArbol({
     [visibles, nodosMapa],
   )
 
+  useEffect(() => {
+    if (seleccion && !visibles.has(seleccion)) setSeleccion(null)
+  }, [seleccion, visibles])
+
   const disposicion = useMemo(() => {
     const aristasSinteticas = combosVisibles.flatMap((combo) =>
       combo.entradas.flatMap((de) => combo.salidas.map((a) => ({ de, a }))),
@@ -213,7 +215,15 @@ export function ExploradorArbol({
     async (id: string, clave: string) => {
       if (vecindarioPedido.current.has(id)) return true
       setCargando((previos) => new Set(previos).add(clave))
-      const datos = await pedirJson(`/api/admin/arbol?vista=vecinos&id=${encodeURIComponent(id)}`)
+      let peticion = peticionesVecindario.current.get(id)
+      if (!peticion) {
+        peticion = pedirJson(`/api/admin/arbol?vista=vecinos&id=${encodeURIComponent(id)}`)
+        peticionesVecindario.current.set(id, peticion)
+      }
+      const datos = await peticion
+      if (peticionesVecindario.current.get(id) === peticion) {
+        peticionesVecindario.current.delete(id)
+      }
       setCargando((previos) => {
         const conjunto = new Set(previos)
         conjunto.delete(clave)
@@ -256,8 +266,11 @@ export function ExploradorArbol({
 
   const añadirCamino = useCallback(
     async (indice: number) => {
-      const datos = await pedirJson(`/api/admin/arbol?vista=camino-grafo&indice=${indice}`)
+      const datos =
+        caminosCache.current.get(indice) ??
+        await pedirJson(`/api/admin/arbol?vista=camino-grafo&indice=${indice}`)
       if (!datos) return
+      caminosCache.current.set(indice, datos)
       fusionarGrafo(datos.nodos, datos.aristas)
       setRaices((previas) => {
         const conjunto = new Set(previas)
@@ -294,10 +307,7 @@ export function ExploradorArbol({
     let cancelado = false
     void (async () => {
       const { id } = nodoSolicitado
-      const datos = await pedirJson(`/api/admin/arbol?vista=vecinos&id=${encodeURIComponent(id)}`)
-      if (!datos || cancelado) return
-      fusionarGrafo(datos.nodos, datos.aristas)
-      vecindarioPedido.current.add(id)
+      if (!(await asegurarVecindario(id, `${id}>`)) || cancelado) return
       setRaices((previas) => new Set(previas).add(id))
       setSeleccion(id)
     })()
@@ -313,26 +323,38 @@ export function ExploradorArbol({
   useEffect(() => {
     const consulta = busqueda.trim()
     if (consulta.length < 2) {
+      nonceBusqueda.current++
       setResultados([])
+      setBuscando(false)
       return
     }
     const nonce = ++nonceBusqueda.current
+    const controlador = new AbortController()
+    setResultados([])
+    setBuscando(true)
     const temporizador = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/admin/arbol?vista=buscar&q=${encodeURIComponent(consulta)}`)
+        const res = await fetch(`/api/admin/arbol?vista=buscar&q=${encodeURIComponent(consulta)}`, {
+          signal: controlador.signal,
+        })
         if (!res.ok || nonce !== nonceBusqueda.current) return
         const datos = (await res.json()) as { nodos: NodoArbol[] }
         setResultados(datos.nodos)
       } catch {
         /* la búsqueda es tolerante a fallos */
+      } finally {
+        if (nonce === nonceBusqueda.current) setBuscando(false)
       }
     }, 250)
-    return () => clearTimeout(temporizador)
+    return () => {
+      clearTimeout(temporizador)
+      controlador.abort()
+    }
   }, [busqueda])
 
   // ---------- Encuadre ----------
 
-  const encuadrar = useCallback(() => {
+  const encuadrar = useCallback((animar = true) => {
     const contenedor = contenedorRef.current
     if (!contenedor || contenedor.clientWidth === 0) return
     const anchoUtil = contenedor.clientWidth - (seleccion ? 320 : 0)
@@ -348,15 +370,32 @@ export function ExploradorArbol({
       x: Math.max(MARGEN, (anchoUtil - disposicion.ancho * k) / 2),
       y: Math.max(MARGEN, (alto - disposicion.alto * k) / 2),
       k,
-    }, true)
+    }, animar)
   }, [disposicion, seleccion, fijarVista])
 
   useEffect(() => {
-    const frame = requestAnimationFrame(encuadrar)
+    const animar = !primeraVistaRef.current
+    primeraVistaRef.current = false
+    const frame = requestAnimationFrame(() => encuadrar(animar))
     return () => cancelAnimationFrame(frame)
     // Reencuadra cuando cambia lo visible (expansiones, raíces, filtros).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [disposicion])
+
+  useEffect(() => {
+    const contenedor = contenedorRef.current
+    if (!contenedor || typeof ResizeObserver === 'undefined') return
+    let frame: number | null = null
+    const observador = new ResizeObserver(() => {
+      if (frame !== null) cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => encuadrar(false))
+    })
+    observador.observe(contenedor)
+    return () => {
+      observador.disconnect()
+      if (frame !== null) cancelAnimationFrame(frame)
+    }
+  }, [encuadrar])
 
   // ---------- Interacción con nodos ----------
 
@@ -383,6 +422,13 @@ export function ExploradorArbol({
     },
     [alternarExpansion],
   )
+  const alTecladoNodo = useCallback((e: React.KeyboardEvent<SVGGElement>) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    e.preventDefault()
+    e.stopPropagation()
+    const id = e.currentTarget.dataset.id
+    if (id) setSeleccion((previa) => (previa === id ? null : id))
+  }, [])
 
   const nodoSeleccionado = seleccion ? (nodosMapa.get(seleccion) ?? null) : null
   const conexionesSeleccion = useMemo(() => {
@@ -418,6 +464,15 @@ export function ExploradorArbol({
           <input
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setBusqueda('')
+                setResultados([])
+              } else if (e.key === 'Enter' && resultados[0]) {
+                e.preventDefault()
+                void añadirNodo(resultados[0])
+              }
+            }}
             placeholder="Añadir elemento al lienzo…"
             className="campo w-64"
             aria-label="Buscar un elemento para añadirlo al lienzo"
@@ -445,6 +500,16 @@ export function ExploradorArbol({
               ))}
             </ul>
           )}
+          {buscando && (
+            <p role="status" className="absolute left-0 top-full z-30 mt-1 w-72 rounded-xl border border-line2 bg-[#111016]/95 px-3 py-2 text-sm text-fog">
+              Buscando…
+            </p>
+          )}
+          {!buscando && busqueda.trim().length >= 2 && resultados.length === 0 && (
+            <p role="status" className="absolute left-0 top-full z-30 mt-1 w-72 rounded-xl border border-line2 bg-[#111016]/95 px-3 py-2 text-sm text-fog">
+              Sin resultados.
+            </p>
+          )}
         </div>
         <label className="flex items-center gap-2 text-xs text-fog">
           <span className="shrink-0 uppercase tracking-wider">Camino</span>
@@ -466,7 +531,7 @@ export function ExploradorArbol({
           </select>
         </label>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fog">
-          {(Object.keys(ETIQUETA_FILTRO) as FamiliaArista[]).map((familia) => (
+          {(Object.keys(ETIQUETA_FAMILIA) as FamiliaArista[]).map((familia) => (
             <label key={familia} className="flex items-center gap-1.5">
               <input
                 type="checkbox"
@@ -476,7 +541,7 @@ export function ExploradorArbol({
                 }
                 className="accent-[var(--color-brass)]"
               />
-              {ETIQUETA_FILTRO[familia]}
+              {ETIQUETA_FAMILIA[familia]}
             </label>
           ))}
         </div>
@@ -487,7 +552,7 @@ export function ExploradorArbol({
           <button type="button" className="btn-ghost px-3 py-1" aria-label="Alejar" onClick={() => zoomEscalonado(1 / 1.25)}>
             −
           </button>
-          <button type="button" className="btn-ghost flex items-center gap-1.5 px-3 py-1" onClick={encuadrar}>
+          <button type="button" className="btn-ghost flex items-center gap-1.5 px-3 py-1" onClick={() => encuadrar()}>
             <Compass className="h-3.5 w-3.5" />
             Encuadrar
           </button>
@@ -497,7 +562,7 @@ export function ExploradorArbol({
           </button>
         </div>
         <p className="text-xs text-fog lg:ml-auto">
-          ⊕ despliega conexiones por lado · doble clic expande dependientes.
+          ⊕ despliega conexiones · clic en el lienzo activa rueda y teclado · doble clic expande.
         </p>
       </div>
 
@@ -530,7 +595,25 @@ export function ExploradorArbol({
 
       <div
         ref={contenedorRef}
+        data-arbol
+        data-denso={nodosVisibles.length > 120 ? '' : undefined}
         data-foco={hayResaltado ? '' : undefined}
+        data-zoom="cerca"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === '+' || e.key === '=') {
+            e.preventDefault()
+            zoomEscalonado(1.25)
+          } else if (e.key === '-') {
+            e.preventDefault()
+            zoomEscalonado(1 / 1.25)
+          } else if (e.key === '0' || e.key.toLowerCase() === 'f') {
+            e.preventDefault()
+            encuadrar()
+          } else if (e.key === 'Escape') {
+            setSeleccion(null)
+          }
+        }}
         className={`relative touch-none overflow-hidden rounded-2xl border border-line2 bg-[#090c12] shadow-[inset_0_0_80px_rgba(0,0,0,0.85),0_20px_60px_-35px_rgba(0,0,0,0.9)] ${
           pantallaCompleta ? 'h-[calc(100vh-13rem)] min-h-[420px]' : 'h-[72vh] min-h-[520px]'
         }`}
@@ -562,15 +645,16 @@ export function ExploradorArbol({
               y={-4400}
               width={disposicion.ancho + 8800}
               height={disposicion.alto + 8800}
+              className="arbol-reticula"
               fill="url(#skill-grid)"
               pointerEvents="none"
             />
-            {combosVisibles.map((combo, indice) => {
+            {combosVisibles.map((combo) => {
               const participantes = [...combo.entradas, ...combo.salidas]
               const estilo = ESTILO_ARISTA[combo.tipo]
               return (
                 <ComboLinea
-                  key={indice}
+                  key={combo.id}
                   combo={combo}
                   posiciones={disposicion.posiciones}
                   filtroRama={null}
@@ -603,10 +687,12 @@ export function ExploradorArbol({
                   halo={hover === nodo.id || esSeleccion ? 'foco' : null}
                   nivelDependencia={undefined}
                   esInterseccion={false}
+                  enOrdenTab={(seleccion ?? nodosVisibles[0]?.id) === nodo.id}
                   onEntrar={alEntrarNodo}
                   onSalir={alSalirNodo}
                   onClickNodo={alClickNodo}
                   onDobleClick={alDobleClickNodo}
+                  onTeclado={alTecladoNodo}
                 />
               )
             })}
@@ -679,7 +765,7 @@ export function ExploradorArbol({
         {nodoSeleccionado && (
           <aside
             aria-label={`Detalle de ${nodoSeleccionado.nombre}`}
-            className="absolute bottom-3 right-3 top-3 w-[min(19rem,calc(100%-1.5rem))] overflow-y-auto rounded-xl border border-line2 bg-[#111016]/95 p-4 text-sm shadow-[0_18px_60px_rgba(0,0,0,0.65)] backdrop-blur-md"
+            className="absolute bottom-3 right-3 top-3 w-[min(19rem,calc(100%-1.5rem))] overflow-y-auto rounded-xl border border-line2 bg-[#111016]/98 p-4 text-sm shadow-[0_18px_60px_rgba(0,0,0,0.65)]"
           >
             <div className="mb-3 h-px bg-gradient-to-r from-transparent via-brass-deep to-transparent" />
             <div className="flex items-start justify-between gap-2">

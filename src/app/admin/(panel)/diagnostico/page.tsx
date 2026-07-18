@@ -1,159 +1,43 @@
 import Link from 'next/link'
 import { prisma } from '@/server/db'
 import { exigirAdminPagina } from '@/server/adminAuth'
+import { cargarAnalisisProgresion } from '@/server/services/progresion'
+import { colorDificultad } from '@/components/admin/dificultad'
 import {
-  analizarProgresion,
   detectarCiclos,
   DIFICULTAD_LABELS,
   DIFICULTAD_ORDEN,
   elementosInalcanzables,
   elementosSinUso,
+  etiquetaRuta,
   recetasDuplicadas,
+  ritualesConSecuenciaOrigenInconsistente,
   resumenParticipacion,
-  type DiagAdvance,
-  type DiagElement,
-  type DiagRecipe,
-  type DiagRitual,
-  type DiagSequence,
   type DiagElementResult,
 } from '@/server/domain/diagnostico'
+import {
+  EXPLOSION_REGRESSION_SLUGS,
+  PHASE1_CLOSURE_SLUGS,
+  PHASE2_CLOSURE_SLUGS,
+  PHASE3_CLOSURE_SLUGS,
+} from '../../../../../prisma/seed-content/progression'
 
 export const runtime = 'nodejs'
 
 export default async function PaginaDiagnostico() {
   await exigirAdminPagina()
 
-  const [elementos, recetas, secuencias, desencadenantes, avances, rituales] = await Promise.all([
-    prisma.element.findMany({
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        type: true,
-        isStarter: true,
-        isActive: true,
-        unlockedByType: true,
-        unlockedBySequenceNumber: true,
-        unlockRequirements: { select: { requiredElementId: true } },
-      },
-    }),
-    prisma.recipe.findMany({
-      include: {
-        ingredients: { include: { element: { select: { name: true, isActive: true } } } },
-        outputs: {
-          include: {
-            element: {
-              include: {
-                sequence: {
-                  include: {
-                    pathway: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    }),
-    prisma.sequence.findMany({
-      include: {
-        pathway: { select: { isActive: true } },
-        element: { select: { id: true } },
-      },
-    }),
-    prisma.elementUnlockTrigger.findMany({ select: { elementId: true, triggerId: true } }),
-    prisma.advance.findMany({
-      include: {
-        ingredients: { include: { element: { select: { id: true } } } },
-        sourceSequence: {
-          include: {
-            element: { select: { id: true } },
-            pathway: { select: { isActive: true } },
-          },
-        },
-        targetSequence: {
-          include: {
-            element: { select: { id: true } },
-            pathway: { select: { isActive: true } },
-          },
-        },
-      },
-    }),
-    prisma.ritual.findMany({
-      include: {
-        advance: { select: { id: true } },
-        ingredients: { include: { element: { select: { id: true } } } },
-        failureOutputs: { include: { element: { select: { id: true } } } },
-      },
-      orderBy: { id: 'asc' },
-    }),
-  ])
-
-  const elementosDiag: DiagElement[] = elementos.map((e) => ({
-    id: e.id,
-    slug: e.slug,
-    name: e.name,
-    type: e.type,
-    isStarter: e.isStarter,
-    isActive: e.isActive,
-    unlockedByType: e.unlockedByType,
-    unlockedBySequenceNumber: e.unlockedBySequenceNumber,
-    requiredElementIds: e.unlockRequirements.map((r) => r.requiredElementId),
-  }))
-
-  const recetasDiag: DiagRecipe[] = recetas.map((r) => ({
-    id: r.id,
-    inputKey: r.inputKey,
-    isActive: r.isActive,
-    outputElementIds: r.outputs.map((o) => o.elementId),
-    ingredients: r.ingredients.map((i) => ({ elementId: i.elementId, quantity: i.quantity })),
-  }))
-
-  const secuenciasDiag: DiagSequence[] = secuencias.map((s) => ({
-    id: s.id,
-    elementId: s.elementId,
-    pathwayId: s.pathwayId,
-    number: s.number,
-    name: s.name,
-    isActive: s.pathway.isActive,
-  }))
-
-  const ritualesPorAvance = new Map<string, typeof rituales>()
-  for (const r of rituales) {
-    const lista = ritualesPorAvance.get(r.advance.id) ?? []
-    lista.push(r)
-    ritualesPorAvance.set(r.advance.id, lista)
-  }
-
-  const avancesDiag: DiagAdvance[] = avances.map((a) => ({
-    id: a.id,
-    internalName: a.internalName,
-    inputKey: a.inputKey,
-    isActive: a.isActive,
-    sourceSequenceId: a.sourceSequenceId,
-    targetSequenceId: a.targetSequenceId,
-    ingredients: a.ingredients.map((i) => ({ elementId: i.elementId, quantity: i.quantity })),
-    rituals: (ritualesPorAvance.get(a.id) ?? []).map((r) => ({
-      id: r.id,
-      advanceId: a.id,
-      name: r.name,
-      inputKey: r.inputKey,
-      isActive: r.isActive,
-      requiredSequenceNumber: r.requiredSequenceNumber,
-      ingredients: r.ingredients.map((i) => ({ elementId: i.elementId, quantity: i.quantity })),
-      failureOutputIds: r.failureOutputs.map((o) => o.elementId),
-    })),
-  }))
-
-  const ritualesDiag: DiagRitual[] = avancesDiag.flatMap((a) => a.rituals)
-
-  const analisis = analizarProgresion(
+  const {
+    analisis,
+    elementos,
+    recetas,
+    desencadenantes,
     elementosDiag,
     recetasDiag,
     secuenciasDiag,
     avancesDiag,
-    desencadenantes,
-  )
+    ritualesDiag,
+  } = await cargarAnalisisProgresion(prisma)
 
   const nombreDe = new Map(elementos.map((e) => [e.id, e.name]))
 
@@ -165,6 +49,11 @@ export default async function PaginaDiagnostico() {
     desencadenantes,
   )
   const duplicadas = recetasDuplicadas(recetasDiag)
+  const ritualesInconsistentes = ritualesConSecuenciaOrigenInconsistente(
+    ritualesDiag,
+    avancesDiag,
+    secuenciasDiag,
+  )
   const ciclos = detectarCiclos(recetasDiag)
   const sinUso = elementosSinUso(
     elementosDiag,
@@ -174,6 +63,22 @@ export default async function PaginaDiagnostico() {
     ritualesDiag,
     desencadenantes,
   )
+
+  const idPorSlug = new Map(elementos.map((e) => [e.slug, e.id]))
+  const auditoriaFase = (slugs: readonly string[]) => {
+    const faltantes = slugs.filter((slug) => {
+      const id = idPorSlug.get(slug)
+      return id == null || !(analisis.get(id)?.reachable ?? false)
+    })
+    return { total: slugs.length, alcanzados: slugs.length - faltantes.length, faltantes }
+  }
+  const fase1 = auditoriaFase(PHASE1_CLOSURE_SLUGS)
+  const fase2 = auditoriaFase(PHASE2_CLOSURE_SLUGS)
+  const fase3 = auditoriaFase(PHASE3_CLOSURE_SLUGS)
+  const fugasDeExplosion = EXPLOSION_REGRESSION_SLUGS.filter((slug) => {
+    const id = idPorSlug.get(slug)
+    return id != null && (analisis.get(id)?.reachable ?? false)
+  })
 
   const referenciasInactivas = recetas.filter(
     (r) =>
@@ -222,6 +127,35 @@ export default async function PaginaDiagnostico() {
       </p>
 
       <div className="space-y-4">
+        <Seccion
+          titulo="Auditoría de fases (1-3)"
+          vacio={fase1.faltantes.length === 0 && fase2.faltantes.length === 0 && fase3.faltantes.length === 0 && fugasDeExplosion.length === 0}
+          alerta
+        >
+          <ul className="mb-2 space-y-1 text-parchment">
+            <li>Fase 1: {fase1.alcanzados}/{fase1.total}</li>
+            <li>Fase 2: {fase2.alcanzados}/{fase2.total}</li>
+            <li>Fase 3: {fase3.alcanzados}/{fase3.total}</li>
+          </ul>
+          {[
+            ['Fase 1', fase1.faltantes],
+            ['Fase 2', fase2.faltantes],
+            ['Fase 3', fase3.faltantes],
+          ].map(([etiqueta, faltantes]) =>
+            faltantes.length > 0 ? (
+              <p key={etiqueta as string} className="text-wine">
+                {etiqueta} — esperados y no alcanzables: {(faltantes as string[]).join(', ')}
+              </p>
+            ) : null,
+          )}
+          {fugasDeExplosion.length > 0 && (
+            <p className="text-wine">
+              Fuga de contenido reservado (no debería ser alcanzable en fases 1-3):{' '}
+              {fugasDeExplosion.join(', ')}
+            </p>
+          )}
+        </Seccion>
+
         <Seccion titulo="Elementos inalcanzables" vacio={inalcanzables.length === 0} alerta>
           <p className="mb-2 text-fog">
             Elementos activos que no se pueden obtener desde los iniciales
@@ -241,6 +175,24 @@ export default async function PaginaDiagnostico() {
             {[...duplicadas.entries()].map(([key, lista]) => (
               <li key={key}>
                 <code className="text-xs">{key}</code> — {lista.length} recetas comparten esta clave.
+              </li>
+            ))}
+          </ul>
+        </Seccion>
+
+        <Seccion
+          titulo="Rituales con secuencia de origen inconsistente"
+          vacio={ritualesInconsistentes.length === 0}
+          alerta
+        >
+          <p className="mb-2 text-fog">
+            El número configurado debe coincidir con la secuencia origen del avance protegido.
+          </p>
+          <ul className="list-inside list-disc space-y-1 text-parchment">
+            {ritualesInconsistentes.map((ritual) => (
+              <li key={ritual.ritualId}>
+                {ritual.ritualName}: configurado {ritual.requiredSequenceNumber}, origen{' '}
+                {ritual.sourceSequenceNumber ?? 'inexistente'}.
               </li>
             ))}
           </ul>
@@ -369,32 +321,6 @@ function compararFilas(
   return a.elemento.name.localeCompare(b.elemento.name, 'es')
 }
 
-function etiquetaRuta(ruta: DiagElementResult['bestRoute']): string {
-  if (ruta.kind === 'unreachable') return 'Sin ruta válida'
-  if (ruta.kind === 'starter') return 'Inicial'
-  if (ruta.kind === 'spontaneous') return ruta.label
-  if (ruta.kind === 'recipe') return `Receta ${ruta.detail}`
-  if (ruta.kind === 'advance') return `Ascensión ${ruta.detail}`
-  return `Fallo ${ruta.detail}`
-}
-
 function tooltipParticipacion(p: DiagElementResult['participation']): string {
   return `Recetas: ${p.recipes}, Avances: ${p.advances}, Rituales: ${p.rituals}, Desbloqueos: ${p.spontaneous}`
-}
-
-function colorDificultad(d: DiagElementResult['difficulty']): string {
-  switch (d) {
-    case 'impossible':
-      return 'bg-wine/20 text-wine'
-    case 'extreme':
-      return 'bg-red-900/30 text-red-200'
-    case 'hard':
-      return 'bg-orange-900/30 text-orange-200'
-    case 'moderate':
-      return 'bg-yellow-900/30 text-yellow-200'
-    case 'easy':
-      return 'bg-green-900/30 text-green-200'
-    case 'trivial':
-      return 'bg-brass/20 text-brass'
-  }
 }

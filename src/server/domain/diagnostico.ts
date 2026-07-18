@@ -1,6 +1,8 @@
 // Herramientas de diagnóstico del árbol de combinaciones. Funciones puras
 // sobre datos ya cargados: fáciles de probar y sin atadura a la base de datos.
 
+import { RITUAL_KNOWLEDGE_ELEMENT_SLUG } from './ritualKnowledge'
+
 // ---------------------------------------------------------------------------
 // Tipos de entrada
 // ---------------------------------------------------------------------------
@@ -125,6 +127,13 @@ export type DiagElementResult = {
   difficulty: DiagDifficulty
 }
 
+export type DiagRitualSequenceMismatch = {
+  ritualId: string
+  ritualName: string
+  requiredSequenceNumber: number
+  sourceSequenceNumber: number | null
+}
+
 // ---------------------------------------------------------------------------
 // Helpers internos
 // ---------------------------------------------------------------------------
@@ -210,6 +219,16 @@ export function resumenParticipacion(p: DiagParticipation): string {
   return `${p.total} (R:${p.recipes} A:${p.advances} Ri:${p.rituals} D:${p.spontaneous})`
 }
 
+/** Etiqueta corta y legible de la mejor ruta encontrada hacia un elemento. */
+export function etiquetaRuta(ruta: DiagBestRoute): string {
+  if (ruta.kind === 'unreachable') return 'Sin ruta válida'
+  if (ruta.kind === 'starter') return 'Inicial'
+  if (ruta.kind === 'spontaneous') return ruta.label
+  if (ruta.kind === 'recipe') return `Receta ${ruta.detail}`
+  if (ruta.kind === 'advance') return `Ascensión ${ruta.detail}`
+  return `Fallo ${ruta.detail}`
+}
+
 function compararRutas(
   a: { costo: number | null; profundidad: number | null },
   b: { costo: number | null; profundidad: number | null },
@@ -245,6 +264,9 @@ export function analizarProgresion(
 ): Map<string, DiagElementResult> {
   const activos = elements.filter((e) => e.isActive)
   const activosPorId = new Map(activos.map((e) => [e.id, e]))
+  const ritualKnowledgeElementId = activos.find(
+    (element) => element.slug === RITUAL_KNOWLEDGE_ELEMENT_SLUG,
+  )?.id
 
   const secuenciasActivas = sequences.filter((s) => s.isActive)
   const secuenciaPorId = new Map(secuenciasActivas.map((s) => [s.id, s]))
@@ -353,7 +375,11 @@ export function analizarProgresion(
   while (cambiado) {
     cambiado = false
 
-    // 1. Desbloqueos espontáneos (por tipo, trigger o número de secuencia).
+    // 1. Desbloqueos espontáneos: ruta directa por trigger (OR entre
+    // desencadenantes) o ruta de restricciones declarativas donde TODOS los
+    // campos configurados (tipo, número de secuencia, requisitos AND) deben
+    // cumplirse a la vez. Ambas rutas son alternativas entre sí (OR).
+    // Misma regla que `desbloqueoEspontaneo.ts` (runtime) y el simulador.
     for (const e of activos) {
       const opciones: {
         costo: number | null
@@ -361,49 +387,7 @@ export function analizarProgresion(
         ruta: DiagBestRoute
       }[] = []
 
-      if (e.unlockedByType) {
-        const detonadores = activos.filter(
-          (x) =>
-            x.id !== e.id &&
-            x.type === e.unlockedByType &&
-            (alcanzable.get(x.id) ?? false),
-        )
-        for (const d of detonadores) {
-          const c = costo.get(d.id)
-          const p = profundidad.get(d.id)
-          if (c == null || p == null) continue
-          opciones.push({
-            costo: c,
-            profundidad: p + 1,
-            ruta: {
-              kind: 'spontaneous',
-              label: `Desbloqueo por tipo ${e.unlockedByType}`,
-              detail: d.name,
-              id: d.id,
-            },
-          })
-        }
-      }
-
-      if (e.unlockedBySequenceNumber != null) {
-        const detonadores = secuenciasAlcanzablesPorNumero(e.unlockedBySequenceNumber)
-        for (const d of detonadores) {
-          const c = costo.get(d.elementId)
-          const p = profundidad.get(d.elementId)
-          if (c == null || p == null) continue
-          opciones.push({
-            costo: c,
-            profundidad: p + 1,
-            ruta: {
-              kind: 'spontaneous',
-              label: `Desbloqueo por secuencia ${e.unlockedBySequenceNumber}`,
-              detail: d.name,
-              id: d.id,
-            },
-          })
-        }
-      }
-
+      // Ruta directa: cualquier desencadenante configurado basta.
       for (const t of triggersPorElemento.get(e.id) ?? []) {
         const d = activosPorId.get(t.triggerId)
         if (!d || !(alcanzable.get(d.id) ?? false)) continue
@@ -422,24 +406,96 @@ export function analizarProgresion(
         })
       }
 
-      // Desbloqueo por requisitos AND: todos los elementos requeridos deben ser alcanzables.
-      if (e.requiredElementIds.length > 0) {
-        const requisitosAlcanzables = e.requiredElementIds.every(
-          (id) => alcanzable.get(id) ?? false,
-        )
-        if (requisitosAlcanzables) {
-          const c = costoConjunto(e.requiredElementIds, costo)
-          const p = profundidadConjunto(e.requiredElementIds, profundidad)
+      // Ruta de restricciones: type + secuencia + requisitos AND, todos los
+      // campos configurados deben cumplirse juntos.
+      const restriccionesConfiguradas =
+        e.unlockedByType != null ||
+        e.unlockedBySequenceNumber != null ||
+        e.requiredElementIds.length > 0
+      if (restriccionesConfiguradas) {
+        const idsGrupo: string[] = []
+        const etiquetas: string[] = []
+        let satisfecha = true
+
+        if (e.unlockedByType != null) {
+          const detonadores = activos.filter(
+            (x) =>
+              x.id !== e.id &&
+              x.type === e.unlockedByType &&
+              (alcanzable.get(x.id) ?? false),
+          )
+          if (detonadores.length === 0) {
+            satisfecha = false
+          } else {
+            let mejorD = detonadores[0]
+            for (const d of detonadores.slice(1)) {
+              if (
+                compararRutas(
+                  { costo: costo.get(d.id) ?? null, profundidad: profundidad.get(d.id) ?? null },
+                  { costo: costo.get(mejorD.id) ?? null, profundidad: profundidad.get(mejorD.id) ?? null },
+                )
+              ) {
+                mejorD = d
+              }
+            }
+            idsGrupo.push(mejorD.id)
+            etiquetas.push(`tipo ${e.unlockedByType} (${mejorD.name})`)
+          }
+        }
+
+        if (satisfecha && e.unlockedBySequenceNumber != null) {
+          const detonadores = secuenciasAlcanzablesPorNumero(e.unlockedBySequenceNumber)
+          if (detonadores.length === 0) {
+            satisfecha = false
+          } else {
+            let mejorD = detonadores[0]
+            for (const d of detonadores.slice(1)) {
+              if (
+                compararRutas(
+                  {
+                    costo: costo.get(d.elementId) ?? null,
+                    profundidad: profundidad.get(d.elementId) ?? null,
+                  },
+                  {
+                    costo: costo.get(mejorD.elementId) ?? null,
+                    profundidad: profundidad.get(mejorD.elementId) ?? null,
+                  },
+                )
+              ) {
+                mejorD = d
+              }
+            }
+            idsGrupo.push(mejorD.elementId)
+            etiquetas.push(`secuencia ${e.unlockedBySequenceNumber} (${mejorD.name})`)
+          }
+        }
+
+        if (satisfecha && e.requiredElementIds.length > 0) {
+          const requisitosAlcanzables = e.requiredElementIds.every(
+            (id) => alcanzable.get(id) ?? false,
+          )
+          if (!requisitosAlcanzables) {
+            satisfecha = false
+          } else {
+            idsGrupo.push(...e.requiredElementIds)
+            etiquetas.push(
+              'requisitos ' +
+                e.requiredElementIds.map((id) => activosPorId.get(id)?.name ?? id).join(' + '),
+            )
+          }
+        }
+
+        if (satisfecha && idsGrupo.length > 0) {
+          const c = costoConjunto(idsGrupo, costo)
+          const p = profundidadConjunto(idsGrupo, profundidad)
           if (c != null && p != null) {
             opciones.push({
               costo: c,
               profundidad: p + 1,
               ruta: {
                 kind: 'spontaneous',
-                label: 'Desbloqueo por requisitos',
-                detail: e.requiredElementIds
-                  .map((id) => activosPorId.get(id)?.name ?? id)
-                  .join(' + '),
+                label: `Desbloqueo por ${etiquetas.join(' + ')}`,
+                detail: etiquetas.join(' + '),
                 id: e.id,
               },
             })
@@ -447,7 +503,7 @@ export function analizarProgresion(
         }
       }
 
-      // Elegir la mejor opción espontánea.
+      // Elegir la mejor opción espontánea entre las rutas alternativas (OR).
       let mejor = opciones[0]
       for (const o of opciones.slice(1)) {
         if (compararRutas(o, mejor)) mejor = o
@@ -530,44 +586,47 @@ export function analizarProgresion(
       } else {
         // Rituales que se pueden preparar ahora.
         const ritualesPreparables = ritualesDelAvance.filter((ritual) => {
+          if (
+            !ritualKnowledgeElementId ||
+            !(alcanzable.get(ritualKnowledgeElementId) ?? false)
+          )
+            return false
           const ingredientesOk = ritual.ingredients.every(
             (i) => alcanzable.get(i.elementId) ?? false,
           )
-          if (!ingredientesOk) return false
-          return secuenciasAlcanzablesPorNumero(ritual.requiredSequenceNumber).length > 0
+          return ingredientesOk
         })
 
         for (const ritual of ritualesPreparables) {
-          for (const secuenciaRequerida of secuenciasAlcanzablesPorNumero(
-            ritual.requiredSequenceNumber,
-          )) {
-            const idsRequisitos = [
-              ...idsPrevios,
-              ...ritual.ingredients.map((i) => i.elementId),
-              secuenciaRequerida.elementId,
-            ]
-            const costoRequisitos = costoConjunto(idsRequisitos, costo)
-            const profundidadRequisitos = profundidadConjunto(idsRequisitos, profundidad)
-            if (costoRequisitos == null || profundidadRequisitos == null) continue
-            const candidato = {
-              costo: costoRequisitos + 2,
-              profundidad: profundidadRequisitos + 2,
-              ruta: {
-                kind: 'advance' as const,
-                label: `Avance: ${a.internalName} + ${ritual.name}`,
-                detail: `${a.internalName} · ${ritual.name}`,
-                id: a.id,
-              },
-              ritual: true,
-            }
-            if (intentarActualizar(targetElementId, candidato)) cambiado = true
+          const idsRequisitos = [
+            ...idsPrevios,
+            ...ritual.ingredients.map((i) => i.elementId),
+            ritualKnowledgeElementId!,
+          ]
+          const costoRequisitos = costoConjunto(idsRequisitos, costo)
+          const profundidadRequisitos = profundidadConjunto(idsRequisitos, profundidad)
+          if (costoRequisitos == null || profundidadRequisitos == null) continue
+          const candidato = {
+            costo: costoRequisitos + 2,
+            profundidad: profundidadRequisitos + 2,
+            ruta: {
+              kind: 'advance' as const,
+              label: `Avance: ${a.internalName} + ${ritual.name}`,
+              detail: `${a.internalName} · ${ritual.name}`,
+              id: a.id,
+            },
+            ritual: true,
           }
+          if (intentarActualizar(targetElementId, candidato)) cambiado = true
         }
 
         // El jugador puede intentar el avance sin preparar un ritual aunque
         // ya reúna sus requisitos. El runtime combina las consecuencias de
         // todos los rituales alternativos activos y elimina duplicados.
-        for (const ritual of ritualesDelAvance) {
+        const conocimientoRitualAlcanzable =
+          ritualKnowledgeElementId != null &&
+          (alcanzable.get(ritualKnowledgeElementId) ?? false)
+        for (const ritual of conocimientoRitualAlcanzable ? ritualesDelAvance : []) {
           for (const oid of ritual.failureOutputIds) {
             if (!activosPorId.has(oid)) continue
             const candidato = {
@@ -630,13 +689,15 @@ export function analizarProgresion(
   }
 
   for (const r of ritualesActivos) {
+    const sourceElementId = secuenciaPorId.get(
+      avancesActivos.find((advance) => advance.id === r.advanceId)?.sourceSequenceId ?? '',
+    )?.elementId
     const ids = new Set([
       ...r.ingredients.map((i) => i.elementId),
       ...r.failureOutputIds,
-      ...secuenciasActivas
-        .filter((s) => s.number === r.requiredSequenceNumber)
-        .map((s) => s.elementId),
-    ])
+      sourceElementId,
+      ritualKnowledgeElementId,
+    ].filter((id): id is string => id != null))
     for (const id of ids) {
       if (participacionRituales.has(id)) {
         participacionRituales.get(id)?.add(r.id)
@@ -751,11 +812,15 @@ export function analizarProgresion(
       )
     } else {
       const preparables = ritualesDelAvance.filter((ritual) => {
+        if (
+          !ritualKnowledgeElementId ||
+          !(alcanzable.get(ritualKnowledgeElementId) ?? false)
+        )
+          return false
         const ingredientesOk = ritual.ingredients.every(
           (i) => alcanzable.get(i.elementId) ?? false,
         )
-        if (!ingredientesOk) return false
-        return secuenciasAlcanzablesPorNumero(ritual.requiredSequenceNumber).length > 0
+        return ingredientesOk
       })
       if (preparables.length > 0) {
         alternativasRituales.set(
@@ -764,7 +829,10 @@ export function analizarProgresion(
         )
       }
 
-      for (const ritual of ritualesDelAvance) {
+      const conocimientoRitualAlcanzable =
+        ritualKnowledgeElementId != null &&
+        (alcanzable.get(ritualKnowledgeElementId) ?? false)
+      for (const ritual of conocimientoRitualAlcanzable ? ritualesDelAvance : []) {
         for (const oid of ritual.failureOutputIds) {
           if (activosPorId.has(oid)) {
             alternativasFallos.set(oid, (alternativasFallos.get(oid) ?? 0) + 1)
@@ -880,6 +948,32 @@ export function recetasDuplicadas(recipes: DiagRecipe[]): Map<string, DiagRecipe
     byKey.set(r.inputKey, list)
   }
   return new Map([...byKey.entries()].filter(([, list]) => list.length > 1))
+}
+
+export function ritualesConSecuenciaOrigenInconsistente(
+  rituals: DiagRitual[],
+  advances: DiagAdvance[],
+  sequences: DiagSequence[],
+): DiagRitualSequenceMismatch[] {
+  const advanceById = new Map(advances.map((advance) => [advance.id, advance]))
+  const sequenceById = new Map(sequences.map((sequence) => [sequence.id, sequence]))
+
+  return rituals.flatMap((ritual) => {
+    const advance = advanceById.get(ritual.advanceId)
+    const sourceSequenceNumber = advance
+      ? (sequenceById.get(advance.sourceSequenceId)?.number ?? null)
+      : null
+    return sourceSequenceNumber === ritual.requiredSequenceNumber
+      ? []
+      : [
+          {
+            ritualId: ritual.id,
+            ritualName: ritual.name,
+            requiredSequenceNumber: ritual.requiredSequenceNumber,
+            sourceSequenceNumber,
+          },
+        ]
+  })
 }
 
 /**

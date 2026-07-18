@@ -6,6 +6,7 @@ import { prisma } from '@/server/db'
 import { etiquetaTipo } from '@/server/domain/tipos'
 import {
   agruparCombinaciones,
+  normalizarTexto,
   type AristaArbol,
   type CaminoLeyenda,
   type NodoArbol,
@@ -169,20 +170,23 @@ export async function construirGrafo(): Promise<GrafoArbol> {
         a: idAvance,
         tipo: 'creacion',
         via: viaIngredientes,
+        grupo: `crear-av:${avance.id}`,
       })
     }
     // La secuencia origen se combina con el avance; el resultado es la destino.
     aristas.push({
       de: `el:${avance.sourceSequence.elementId}`,
-      a: idAvance,
-      tipo: 'requisito',
-      via: `${avance.sourceSequence.pathway.name} · Secuencia ${avance.sourceSequence.number}`,
+      a: `el:${avance.targetSequence.elementId}`,
+      tipo: 'ascension',
+      via: `${avance.sourceSequence.pathway.name} · Secuencia ${avance.sourceSequence.number} + ${avance.internalName}`,
+      grupo: `asc:${avance.id}`,
     })
     aristas.push({
       de: idAvance,
       a: `el:${avance.targetSequence.elementId}`,
       tipo: 'ascension',
       via: `${avance.targetSequence.pathway.name} · Secuencia ${avance.targetSequence.number}`,
+      grupo: `asc:${avance.id}`,
     })
   }
 
@@ -210,6 +214,7 @@ export async function construirGrafo(): Promise<GrafoArbol> {
         a: idRitual,
         tipo: 'ritual',
         via: ritual.name,
+        grupo: `crear-rit:${ritual.id}`,
       })
     }
     aristas.push({
@@ -314,13 +319,108 @@ export async function grafoCamino(indice: number) {
 
 // Búsqueda por nombre para añadir nodos al explorador.
 export async function buscarNodos(consulta: string) {
-  const q = consulta.trim().toLowerCase()
-  if (!q) return { nodos: [] as NodoArbol[] }
-  const { nodos } = await construirGrafo()
-  const coincide = nodos.filter((n) => n.nombre.toLowerCase().includes(q))
+  const q = normalizarTexto(consulta.trim())
+  if (q.length < 2) return { nodos: [] as NodoArbol[] }
+  // La búsqueda solo necesita nodos: cargar recetas, ingredientes y construir
+  // más de mil aristas en cada pulsación era trabajo desperdiciado.
+  const [caminos, elementos, avances, rituales] = await Promise.all([
+    prisma.pathway.findMany({ orderBy: { createdAt: 'asc' }, select: { id: true } }),
+    prisma.element.findMany({
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        tier: true,
+        isStarter: true,
+        isActive: true,
+        iconKey: true,
+        description: true,
+        unlockedByType: true,
+        unlockedBySequenceNumber: true,
+        sequence: { select: { number: true, pathwayId: true } },
+      },
+    }),
+    prisma.advance.findMany({
+      select: {
+        id: true,
+        internalName: true,
+        isActive: true,
+        targetSequence: { select: { pathwayId: true } },
+      },
+    }),
+    prisma.ritual.findMany({
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+        requiredSequenceNumber: true,
+        advance: { select: { targetSequence: { select: { pathwayId: true } } } },
+      },
+    }),
+  ])
+  const indiceCamino = new Map(caminos.map((camino, index) => [camino.id, index]))
+  const nodos: NodoArbol[] = elementos.map((el) => {
+    const condiciones: string[] = []
+    if (el.unlockedByType !== null) {
+      condiciones.push(`al descubrir cualquier elemento de tipo ${etiquetaTipo(el.unlockedByType)}`)
+    }
+    if (el.unlockedBySequenceNumber !== null) {
+      condiciones.push(`al alcanzar la secuencia ${el.unlockedBySequenceNumber} de cualquier camino`)
+    }
+    return {
+      id: `el:${el.id}`,
+      nombre: el.name,
+      clase: el.sequence ? 'secuencia' : 'elemento',
+      tipo: etiquetaTipo(el.type),
+      tier: el.tier,
+      caminoIndex: el.sequence ? (indiceCamino.get(el.sequence.pathwayId) ?? null) : null,
+      secuencia: el.sequence?.number ?? null,
+      inicial: el.isStarter,
+      activo: el.isActive,
+      espontaneo: condiciones.length > 0,
+      iconKey: el.iconKey,
+      descripcion: el.description,
+      desbloqueo: condiciones.length > 0 ? `Se desbloquea ${condiciones.join(' y ')}.` : null,
+    }
+  })
+  for (const avance of avances) {
+    nodos.push({
+      id: `av:${avance.id}`,
+      nombre: avance.internalName,
+      clase: 'avance',
+      tipo: 'Avance',
+      tier: 0,
+      caminoIndex: indiceCamino.get(avance.targetSequence.pathwayId) ?? null,
+      secuencia: null,
+      inicial: false,
+      activo: avance.isActive,
+      espontaneo: false,
+      iconKey: null,
+      descripcion: '',
+      desbloqueo: null,
+    })
+  }
+  for (const ritual of rituales) {
+    nodos.push({
+      id: `rit:${ritual.id}`,
+      nombre: ritual.name,
+      clase: 'ritual',
+      tipo: 'Ritual',
+      tier: 0,
+      caminoIndex: indiceCamino.get(ritual.advance.targetSequence.pathwayId) ?? null,
+      secuencia: null,
+      inicial: false,
+      activo: ritual.isActive,
+      espontaneo: false,
+      iconKey: null,
+      descripcion: `Exige haber alcanzado la secuencia ${ritual.requiredSequenceNumber} para intentarse.`,
+      desbloqueo: null,
+    })
+  }
+  const coincide = nodos.filter((n) => normalizarTexto(n.nombre).includes(q))
   coincide.sort((a, b) => {
-    const aEmpieza = a.nombre.toLowerCase().startsWith(q) ? 0 : 1
-    const bEmpieza = b.nombre.toLowerCase().startsWith(q) ? 0 : 1
+    const aEmpieza = normalizarTexto(a.nombre).startsWith(q) ? 0 : 1
+    const bEmpieza = normalizarTexto(b.nombre).startsWith(q) ? 0 : 1
     return aEmpieza - bEmpieza || a.nombre.localeCompare(b.nombre, 'es')
   })
   return { nodos: coincide.slice(0, 12) }

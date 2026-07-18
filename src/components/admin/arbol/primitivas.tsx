@@ -29,24 +29,52 @@ export const detenerPuntero = (e: React.PointerEvent) => e.stopPropagation()
 
 export type Vista = { x: number; y: number; k: number }
 
+const ZOOM_MIN = 0.08
+const ZOOM_MAX = 2.5
+
 export function usePanZoom(
   contenedorRef: RefObject<HTMLDivElement | null>,
   escenaRef: RefObject<SVGGElement | null>,
 ) {
   const vistaRef = useRef<Vista>({ x: MARGEN, y: MARGEN, k: 1 })
-  const arrastreRef = useRef<{ x: number; y: number; pointerId: number; movio: boolean } | null>(null)
+  const arrastreRef = useRef<{
+    x: number
+    y: number
+    inicioX: number
+    inicioY: number
+    pointerId: number
+    movio: boolean
+  } | null>(null)
+  const frameRef = useRef<number | null>(null)
 
   const aplicarVista = useCallback((animar: boolean) => {
     const escena = escenaRef.current
     if (!escena) return
+    const { x, y, k } = vistaRef.current
     const sinMovimiento =
+      animar &&
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const { x, y, k } = vistaRef.current
     escena.style.transition =
-      animar && !sinMovimiento ? 'transform 480ms cubic-bezier(0.22, 1, 0.36, 1)' : 'none'
+      animar && !sinMovimiento ? 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)' : 'none'
     escena.style.transform = `translate(${x}px, ${y}px) scale(${k})`
-  }, [escenaRef])
+    const contenedor = contenedorRef.current
+    if (contenedor) {
+      contenedor.dataset.zoom = k < 0.35 ? 'lejano' : k < 0.65 ? 'medio' : 'cerca'
+    }
+  }, [contenedorRef, escenaRef])
+
+  const programarVista = useCallback(() => {
+    if (frameRef.current !== null) return
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = null
+      aplicarVista(false)
+    })
+  }, [aplicarVista])
+
+  useEffect(() => () => {
+    if (frameRef.current !== null) cancelAnimationFrame(frameRef.current)
+  }, [])
 
   const fijarVista = useCallback((vista: Vista, animar: boolean) => {
     vistaRef.current = vista
@@ -59,22 +87,23 @@ export function usePanZoom(
     const contenedor = contenedorRef.current
     if (!contenedor) return
     const alRodar = (e: WheelEvent) => {
+      if (document.activeElement !== contenedor && !e.ctrlKey && !e.metaKey) return
       e.preventDefault()
       const caja = contenedor.getBoundingClientRect()
       const cx = e.clientX - caja.left
       const cy = e.clientY - caja.top
       const v = vistaRef.current
-      const k = Math.min(2.5, Math.max(0.2, v.k * Math.exp(-e.deltaY * 0.0012)))
+      const k = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, v.k * Math.exp(-e.deltaY * 0.0012)))
       vistaRef.current = {
         k,
         x: cx - ((cx - v.x) * k) / v.k,
         y: cy - ((cy - v.y) * k) / v.k,
       }
-      aplicarVista(false)
+      programarVista()
     }
     contenedor.addEventListener('wheel', alRodar, { passive: false })
     return () => contenedor.removeEventListener('wheel', alRodar)
-  }, [contenedorRef, aplicarVista])
+  }, [contenedorRef, programarVista])
 
   const zoomEscalonado = useCallback((factor: number) => {
     const contenedor = contenedorRef.current
@@ -82,7 +111,7 @@ export function usePanZoom(
     const cx = contenedor.clientWidth / 2
     const cy = contenedor.clientHeight / 2
     const v = vistaRef.current
-    const k = Math.min(2.5, Math.max(0.2, v.k * factor))
+    const k = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, v.k * factor))
     vistaRef.current = {
       k,
       x: cx - ((cx - v.x) * k) / v.k,
@@ -92,17 +121,27 @@ export function usePanZoom(
   }, [contenedorRef, aplicarVista])
 
   const iniciarPan = useCallback((e: React.PointerEvent) => {
-    arrastreRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId, movio: false }
+    contenedorRef.current?.focus({ preventScroll: true })
+    arrastreRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      inicioX: e.clientX,
+      inicioY: e.clientY,
+      pointerId: e.pointerId,
+      movio: false,
+    }
     ;(e.target as Element).setPointerCapture?.(e.pointerId)
-  }, [])
+  }, [contenedorRef])
   const moverPan = useCallback((e: React.PointerEvent) => {
     const inicio = arrastreRef.current
     if (!inicio || inicio.pointerId !== e.pointerId) return
     const v = vistaRef.current
     vistaRef.current = { ...v, x: v.x + e.clientX - inicio.x, y: v.y + e.clientY - inicio.y }
-    aplicarVista(false)
-    arrastreRef.current = { ...inicio, x: e.clientX, y: e.clientY, movio: true }
-  }, [aplicarVista])
+    programarVista()
+    const movio =
+      inicio.movio || Math.hypot(e.clientX - inicio.inicioX, e.clientY - inicio.inicioY) >= 4
+    arrastreRef.current = { ...inicio, x: e.clientX, y: e.clientY, movio }
+  }, [programarVista])
   // Devuelve true si el gesto fue un arrastre (para no confundirlo con clic).
   const terminarPan = useCallback((): boolean => {
     const movio = arrastreRef.current?.movio ?? false
@@ -314,10 +353,12 @@ type PropsNodo = {
   halo: keyof typeof OPACIDAD_HALO | null
   nivelDependencia: number | undefined
   esInterseccion: boolean
+  enOrdenTab: boolean
   onEntrar: (e: React.PointerEvent<SVGGElement>) => void
   onSalir: (e: React.PointerEvent<SVGGElement>) => void
   onClickNodo: (e: React.MouseEvent<SVGGElement>) => void
   onDobleClick: (e: React.MouseEvent<SVGGElement>) => void
+  onTeclado: (e: React.KeyboardEvent<SVGGElement>) => void
 }
 
 export const NodoItem = memo(function NodoItem({
@@ -331,10 +372,12 @@ export const NodoItem = memo(function NodoItem({
   halo,
   nivelDependencia,
   esInterseccion,
+  enOrdenTab,
   onEntrar,
   onSalir,
   onClickNodo,
   onDobleClick,
+  onTeclado,
 }: PropsNodo) {
   const trazoContorno = seleccionado ? '#e9dcbe' : borde
   const grosorContorno = destacado ? 3 : 2
@@ -349,6 +392,10 @@ export const NodoItem = memo(function NodoItem({
     <g
       className={`arbol-nodo${resaltado ? ' arbol-resaltado' : ''}`}
       data-id={nodo.id}
+      role="button"
+      tabIndex={enOrdenTab ? 0 : -1}
+      aria-pressed={seleccionado}
+      aria-label={`${nodo.nombre}, ${nodo.clase}${nodo.secuencia !== null ? `, secuencia ${nodo.secuencia}` : ''}`}
       style={estilo}
       onPointerDown={detenerPuntero}
       // Sin esto, el pointerup llega al fondo del SVG y deselecciona un
@@ -358,10 +405,12 @@ export const NodoItem = memo(function NodoItem({
       onPointerLeave={onSalir}
       onClick={onClickNodo}
       onDoubleClick={onDobleClick}
+      onKeyDown={onTeclado}
     >
       {seleccionado && (
         <g pointerEvents="none">
           <circle
+            className="arbol-halo"
             cx={CENTRO_X}
             cy={CENTRO_Y}
             r={44}
@@ -386,6 +435,7 @@ export const NodoItem = memo(function NodoItem({
       )}
       {halo && (
         <circle
+          className="arbol-halo"
           cx={CENTRO_X}
           cy={CENTRO_Y}
           r={39}
@@ -425,7 +475,7 @@ export const NodoItem = memo(function NodoItem({
           />
         </>
       )}
-      <circle cx={CENTRO_X} cy={CENTRO_Y} r={21} fill="none" stroke={borde} strokeWidth={0.7} opacity={0.45} />
+      <circle className="arbol-detalle-nodo" cx={CENTRO_X} cy={CENTRO_Y} r={21} fill="none" stroke={borde} strokeWidth={0.7} opacity={0.45} />
       {nodo.clase === 'secuencia' ? (
         <text
           x={CENTRO_X}
@@ -472,10 +522,10 @@ export const NodoItem = memo(function NodoItem({
         />
       ) : null}
       {nodo.espontaneo && (
-        <circle cx={CENTRO_X + 25} cy={CENTRO_Y - 23} r={4} fill="#e9dcbe" stroke={borde} strokeWidth={2} />
+        <circle className="arbol-detalle-nodo" cx={CENTRO_X + 25} cy={CENTRO_Y - 23} r={4} fill="#e9dcbe" stroke={borde} strokeWidth={2} />
       )}
       {nivelDependencia !== undefined && (
-        <g aria-label={`Nivel ${nivelDependencia} de dependencia`}>
+        <g className="arbol-detalle-nodo" aria-label={`Nivel ${nivelDependencia} de dependencia`}>
           <circle cx={CENTRO_X - 39} cy={CENTRO_Y} r={9} fill="#0b1119" stroke={borde} strokeWidth={1.5} />
           <text
             x={CENTRO_X - 39}
@@ -490,7 +540,7 @@ export const NodoItem = memo(function NodoItem({
         </g>
       )}
       {esInterseccion && (
-        <g aria-label="Elemento compartido por los caminos seleccionados">
+        <g className="arbol-detalle-nodo" aria-label="Elemento compartido por los caminos seleccionados">
           <circle
             cx={CENTRO_X - 27}
             cy={CENTRO_Y - 25}
@@ -512,6 +562,7 @@ export const NodoItem = memo(function NodoItem({
         </g>
       )}
       <text
+        className="arbol-etiqueta"
         x={CENTRO_X}
         y={82}
         fill="#e9dcbe"
@@ -523,6 +574,7 @@ export const NodoItem = memo(function NodoItem({
         {recortar(nodo.nombre, 19)}
       </text>
       <text
+        className="arbol-detalle-nodo"
         x={CENTRO_X}
         y={98}
         fill={borde}

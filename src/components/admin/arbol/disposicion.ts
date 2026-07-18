@@ -10,46 +10,144 @@ export type Disposicion = {
   alto: number
 }
 
-// Capa por camino más largo desde las fuentes (con tope por si los datos
-// formaran un ciclo). Dentro de cada capa, varias pasadas de baricentro
-// acercan cada nodo a sus vecinos para reducir cruces de líneas, y la
-// coordenada vertical final se alinea con la media de sus entradas.
+// Capa por camino más largo desde las fuentes. Los ciclos se condensan antes
+// en componentes fuertemente conexas para que no creen columnas vacías ni
+// dependan del orden de las aristas. Dentro de cada capa, varias pasadas de
+// baricentro acercan cada nodo a sus vecinos para reducir cruces de líneas.
 export function calcularDisposicion(
   nodos: NodoArbol[],
   aristas: Pick<AristaArbol, 'de' | 'a'>[],
 ): Disposicion {
   const porId = new Map(nodos.map((n) => [n.id, n]))
-  const profundidad = new Map<string, number>(nodos.map((n) => [n.id, 0]))
   const clasePorId = new Map(nodos.map((n) => [n.id, n.clase]))
-  // Los rituales son puertas sobre un avance, no productores: sus aristas de
-  // salida no empujan la profundidad y después se anclan junto a su avance.
-  const aristasDeCapa = aristas.filter((a) => clasePorId.get(a.de) !== 'ritual')
-  for (let pasada = 0; pasada < 60; pasada++) {
-    let cambio = false
-    for (const arista of aristasDeCapa) {
-      const desde = profundidad.get(arista.de)
-      const hasta = profundidad.get(arista.a)
-      if (desde === undefined || hasta === undefined) continue
-      const candidata = desde + 1
-      if (candidata > hasta && candidata < 40) {
-        profundidad.set(arista.a, candidata)
-        cambio = true
-      }
+
+  // Un ritual es una puerta del avance, no una etapa posterior. Contraer
+  // ritual → avance antes de buscar ciclos mantiene ambos en la misma capa y
+  // permite que los ingredientes del ritual sí condicionen esa profundidad.
+  const padre = new Map(nodos.map((nodo) => [nodo.id, nodo.id]))
+  const raiz = (id: string): string => {
+    let actual = id
+    while (padre.get(actual) !== actual) actual = padre.get(actual)!
+    let cursor = id
+    while (padre.get(cursor) !== cursor) {
+      const siguiente = padre.get(cursor)!
+      padre.set(cursor, actual)
+      cursor = siguiente
     }
-    if (!cambio) break
+    return actual
   }
   for (const arista of aristas) {
     if (clasePorId.get(arista.de) === 'ritual' && clasePorId.get(arista.a) === 'avance') {
-      profundidad.set(arista.de, profundidad.get(arista.a) ?? 0)
+      padre.set(raiz(arista.de), raiz(arista.a))
     }
+  }
+
+  const unidades: string[] = []
+  const unidadesVistas = new Set<string>()
+  for (const nodo of nodos) {
+    const id = raiz(nodo.id)
+    if (!unidadesVistas.has(id)) {
+      unidadesVistas.add(id)
+      unidades.push(id)
+    }
+  }
+
+  const adyacencia = new Map(unidades.map((id) => [id, new Set<string>()]))
+  for (const arista of aristas) {
+    if (!porId.has(arista.de) || !porId.has(arista.a)) continue
+    // Las consecuencias de un ritual son resultados laterales, no progreso.
+    // La puerta ritual → avance ya quedó representada por la contracción.
+    if (clasePorId.get(arista.de) === 'ritual') continue
+    const desde = raiz(arista.de)
+    const hasta = raiz(arista.a)
+    if (desde !== hasta) adyacencia.get(desde)!.add(hasta)
+  }
+
+  // Tarjan condensa cada ciclo en una unidad. El grafo resultante siempre es
+  // acíclico, incluso cuando recetas y desbloqueos se retroalimentan.
+  let siguienteIndice = 0
+  const indice = new Map<string, number>()
+  const enlaceBajo = new Map<string, number>()
+  const pila: string[] = []
+  const enPila = new Set<string>()
+  const componentePorUnidad = new Map<string, number>()
+  const componentes: string[][] = []
+  const visitar = (id: string) => {
+    indice.set(id, siguienteIndice)
+    enlaceBajo.set(id, siguienteIndice)
+    siguienteIndice++
+    pila.push(id)
+    enPila.add(id)
+
+    for (const vecino of adyacencia.get(id) ?? []) {
+      if (!indice.has(vecino)) {
+        visitar(vecino)
+        enlaceBajo.set(id, Math.min(enlaceBajo.get(id)!, enlaceBajo.get(vecino)!))
+      } else if (enPila.has(vecino)) {
+        enlaceBajo.set(id, Math.min(enlaceBajo.get(id)!, indice.get(vecino)!))
+      }
+    }
+
+    if (enlaceBajo.get(id) !== indice.get(id)) return
+    const componente: string[] = []
+    let extraido: string
+    do {
+      extraido = pila.pop()!
+      enPila.delete(extraido)
+      componentePorUnidad.set(extraido, componentes.length)
+      componente.push(extraido)
+    } while (extraido !== id)
+    componentes.push(componente)
+  }
+  for (const id of unidades) if (!indice.has(id)) visitar(id)
+
+  const dag = componentes.map(() => new Set<number>())
+  const gradoEntrada = componentes.map(() => 0)
+  for (const desde of unidades) {
+    const componenteDesde = componentePorUnidad.get(desde)!
+    for (const hasta of adyacencia.get(desde) ?? []) {
+      const componenteHasta = componentePorUnidad.get(hasta)!
+      if (componenteDesde === componenteHasta || dag[componenteDesde].has(componenteHasta)) continue
+      dag[componenteDesde].add(componenteHasta)
+      gradoEntrada[componenteHasta]++
+    }
+  }
+
+  const profundidadComponente = componentes.map(() => 0)
+  const pendientes = gradoEntrada
+    .map((grado, componente) => ({ grado, componente }))
+    .filter(({ grado }) => grado === 0)
+    .map(({ componente }) => componente)
+  for (let cursor = 0; cursor < pendientes.length; cursor++) {
+    const desde = pendientes[cursor]
+    for (const hasta of dag[desde]) {
+      profundidadComponente[hasta] = Math.max(
+        profundidadComponente[hasta],
+        profundidadComponente[desde] + 1,
+      )
+      gradoEntrada[hasta]--
+      if (gradoEntrada[hasta] === 0) pendientes.push(hasta)
+    }
+  }
+
+  const profundidad = new Map<string, number>()
+  for (const nodo of nodos) {
+    profundidad.set(
+      nodo.id,
+      profundidadComponente[componentePorUnidad.get(raiz(nodo.id))!] ?? 0,
+    )
   }
 
   const anteriores = new Map<string, string[]>()
   const siguientes = new Map<string, string[]>()
   for (const arista of aristas) {
     if (!porId.has(arista.de) || !porId.has(arista.a)) continue
-    anteriores.set(arista.a, [...(anteriores.get(arista.a) ?? []), arista.de])
-    siguientes.set(arista.de, [...(siguientes.get(arista.de) ?? []), arista.a])
+    const previas = anteriores.get(arista.a) ?? []
+    previas.push(arista.de)
+    anteriores.set(arista.a, previas)
+    const posteriores = siguientes.get(arista.de) ?? []
+    posteriores.push(arista.a)
+    siguientes.set(arista.de, posteriores)
   }
 
   const ordenClase: Record<NodoArbol['clase'], number> = {
@@ -156,10 +254,10 @@ export function calcularDisposicion(
   for (const [id, pos] of posiciones) {
     posiciones.set(id, { x: pos.x, y: pos.y - minY })
   }
-  const capas = (capasOrdenadas[capasOrdenadas.length - 1] ?? 0) + 1
+  const ultimaCapa = capasOrdenadas[capasOrdenadas.length - 1] ?? 0
   return {
     posiciones,
-    ancho: capas * PASO_X + NODO_W,
+    ancho: ultimaCapa * PASO_X + NODO_W,
     alto: maxY - minY + NODO_H,
   }
 }
@@ -182,11 +280,19 @@ export function calcularDisposicionCamino(
   const avanceDeRitual = new Map<string, string>()
   const anteriores = new Map<string, string[]>()
   const siguientes = new Map<string, string[]>()
+  const aristasEntrantes = new Map<string, AristaArbol[]>()
 
   for (const arista of aristas) {
     if (!porId.has(arista.de) || !porId.has(arista.a)) continue
-    anteriores.set(arista.a, [...(anteriores.get(arista.a) ?? []), arista.de])
-    siguientes.set(arista.de, [...(siguientes.get(arista.de) ?? []), arista.a])
+    const previas = anteriores.get(arista.a) ?? []
+    previas.push(arista.de)
+    anteriores.set(arista.a, previas)
+    const posteriores = siguientes.get(arista.de) ?? []
+    posteriores.push(arista.a)
+    siguientes.set(arista.de, posteriores)
+    const entrantes = aristasEntrantes.get(arista.a) ?? []
+    entrantes.push(arista)
+    aristasEntrantes.set(arista.a, entrantes)
     if (arista.tipo === 'ascension') destinoDeAvance.set(arista.de, arista.a)
     if (
       arista.tipo === 'ritual' &&
@@ -242,7 +348,7 @@ export function calcularDisposicionCamino(
   }
 
   for (const nodo of nodosFlexibles) {
-    const entradas = aristas.filter((arista) => arista.a === nodo.id)
+    const entradas = aristasEntrantes.get(nodo.id) ?? []
     if (
       entradas.length === 0 ||
       !entradas.every(
@@ -261,7 +367,9 @@ export function calcularDisposicionCamino(
   const columnas = new Map<number, NodoArbol[]>()
   for (const nodo of nodos) {
     const columna = (capa.get(nodo.id) ?? 0) - minCapa
-    columnas.set(columna, [...(columnas.get(columna) ?? []), nodo])
+    const lista = columnas.get(columna) ?? []
+    lista.push(nodo)
+    columnas.set(columna, lista)
   }
   const capasOrdenadas = [...columnas.keys()].sort((a, b) => a - b)
 
@@ -286,9 +394,9 @@ export function calcularDisposicionCamino(
     const rituales = lista.filter(esRitualPrincipal)
     const resto = lista.filter((nodo) => !esEspina(nodo) && !esRitualPrincipal(nodo))
     lista.splice(0, lista.length, ...espina, ...rituales, ...resto)
-    espina.forEach((nodo) => fila.set(nodo.id, 0))
-    rituales.forEach((nodo, indice) => fila.set(nodo.id, indice + 1))
-    const inicioResto = caminoPrincipal === null ? 0 : Math.max(2, rituales.length + 1)
+    espina.forEach((nodo, indice) => fila.set(nodo.id, indice))
+    rituales.forEach((nodo, indice) => fila.set(nodo.id, espina.length + indice))
+    const inicioResto = caminoPrincipal === null ? 0 : Math.max(2, espina.length + rituales.length)
     resto.forEach((nodo, indice) => fila.set(nodo.id, inicioResto + indice))
   }
 
@@ -308,17 +416,21 @@ export function calcularDisposicionCamino(
   const ordenarPorVecinos = (lista: NodoArbol[], vecindario: Map<string, string[]>) => {
     const fijas = lista.filter((nodo) => esEspina(nodo) || esRitualPrincipal(nodo))
     const moviles = lista.filter((nodo) => !esEspina(nodo) && !esRitualPrincipal(nodo))
-    const baricentro = (nodo: NodoArbol) => {
+    const baricentros = new Map<string, number>()
+    for (const nodo of moviles) {
       const filas = (vecindario.get(nodo.id) ?? [])
         .map((id) => fila.get(id))
         .filter((valor): valor is number => valor !== undefined)
-      return filas.length > 0
-        ? filas.reduce((suma, valor) => suma + valor, 0) / filas.length
-        : (fila.get(nodo.id) ?? 0)
+      baricentros.set(
+        nodo.id,
+        filas.length > 0
+          ? filas.reduce((suma, valor) => suma + valor, 0) / filas.length
+          : (fila.get(nodo.id) ?? 0),
+      )
     }
     moviles.sort(
       (a, b) =>
-        baricentro(a) - baricentro(b) ||
+        baricentros.get(a.id)! - baricentros.get(b.id)! ||
         ordenClase[a.clase] - ordenClase[b.clase] ||
         a.nombre.localeCompare(b.nombre, 'es'),
     )
@@ -344,8 +456,8 @@ export function calcularDisposicionCamino(
     const espina = lista.filter(esEspina)
     const rituales = lista.filter(esRitualPrincipal)
     const resto = lista.filter((nodo) => !esEspina(nodo) && !esRitualPrincipal(nodo))
-    espina.forEach((nodo) => filaRelativa.set(nodo.id, 0))
-    rituales.forEach((nodo, indice) => filaRelativa.set(nodo.id, indice + 1))
+    espina.forEach((nodo, indice) => filaRelativa.set(nodo.id, indice))
+    rituales.forEach((nodo, indice) => filaRelativa.set(nodo.id, espina.length + indice))
 
     // Repartir dependencias a ambos lados de la espina reduce la altura a la
     // mitad y permite encuadrar el camino sin volver ilegibles sus nodos.
@@ -354,7 +466,7 @@ export function calcularDisposicionCamino(
       const numeroFila =
         indice < superiores
           ? indice - superiores
-          : rituales.length + 1 + indice - superiores
+          : espina.length + rituales.length + indice - superiores
       filaRelativa.set(nodo.id, numeroFila)
     })
     for (const nodo of lista) {

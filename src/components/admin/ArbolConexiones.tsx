@@ -5,7 +5,7 @@
 // «avanzada»; el explorador y la espina de camino cubren el uso diario.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { GitBranch, Maximize2, Minimize2, Network, X } from 'lucide-react'
+import { GitBranch, Network, X } from 'lucide-react'
 import {
   CENTRO_X,
   CENTRO_Y,
@@ -17,7 +17,9 @@ import {
   COLOR_NEUTRO,
   COLOR_RAIZ_DEPENDENCIA,
   ESTILO_ARISTA,
+  ETIQUETA_FAMILIA,
   ETIQUETA_ARISTA,
+  FAMILIA_ARISTA,
   MARGEN,
   NODO_H,
   NODO_W,
@@ -26,14 +28,17 @@ import {
   PASO_Y,
   RADIO,
   agruparCombinaciones,
+  calcularComponentesCaminos,
   colorDeCamino,
   colorDeNivelDependencia,
   curva,
   glifoTexto,
+  normalizarTexto,
   recortar,
   type AristaArbol,
   type CaminoLeyenda,
   type Combinacion,
+  type FamiliaArista,
   type NodoArbol,
 } from './arbol/tipos'
 import { calcularDisposicion, calcularDisposicionCamino } from './arbol/disposicion'
@@ -52,10 +57,12 @@ export function ArbolConexiones({
   nodos,
   aristas,
   caminos,
+  pantallaCompleta = false,
 }: {
   nodos: NodoArbol[]
   aristas: AristaArbol[]
   caminos: CaminoLeyenda[]
+  pantallaCompleta?: boolean
 }) {
   const [seleccion, setSeleccion] = useState<string | null>(null)
   const [caminosSeleccionados, setCaminosSeleccionados] = useState<number[]>([])
@@ -68,10 +75,15 @@ export function ArbolConexiones({
   const [fantasmaHover, setFantasmaHover] = useState<string | null>(null)
   const temporizadorRevelado = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [busqueda, setBusqueda] = useState('')
-  const [pantallaCompleta, setPantallaCompleta] = useState(false)
-  const raizRef = useRef<HTMLDivElement | null>(null)
+  const [filtros, setFiltros] = useState<Record<FamiliaArista, boolean>>({
+    receta: true,
+    desbloqueo: true,
+    progresion: true,
+    fallo: false,
+  })
   const contenedorRef = useRef<HTMLDivElement | null>(null)
   const escenaRef = useRef<SVGGElement | null>(null)
+  const primeraVistaRef = useRef(true)
   const { fijarVista, zoomEscalonado, iniciarPan, moverPan, terminarPan } = usePanZoom(
     contenedorRef,
     escenaRef,
@@ -79,103 +91,20 @@ export function ArbolConexiones({
 
   const porId = useMemo(() => new Map(nodos.map((n) => [n.id, n])), [nodos])
 
-  const combinaciones = useMemo(() => agruparCombinaciones(aristas), [aristas])
-
-  const indiceCombinaciones = useMemo(() => {
-    const porSalida = new Map<string, Combinacion[]>()
-    const porEntrada = new Map<string, Combinacion[]>()
-    for (const combo of combinaciones) {
-      for (const id of combo.salidas) {
-        porSalida.set(id, [...(porSalida.get(id) ?? []), combo])
-      }
-      for (const id of combo.entradas) {
-        porEntrada.set(id, [...(porEntrada.get(id) ?? []), combo])
-      }
-    }
-    return { porSalida, porEntrada }
-  }, [combinaciones])
+  const aristasVisibles = useMemo(
+    () => aristas.filter((arista) => filtros[FAMILIA_ARISTA[arista.tipo]]),
+    [aristas, filtros],
+  )
+  const combinaciones = useMemo(() => agruparCombinaciones(aristasVisibles), [aristasVisibles])
 
   // Componentes de un camino: parte de sus secuencias, avances y rituales, y
   // recorre sus prerrequisitos hacia atrás. Los resultados secundarios no se
   // expanden y una secuencia de otro camino actúa como hoja: ambas reglas
   // impiden que ciclos compartidos absorban casi todo el grafo.
-  const componentesCaminos = useMemo(() => {
-    const porCamino = new Map<number, Set<string>>()
-    const combinacionesPorCamino = new Map<number, Set<Combinacion>>()
-    const union = new Set<string>()
-
-    for (const caminoIndex of caminosSeleccionados) {
-      const raices = nodos
-        .filter((nodo) => nodo.caminoIndex === caminoIndex)
-        .map((nodo) => nodo.id)
-      const incluidos = new Set(raices)
-      const combosIncluidos = new Set<Combinacion>()
-      const procesados = new Set<string>()
-      const pendientes = [...raices]
-
-      while (pendientes.length > 0) {
-        const actual = pendientes.pop()!
-        if (procesados.has(actual)) continue
-        procesados.add(actual)
-        const nodo = porId.get(actual)
-        if (
-          nodo &&
-          nodo.caminoIndex !== null &&
-          nodo.caminoIndex !== caminoIndex &&
-          nodo.clase !== 'elemento'
-        ) {
-          continue
-        }
-        for (const combo of indiceCombinaciones.porSalida.get(actual) ?? []) {
-          if (combo.tipo === 'fallo') continue
-          combosIncluidos.add(combo)
-          for (const id of combo.entradas) {
-            incluidos.add(id)
-            if (!procesados.has(id)) pendientes.push(id)
-          }
-        }
-      }
-
-      // Los fallos de los rituales y desbloqueos OR disparados por una
-      // secuencia pertenecen al camino, pero se muestran como hojas y no como
-      // requisitos. Un AND global no pertenece a un camino por contener uno
-      // solo de sus requisitos.
-      for (const raiz of raices) {
-        for (const combo of indiceCombinaciones.porEntrada.get(raiz) ?? []) {
-          if (combo.tipo !== 'fallo' && combo.tipo !== 'desbloqueo') {
-            continue
-          }
-          combosIncluidos.add(combo)
-          for (const id of [...combo.entradas, ...combo.salidas]) incluidos.add(id)
-        }
-      }
-
-      porCamino.set(caminoIndex, incluidos)
-      combinacionesPorCamino.set(caminoIndex, combosIncluidos)
-      for (const id of incluidos) union.add(id)
-    }
-
-    const porNodo = new Map<string, number[]>()
-    for (const [caminoIndex, ids] of porCamino) {
-      for (const id of ids) porNodo.set(id, [...(porNodo.get(id) ?? []), caminoIndex])
-    }
-
-    const interseccion = new Set<string>()
-    if (caminosSeleccionados.length >= 2) {
-      const [primero, ...resto] = caminosSeleccionados
-      for (const id of porCamino.get(primero) ?? []) {
-        const nodo = porId.get(id)
-        if (
-          (nodo?.clase === 'elemento' || nodo?.clase === 'secuencia') &&
-          resto.every((index) => porCamino.get(index)?.has(id))
-        ) {
-          interseccion.add(id)
-        }
-      }
-    }
-
-    return { porCamino, combinacionesPorCamino, porNodo, union, interseccion }
-  }, [caminosSeleccionados, indiceCombinaciones, nodos, porId])
+  const componentesCaminos = useMemo(
+    () => calcularComponentesCaminos(nodos, combinaciones, caminosSeleccionados),
+    [caminosSeleccionados, combinaciones, nodos],
+  )
 
   const mostrandoSoloInterseccion = caminosSeleccionados.length >= 2
   const nodosCaminosSeleccionados = caminosSeleccionados.length === 0
@@ -198,7 +127,10 @@ export function ArbolConexiones({
     )
   }, [caminosSeleccionados, componentesCaminos])
 
-  const disposicionGlobal = useMemo(() => calcularDisposicion(nodos, aristas), [nodos, aristas])
+  const disposicionGlobal = useMemo(
+    () => calcularDisposicion(nodos, aristasVisibles),
+    [nodos, aristasVisibles],
+  )
   const subgrafoCamino = useMemo(() => {
     if (!nodosCaminosSeleccionados || !combinacionesCaminosSeleccionados) return null
     const aristasCamino: AristaArbol[] = []
@@ -229,8 +161,8 @@ export function ArbolConexiones({
   // izquierda y sus resultados a la derecha.
   const disposicionActiva = useMemo(() => {
     if (!seleccion || !aislado) return disposicion
-    const entradas = [...new Set(aristas.filter((a) => a.a === seleccion).map((a) => a.de))]
-    const salidas = [...new Set(aristas.filter((a) => a.de === seleccion).map((a) => a.a))]
+    const entradas = [...new Set(aristasVisibles.filter((a) => a.a === seleccion).map((a) => a.de))]
+    const salidas = [...new Set(aristasVisibles.filter((a) => a.de === seleccion).map((a) => a.a))]
     const soloSalidas = salidas.filter((id) => !entradas.includes(id))
     const filas = Math.max(entradas.length, soloSalidas.length, 1)
     const posiciones = new Map<string, { x: number; y: number }>()
@@ -249,7 +181,7 @@ export function ArbolConexiones({
       ancho: PASO_X * 2 + NODO_W + margen * 2,
       alto: filas * PASO_Y,
     }
-  }, [seleccion, aislado, disposicion, aristas])
+  }, [seleccion, aislado, disposicion, aristasVisibles])
 
   const cancelarCierreRevelado = useCallback(() => {
     if (temporizadorRevelado.current !== null) {
@@ -282,8 +214,8 @@ export function ArbolConexiones({
     const base = disposicionActiva.posiciones
     const origen = base.get(reveladoDe)
     if (!origen) return null
-    const entradasExtra = [...new Set(aristas.filter((a) => a.a === reveladoDe && !base.has(a.de)).map((a) => a.de))]
-    const salidasExtra = [...new Set(aristas.filter((a) => a.de === reveladoDe && !base.has(a.a)).map((a) => a.a))]
+    const entradasExtra = [...new Set(aristasVisibles.filter((a) => a.a === reveladoDe && !base.has(a.de)).map((a) => a.de))]
+    const salidasExtra = [...new Set(aristasVisibles.filter((a) => a.de === reveladoDe && !base.has(a.a)).map((a) => a.a))]
     if (entradasExtra.length === 0 && salidasExtra.length === 0) return null
     // Con muchas conexiones la pila desbordaría la vista: se muestra un
     // adelanto acotado y el resto se resume en un contador.
@@ -300,7 +232,7 @@ export function ArbolConexiones({
       entrantes: apilar(entradasExtra, origen.x - 150),
       salientes: apilar(salidasExtra, origen.x + 150),
     }
-  }, [aislado, seleccion, reveladoDe, disposicionActiva, aristas])
+  }, [aislado, seleccion, reveladoDe, disposicionActiva, aristasVisibles])
 
   // Vecindad para el foco: al señalar un nodo se atenúa todo lo no conectado.
   // Los compañeros de combinación también cuentan: responder «¿con qué se
@@ -321,12 +253,12 @@ export function ArbolConexiones({
 
   const dependientesDirectos = useMemo(() => {
     const mapa = new Map<string, Set<string>>()
-    for (const arista of aristas) {
+    for (const arista of aristasVisibles) {
       if (!mapa.has(arista.de)) mapa.set(arista.de, new Set())
       mapa.get(arista.de)!.add(arista.a)
     }
     return mapa
-  }, [aristas])
+  }, [aristasVisibles])
 
   const profundidadRamaSeleccionada = useMemo(() => {
     const profundidades = new Map<string, number>()
@@ -399,7 +331,16 @@ export function ArbolConexiones({
     ? disposicionRamaDependiente
     : disposicionActiva
 
-  const consulta = busqueda.trim().toLowerCase()
+  const consulta = normalizarTexto(busqueda.trim())
+  const coincidenciasBusqueda = useMemo(() => {
+    if (!consulta) return []
+    return nodos
+      .filter((nodo) => {
+        if (!normalizarTexto(nodo.nombre).includes(consulta)) return false
+        return !nodosCaminosSeleccionados || nodosCaminosSeleccionados.has(nodo.id)
+      })
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+  }, [consulta, nodos, nodosCaminosSeleccionados])
 
   // Conjunto de nodos resaltados según el foco activo (selección > hover >
   // búsqueda > caminos). `null` significa «sin foco»: todo a opacidad plena.
@@ -417,17 +358,13 @@ export function ArbolConexiones({
       return conjunto
     }
     if (consulta) {
-      const conjunto = new Set<string>()
-      for (const nodo of nodos) {
-        if (!nodo.nombre.toLowerCase().includes(consulta)) continue
-        if (caminoSet && !caminoSet.has(nodo.id)) continue
-        conjunto.add(nodo.id)
-      }
-      return conjunto
+      return coincidenciasBusqueda.length > 0
+        ? new Set(coincidenciasBusqueda.map((nodo) => nodo.id))
+        : null
     }
     if (caminoSet) return caminoSet
     return null
-  }, [seleccion, hover, consulta, nodosCaminosSeleccionados, ramaDependienteSeleccionada, vecinos, nodos])
+  }, [seleccion, hover, consulta, nodosCaminosSeleccionados, ramaDependienteSeleccionada, vecinos, coincidenciasBusqueda])
 
   const hayResaltado = conjuntoResaltado !== null
 
@@ -447,18 +384,8 @@ export function ArbolConexiones({
   }
 
   const resultadosBusqueda = useMemo(() => {
-    if (!consulta) return []
-    return nodos
-      .filter((n) => n.nombre.toLowerCase().includes(consulta))
-      .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
-      .slice(0, 8)
-  }, [consulta, nodos])
-
-  useEffect(() => {
-    const alCambiarPantalla = () => setPantallaCompleta(document.fullscreenElement === raizRef.current)
-    document.addEventListener('fullscreenchange', alCambiarPantalla)
-    return () => document.removeEventListener('fullscreenchange', alCambiarPantalla)
-  }, [])
+    return coincidenciasBusqueda.slice(0, 8)
+  }, [coincidenciasBusqueda])
 
   // Al deseleccionar se vuelve siempre al mapa completo.
   useEffect(() => {
@@ -469,11 +396,16 @@ export function ArbolConexiones({
   }, [seleccion])
 
   const seleccionar = (id: string) => {
+    if (nodosCaminosSeleccionados && !nodosCaminosSeleccionados.has(id)) {
+      setCaminosSeleccionados([])
+      setAislado(false)
+      setRamaAislada(false)
+    }
     setSeleccion(id)
   }
 
   // Encuadre inicial: que el grafo entre a lo ancho del contenedor.
-  const encuadrar = () => {
+  const encuadrar = (animarSolicitado = true) => {
     const contenedor = contenedorRef.current
     if (!contenedor || contenedor.clientWidth === 0) return
     // El panel de detalle tapa el borde derecho; se descuenta del encuadre.
@@ -484,12 +416,14 @@ export function ArbolConexiones({
       (anchoUtil - MARGEN * 2) / disposicionMostrada.ancho,
       (espacioVertical - MARGEN * 2) / disposicionMostrada.alto,
     )
-    const k = Math.max(ramaAislada ? 0.55 : 0.2, kCalculada)
+    const k = Math.max(ramaAislada ? 0.55 : 0.08, kCalculada)
+    const animar = animarSolicitado && !primeraVistaRef.current
+    primeraVistaRef.current = false
     fijarVista({
       x: Math.max(MARGEN, (anchoUtil - disposicionMostrada.ancho * k) / 2),
       y: 60 + Math.max(MARGEN, (espacioVertical - disposicionMostrada.alto * k) / 2),
       k,
-    }, true)
+    }, animar)
   }
 
   const encuadrarNodos = (ids: Set<string>) => {
@@ -515,11 +449,13 @@ export function ArbolConexiones({
       (espacioVertical - MARGEN * 2) / alto,
     )
     const k = Math.max(ramaAislada ? 0.55 : 0.2, kCalculada)
+    const animar = !primeraVistaRef.current
+    primeraVistaRef.current = false
     fijarVista({
       x: (anchoUtil - ancho * k) / 2 - minX * k,
       y: 60 + (espacioVertical - alto * k) / 2 - minY * k,
       k,
-    }, true)
+    }, animar)
   }
 
   const alternarCamino = (index: number) => {
@@ -551,31 +487,23 @@ export function ArbolConexiones({
     return () => cancelAnimationFrame(frame)
     // Cambia la geometría al montar, al seleccionar camino y al aislar nodos.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [disposicionMostrada, nodosCaminosSeleccionados])
+  }, [disposicionMostrada, nodosCaminosSeleccionados, pantallaCompleta])
 
   useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      if (ramaAislada && ramaDependienteSeleccionada) encuadrarNodos(ramaDependienteSeleccionada)
-      else if (nodosCaminosSeleccionados) encuadrarNodos(nodosCaminosSeleccionados)
-      else encuadrar()
+    const contenedor = contenedorRef.current
+    if (!contenedor || typeof ResizeObserver === 'undefined') return
+    let frame: number | null = null
+    const observador = new ResizeObserver(() => {
+      if (frame !== null) cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => encuadrar(false))
     })
-    return () => cancelAnimationFrame(frame)
-    // La geometría del contenedor cambia al entrar o salir de pantalla completa.
+    observador.observe(contenedor)
+    return () => {
+      observador.disconnect()
+      if (frame !== null) cancelAnimationFrame(frame)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pantallaCompleta])
-
-  useEffect(() => {
-    if (!seleccion || aislado || !ramaDependienteSeleccionada) return
-    const frame = requestAnimationFrame(() => encuadrarNodos(ramaDependienteSeleccionada))
-    return () => cancelAnimationFrame(frame)
-    // La selección cambia el área que debe quedar visible junto al panel.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seleccion, aislado, ramaAislada, ramaDependienteSeleccionada])
-
-  const alternarPantallaCompleta = async () => {
-    if (document.fullscreenElement) await document.exitFullscreen()
-    else await raizRef.current?.requestFullscreen()
-  }
+  }, [disposicionMostrada])
 
   // Manejadores estables para los nodos memoizados: leen el id del dataset,
   // así todos los nodos comparten las mismas referencias.
@@ -611,15 +539,22 @@ export function ArbolConexiones({
     setAislado(true)
     setRamaAislada(false)
   }, [])
+  const alTecladoNodo = useCallback((e: React.KeyboardEvent<SVGGElement>) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    e.preventDefault()
+    e.stopPropagation()
+    const id = e.currentTarget.dataset.id
+    if (id) setSeleccion((previa) => (previa === id ? null : id))
+  }, [])
 
   const nodoSeleccionado = seleccion ? (porId.get(seleccion) ?? null) : null
   const entradas = seleccion
-    ? aristas
+    ? aristasVisibles
         .filter((a) => a.a === seleccion)
         .sort((a, b) => ORDEN_PANEL[a.tipo] - ORDEN_PANEL[b.tipo])
     : []
   const salidas = seleccion
-    ? aristas
+    ? aristasVisibles
         .filter((a) => a.de === seleccion)
         .sort((a, b) => ORDEN_PANEL[a.tipo] - ORDEN_PANEL[b.tipo])
     : []
@@ -643,14 +578,28 @@ export function ArbolConexiones({
 
   const filtroRama = ramaAislada ? ramaDependienteSeleccionada : null
   const filtroCamino = aislado || ramaAislada ? null : nodosCaminosSeleccionados
+  const primerNodoTab = seleccion ?? disposicionMostrada.posiciones.keys().next().value ?? null
+  const totalNodosMostrados = ramaAislada
+    ? (ramaDependienteSeleccionada?.size ?? 0)
+    : aislado
+      ? disposicionActiva.posiciones.size
+      : (filtroCamino?.size ?? nodos.length)
 
   return (
-    <div ref={raizRef} className={pantallaCompleta ? 'overflow-auto bg-ink p-4' : ''}>
+    <div>
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-panel/70 p-3 shadow-[inset_0_1px_0_rgba(201,163,92,0.06)]">
         <div className="relative">
           <input
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setBusqueda('')
+              else if (e.key === 'Enter' && resultadosBusqueda[0]) {
+                e.preventDefault()
+                setBusqueda('')
+                seleccionar(resultadosBusqueda[0].id)
+              }
+            }}
             placeholder="Buscar habilidad…"
             className="campo w-64"
             aria-label="Buscar habilidad por nombre"
@@ -683,6 +632,11 @@ export function ArbolConexiones({
                 )
               })}
             </ul>
+          )}
+          {consulta.length >= 2 && resultadosBusqueda.length === 0 && (
+            <p role="status" className="absolute left-0 top-full z-30 mt-1 w-72 rounded-xl border border-line2 bg-[#111016]/95 px-3 py-2 text-sm text-fog shadow-[0_18px_60px_rgba(0,0,0,0.65)]">
+              Sin resultados en la vista actual.
+            </p>
           )}
         </div>
         <label className="flex items-center gap-2 text-xs text-fog">
@@ -726,24 +680,44 @@ export function ArbolConexiones({
             type="button"
             className="btn-ghost px-3 py-1"
             onClick={() => {
-              if (caminosSeleccionados.length > 0) limpiarCaminos()
+              if (
+                caminosSeleccionados.length > 0 ||
+                aislado ||
+                ramaAislada ||
+                seleccion ||
+                busqueda
+              ) limpiarCaminos()
               else encuadrar()
             }}
           >
             Ver todo
           </button>
-          <button
-            type="button"
-            className="btn-ghost flex items-center gap-1.5 px-3 py-1"
-            onClick={alternarPantallaCompleta}
-          >
-            {pantallaCompleta ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-            {pantallaCompleta ? 'Salir' : 'Pantalla completa'}
-          </button>
         </div>
         <p className="text-xs text-fog lg:ml-auto">
-          Arrastra para moverte, rueda para acercar, clic para ver conexiones, doble clic para aislar.
+          Clic en el lienzo para activar rueda y teclado · arrastra para moverte · doble clic para aislar.
         </p>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-fog">
+        <fieldset className="flex flex-wrap items-center gap-x-3 gap-y-1" aria-label="Relaciones visibles">
+          <legend className="mr-1 inline text-[10px] uppercase tracking-wider text-brass-deep">
+            Mostrar
+          </legend>
+          {(Object.keys(ETIQUETA_FAMILIA) as FamiliaArista[]).map((familia) => (
+            <label key={familia} className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={filtros[familia]}
+                onChange={() => setFiltros((actuales) => ({ ...actuales, [familia]: !actuales[familia] }))}
+                className="accent-[var(--color-brass)]"
+              />
+              {ETIQUETA_FAMILIA[familia]}
+            </label>
+          ))}
+        </fieldset>
+        <span className="ml-auto rounded-full border border-line px-2 py-1 text-[10px] uppercase tracking-wider">
+          {combinaciones.length} relaciones visibles
+        </span>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-fog">
@@ -804,7 +778,25 @@ export function ArbolConexiones({
 
       <div
         ref={contenedorRef}
+        data-arbol
+        data-denso={totalNodosMostrados > 120 ? '' : undefined}
         data-foco={hayResaltado ? '' : undefined}
+        data-zoom="cerca"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === '+' || e.key === '=') {
+            e.preventDefault()
+            zoomEscalonado(1.25)
+          } else if (e.key === '-') {
+            e.preventDefault()
+            zoomEscalonado(1 / 1.25)
+          } else if (e.key === '0' || e.key.toLowerCase() === 'f') {
+            e.preventDefault()
+            encuadrar()
+          } else if (e.key === 'Escape') {
+            setSeleccion(null)
+          }
+        }}
         className={`relative touch-none overflow-hidden rounded-2xl border bg-[#090c12] transition-[border-color,box-shadow] duration-300 ${
           ramaAislada
             ? 'border-[#77c7e8]/50 shadow-[inset_0_0_100px_rgba(35,92,126,0.18),0_20px_70px_-30px_rgba(90,178,225,0.35)]'
@@ -813,8 +805,8 @@ export function ArbolConexiones({
           pantallaCompleta ? 'h-[calc(100vh-10rem)] min-h-[420px]' : 'h-[72vh] min-h-[520px]'
         }`}
       >
-        <div className={`pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between border-b px-4 py-2 backdrop-blur-sm ${
-          ramaAislada ? 'border-[#77c7e8]/25 bg-[#0b141d]/85' : 'border-line/60 bg-ink/55'
+        <div className={`pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between border-b px-4 py-2 ${
+          ramaAislada ? 'border-[#77c7e8]/25 bg-[#0b141d]/95' : 'border-line/60 bg-ink/90'
         }`}>
           <div className="flex items-center gap-2.5">
             {ramaAislada && (
@@ -865,11 +857,12 @@ export function ArbolConexiones({
               y={-4400}
               width={disposicionMostrada.ancho + 8800}
               height={disposicionMostrada.alto + 8800}
+              className="arbol-reticula"
               fill="url(#skill-grid)"
               opacity={ramaAislada ? 0.65 : 1}
               pointerEvents="none"
             />
-            {combinaciones.map((combo, indiceCombo) => {
+            {combinaciones.map((combo) => {
               const participantes = [...combo.entradas, ...combo.salidas]
               if (filtroCamino && !combinacionesCaminosSeleccionados?.has(combo)) return null
               const conectaRama =
@@ -917,7 +910,7 @@ export function ArbolConexiones({
 
               return (
                 <ComboLinea
-                  key={indiceCombo}
+                  key={combo.id}
                   combo={combo}
                   posiciones={disposicionMostrada.posiciones}
                   filtroRama={filtroRama}
@@ -974,10 +967,12 @@ export function ArbolConexiones({
                   halo={halo}
                   nivelDependencia={esDependienteSeleccionado ? nivelDependenciaNodo : undefined}
                   esInterseccion={esInterseccion}
+                  enOrdenTab={primerNodoTab === nodo.id}
                   onEntrar={alEntrarNodo}
                   onSalir={alSalirNodo}
                   onClickNodo={alClickNodo}
                   onDobleClick={alDobleClickNodo}
+                  onTeclado={alTecladoNodo}
                 />
               )
             })}
@@ -1102,10 +1097,10 @@ export function ArbolConexiones({
         {nodoSeleccionado && (
           <aside
             aria-label={`Detalle de ${nodoSeleccionado.nombre}`}
-            className={`absolute bottom-3 right-3 top-16 w-[min(19rem,calc(100%-1.5rem))] overflow-y-auto rounded-xl border p-4 text-sm backdrop-blur-md transition-colors ${
+            className={`absolute bottom-3 right-3 top-16 w-[min(19rem,calc(100%-1.5rem))] overflow-y-auto rounded-xl border p-4 text-sm transition-colors ${
               ramaAislada
                 ? 'border-[#77c7e8]/40 bg-[#0d151e]/95 shadow-[0_18px_60px_rgba(0,0,0,0.65),0_0_35px_rgba(78,159,201,0.12)]'
-                : 'border-line2 bg-[#111016]/95 shadow-[0_18px_60px_rgba(0,0,0,0.65)]'
+                : 'border-line2 bg-[#111016]/98 shadow-[0_18px_60px_rgba(0,0,0,0.65)]'
             }`}
           >
             <div className={`mb-3 h-px bg-gradient-to-r from-transparent to-transparent ${ramaAislada ? 'via-[#77c7e8]' : 'via-brass-deep'}`} />

@@ -1,14 +1,15 @@
 import type { Db } from '../db'
+import { desbloqueoEspontaneoSatisfecho } from './desbloqueoEspontaneo'
 import { toPublicElement } from './publicos'
 import type { RecetaPendiente } from './tipos'
 
 // Descubrimientos espontáneos: elementos que ninguna receta fabrica y que se
-// desbloquean solos cuando el jugador descubre (a) cualquier elemento de un
-// tipo (Element.unlockedByType), (b) un elemento concreto de su lista de
-// desencadenantes, (c) cualquier secuencia de un número configurado o (d) el
-// conjunto completo de requisitos AND. Procesa en cascada — un desbloqueo
-// puede habilitar otros — y cada tipo/elemento se consulta una sola vez, así
-// que termina siempre. Devuelve los elementos recién desbloqueados.
+// desbloquean solos. La regla exacta vive en `desbloqueoEspontaneo.ts`: una
+// ruta directa por desencadenante (OR) o una ruta de restricciones donde
+// TODOS los campos configurados (tipo, número de secuencia, requisitos AND)
+// deben cumplirse a la vez. Procesa en cascada — un desbloqueo puede
+// habilitar otros — hasta alcanzar un punto fijo. Devuelve los elementos
+// recién desbloqueados.
 export async function desbloquearEspontaneos(
   db: Db,
   profileId: string,
@@ -17,8 +18,7 @@ export async function desbloquearEspontaneos(
 ) {
   const desbloqueados = []
 
-  // Caché única de descubrimientos previos para evitar findUnique N+1.
-  const descubiertosSet = new Set<string>(
+  const discoveredIds = new Set<string>(
     (
       await db.playerDiscovery.findMany({
         where: { profileId },
@@ -26,90 +26,62 @@ export async function desbloquearEspontaneos(
       })
     ).map((d) => d.elementId),
   )
-  for (const d of descubiertos) descubiertosSet.add(d.id)
+  for (const d of descubiertos) discoveredIds.add(d.id)
 
-  const tiposProcesados = new Set<string>()
-  const idsProcesados = new Set<string>()
-  let tipos = [...new Set(descubiertos.map((d) => d.type))]
-  let ids = [...new Set(descubiertos.map((d) => d.id))]
-
-  while (tipos.length > 0 || ids.length > 0) {
-    for (const t of tipos) tiposProcesados.add(t)
-    for (const i of ids) idsProcesados.add(i)
-
-    const sequenceNumbers =
-      ids.length > 0
-        ? [
-            ...new Set(
-              (
-                await db.sequence.findMany({
-                  where: { elementId: { in: ids } },
-                  select: { number: true },
-                })
-              ).map((sequence) => sequence.number),
-            ),
-          ]
-        : []
-
-    const candidatosOR = await db.element.findMany({
-      where: {
-        isActive: true,
-        OR: [
-          ...(tipos.length > 0 ? [{ unlockedByType: { in: tipos } }] : []),
-          ...(ids.length > 0
-            ? [{ unlockTriggers: { some: { triggerId: { in: ids } } } }]
-            : []),
-          ...(sequenceNumbers.length > 0
-            ? [{ unlockedBySequenceNumber: { in: sequenceNumbers } }]
-            : []),
-        ],
-      },
-    })
-
-    const candidatosAND = await db.element.findMany({
-      where: {
-        isActive: true,
-        unlockRequirements: { some: {} },
-      },
+  // El catálogo es pequeño (cientos de filas): cargarlo entero permite
+  // aplicar el mismo predicado puro sin reconsultar por tipo/id en cada ronda.
+  const [candidatos, todosLosElementos, secuencias] = await Promise.all([
+    db.element.findMany({
+      where: { isActive: true },
       include: {
+        unlockTriggers: { select: { triggerId: true } },
         unlockRequirements: { select: { requiredElementId: true } },
       },
-    })
+    }),
+    db.element.findMany({ select: { id: true, type: true } }),
+    db.sequence.findMany({ select: { elementId: true, number: true } }),
+  ])
 
-    const tiposNuevos = new Set<string>()
-    const idsNuevos = new Set<string>()
-    const procesadosEstaRonda = new Set<string>()
+  const typeByElementId = new Map(todosLosElementos.map((e) => [e.id, e.type]))
+  // El llamador ya conoce el tipo de lo recién descubierto (venía de la
+  // combinación); se confía en ese dato sin esperar una segunda consulta.
+  for (const d of descubiertos) {
+    if (!typeByElementId.has(d.id)) typeByElementId.set(d.id, d.type)
+  }
+  const sequenceNumberByElementId = new Map(secuencias.map((s) => [s.elementId, s.number]))
 
-    for (const el of candidatosOR) {
-      if (procesadosEstaRonda.has(el.id)) continue
-      procesadosEstaRonda.add(el.id)
-      if (descubiertosSet.has(el.id)) continue
+  let cambiado = true
+  while (cambiado) {
+    cambiado = false
+
+    const discoveredTypes = new Set<string>()
+    const discoveredSequenceNumbers = new Set<number>()
+    for (const id of discoveredIds) {
+      const type = typeByElementId.get(id)
+      if (type) discoveredTypes.add(type)
+      const number = sequenceNumberByElementId.get(id)
+      if (number != null) discoveredSequenceNumbers.add(number)
+    }
+
+    for (const el of candidatos) {
+      if (discoveredIds.has(el.id)) continue
+      const satisfecho = desbloqueoEspontaneoSatisfecho(
+        {
+          unlockedByType: el.unlockedByType,
+          unlockedBySequenceNumber: el.unlockedBySequenceNumber,
+          requiredElementIds: el.unlockRequirements.map((r) => r.requiredElementId),
+          triggerIds: el.unlockTriggers.map((t) => t.triggerId),
+        },
+        { discoveredIds, discoveredTypes, discoveredSequenceNumbers },
+      )
+      if (!satisfecho) continue
       await db.playerDiscovery.create({
         data: { profileId, elementId: el.id, firstDiscoveredAt: now, lastCreatedAt: now },
       })
-      descubiertosSet.add(el.id)
+      discoveredIds.add(el.id)
       desbloqueados.push(el)
-      tiposNuevos.add(el.type)
-      idsNuevos.add(el.id)
+      cambiado = true
     }
-
-    for (const el of candidatosAND) {
-      if (procesadosEstaRonda.has(el.id)) continue
-      if (descubiertosSet.has(el.id)) continue
-      const requiredIds = el.unlockRequirements.map((r) => r.requiredElementId)
-      if (requiredIds.every((id) => descubiertosSet.has(id))) {
-        await db.playerDiscovery.create({
-          data: { profileId, elementId: el.id, firstDiscoveredAt: now, lastCreatedAt: now },
-        })
-        descubiertosSet.add(el.id)
-        desbloqueados.push(el)
-        tiposNuevos.add(el.type)
-        idsNuevos.add(el.id)
-      }
-    }
-
-    tipos = [...tiposNuevos].filter((t) => !tiposProcesados.has(t))
-    ids = [...idsNuevos].filter((i) => !idsProcesados.has(i))
   }
 
   if (desbloqueados.length > 0) {
@@ -184,9 +156,10 @@ export async function obtenerRecetasPendientes(db: Db, profileId: string): Promi
   return conPrioridad.map((p) => p.receta)
 }
 
-// Marca como descubiertos todos los elementos iniciales (Ojo, Moneda, Tiempo, Tierra)
-// y dispara los desbloqueos espontáneos que esos starters puedan causar.
-// Vive en el dominio (sin dependencias de Next) para poder probarse aislado.
+// Marca como descubiertos todos los elementos con isStarter=true (leídos de
+// la base, nunca de una lista fija) y dispara los desbloqueos espontáneos
+// que esos starters puedan causar. Vive en el dominio (sin dependencias de
+// Next) para poder probarse aislado.
 export async function descubrirIniciales(db: Db, profileId: string) {
   const now = new Date()
   const starters = await db.element.findMany({

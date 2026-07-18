@@ -2,6 +2,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   analizarProgresion,
+  ritualesConSecuenciaOrigenInconsistente,
   type DiagElement,
   type DiagRecipe,
   type DiagSequence,
@@ -155,18 +156,17 @@ describe('analizarProgresion', () => {
     assert.equal(tgtres.depth, 2)
   })
 
-  it('bloquea ascensión con ritual sin preparar y la desbloquea al prepararla', () => {
+  it('bloquea ascensión y consecuencias sin conocimiento ritual', () => {
     const ing1 = el('Ing1', { isStarter: true })
     const ing2 = el('Ing2', { isStarter: true })
     const src = el('Src', { isStarter: true })
     const ritualIng = el('RitualIng', { isStarter: true })
-    const seq5El = el('Seq5')
+    const ritualKnowledge = el('RitualKnowledge', { slug: 'ritual' })
     const tgt = el('Tgt')
     const failure = el('Failure')
 
     const srcSeq = secuencia('seq-src', src.id, 9)
     const tgtSeq = secuencia('seq-tgt', tgt.id, 8)
-    const seq5 = secuencia('seq-5', seq5El.id, 5)
 
     const adv = avance('a1', srcSeq.id, tgtSeq.id, [
       { elementId: ing1.id, quantity: 1 },
@@ -175,24 +175,23 @@ describe('analizarProgresion', () => {
       ritual('rit1', 'a1', 5, [{ elementId: ritualIng.id, quantity: 1 }], [failure.id]),
     ])
 
-    // Fase 1: Seq5 no alcanzable → ritual no preparable → target bloqueado.
+    // Sin conocer la metodología no se prepara ni se exponen consecuencias.
     const res1 = analizarProgresion(
-      [ing1, ing2, src, ritualIng, seq5El, tgt, failure],
+      [ing1, ing2, src, ritualIng, ritualKnowledge, tgt, failure],
       [],
-      [srcSeq, tgtSeq, seq5],
+      [srcSeq, tgtSeq],
       [adv],
       [],
     )
     assert.equal(res1.get(tgt.id)!.reachable, false)
-    assert.equal(res1.get(failure.id)!.reachable, true)
-    assert.equal(res1.get(failure.id)!.bestRoute.kind, 'ritual-failure')
+    assert.equal(res1.get(failure.id)!.reachable, false)
 
-    // Fase 2: Seq5 alcanzable porque es starter; ritual preparable.
-    const seq5ElStarter = { ...seq5El, isStarter: true }
+    // Al descubrir Ritual, el origen exacto ya poseído permite preparar.
+    const ritualKnowledgeDiscovered = { ...ritualKnowledge, isStarter: true }
     const res2 = analizarProgresion(
-      [ing1, ing2, src, ritualIng, seq5ElStarter, tgt, failure],
+      [ing1, ing2, src, ritualIng, ritualKnowledgeDiscovered, tgt, failure],
       [],
-      [srcSeq, tgtSeq, seq5],
+      [srcSeq, tgtSeq],
       [adv],
       [],
     )
@@ -207,6 +206,7 @@ describe('analizarProgresion', () => {
     const b = el('B', { isStarter: true })
     const src = el('Src', { isStarter: true })
     const gate = el('Gate', { isStarter: true })
+    const ritualKnowledge = el('RitualKnowledge', { slug: 'ritual', isStarter: true })
     const ritualIngredient = el('RitualIngredient')
     const target = el('Target')
     const srcSeq = secuencia('seq-src', src.id, 9)
@@ -227,7 +227,7 @@ describe('analizarProgresion', () => {
     )
 
     const res = analizarProgresion(
-      [a, b, src, gate, ritualIngredient, target],
+      [a, b, src, gate, ritualKnowledge, ritualIngredient, target],
       [recipe],
       [srcSeq, gateSeq, targetSeq],
       [adv],
@@ -243,6 +243,7 @@ describe('analizarProgresion', () => {
     const b = el('B', { isStarter: true })
     const source = el('Source', { isStarter: true })
     const target = el('Target')
+    const ritualKnowledge = el('RitualKnowledge', { slug: 'ritual', isStarter: true })
     const failure1 = el('Failure1')
     const failure2 = el('Failure2')
     const sourceSequence = secuencia('source-sequence', source.id, 9)
@@ -262,7 +263,7 @@ describe('analizarProgresion', () => {
     )
 
     const res = analizarProgresion(
-      [a, b, source, target, failure1, failure2],
+      [a, b, source, ritualKnowledge, target, failure1, failure2],
       [],
       [sourceSequence, targetSequence],
       [adv],
@@ -398,5 +399,29 @@ describe('analizarProgresion', () => {
     assert.equal(res.get(c.id)!.reachable, true)
     assert.equal(res.get(d.id)!.reachable, true)
     assert.equal(res.get(d.id)!.bestRoute.kind, 'spontaneous')
+  })
+
+  it('diagnostica números rituales distintos de la secuencia origen real', () => {
+    const source = secuencia('source-sequence', 'source', 6)
+    const target = secuencia('target-sequence', 'target', 5)
+    const matching = ritual('matching', 'advance', 6, [])
+    const mismatch = ritual('mismatch', 'advance', 7, [])
+    const advance = avance('advance', source.id, target.id, [], [matching, mismatch])
+
+    assert.deepEqual(
+      ritualesConSecuenciaOrigenInconsistente(
+        [matching, mismatch],
+        [advance],
+        [source, target],
+      ),
+      [
+        {
+          ritualId: 'mismatch',
+          ritualName: 'mismatch',
+          requiredSequenceNumber: 7,
+          sourceSequenceNumber: 6,
+        },
+      ],
+    )
   })
 })

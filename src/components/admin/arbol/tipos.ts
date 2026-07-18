@@ -43,10 +43,19 @@ export type AristaArbol = {
 export type CaminoLeyenda = { nombre: string; index: number; id?: string }
 
 export type Combinacion = {
+  id: string
   entradas: string[]
   salidas: string[]
   tipo: AristaArbol['tipo']
   via: string
+}
+
+export type ComponentesCaminos = {
+  porCamino: Map<number, Set<string>>
+  combinacionesPorCamino: Map<number, Set<Combinacion>>
+  porNodo: Map<string, number[]>
+  union: Set<string>
+  interseccion: Set<string>
 }
 
 // Paleta categórica por camino sobre fondo oscuro. Se repite solo si el
@@ -119,6 +128,12 @@ export const ORDEN_PANEL: Record<AristaArbol['tipo'], number> = {
 
 // Familias de relación para los filtros del explorador.
 export type FamiliaArista = 'receta' | 'desbloqueo' | 'progresion' | 'fallo'
+export const ETIQUETA_FAMILIA: Record<FamiliaArista, string> = {
+  receta: 'Recetas',
+  desbloqueo: 'Desbloqueos',
+  progresion: 'Avances y rituales',
+  fallo: 'Fallos de ritual',
+}
 export const FAMILIA_ARISTA: Record<AristaArbol['tipo'], FamiliaArista> = {
   receta: 'receta',
   desbloqueo: 'desbloqueo',
@@ -144,6 +159,10 @@ export function recortar(texto: string, max: number): string {
   return texto.length > max ? `${texto.slice(0, max - 1)}…` : texto
 }
 
+export function normalizarTexto(texto: string): string {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
+
 // Glifo de texto compacto (nodos fantasma y listados).
 export function glifoTexto(nodo: NodoArbol): string {
   if (nodo.clase === 'secuencia') return String(nodo.secuencia)
@@ -163,20 +182,132 @@ export function curva(x1: number, y1: number, x2: number, y2: number): string {
 export function agruparCombinaciones(aristas: AristaArbol[]): Combinacion[] {
   const porGrupo = new Map<string, Combinacion>()
   const sueltas: Combinacion[] = []
+  const repeticiones = new Map<string, number>()
   for (const arista of aristas) {
     if (!arista.grupo) {
-      sueltas.push({ entradas: [arista.de], salidas: [arista.a], tipo: arista.tipo, via: arista.via })
+      const base = `arista:${claveArista(arista)}`
+      const repeticion = repeticiones.get(base) ?? 0
+      repeticiones.set(base, repeticion + 1)
+      sueltas.push({
+        id: `${base}:${repeticion}`,
+        entradas: [arista.de],
+        salidas: [arista.a],
+        tipo: arista.tipo,
+        via: arista.via,
+      })
       continue
     }
     let combo = porGrupo.get(arista.grupo)
     if (!combo) {
-      combo = { entradas: [], salidas: [], tipo: arista.tipo, via: arista.via }
+      combo = { id: `grupo:${arista.grupo}`, entradas: [], salidas: [], tipo: arista.tipo, via: arista.via }
       porGrupo.set(arista.grupo, combo)
     }
     if (!combo.entradas.includes(arista.de)) combo.entradas.push(arista.de)
     if (!combo.salidas.includes(arista.a)) combo.salidas.push(arista.a)
   }
   return [...porGrupo.values(), ...sueltas]
+}
+
+// Recorre hacia atrás los requisitos de los caminos seleccionados. Las demás
+// salidas de una receta multiproducto se incluyen como hojas, pero no se usan
+// para continuar el recorrido y absorber ramas ajenas.
+export function calcularComponentesCaminos(
+  nodos: NodoArbol[],
+  combinaciones: Combinacion[],
+  caminosSeleccionados: number[],
+): ComponentesCaminos {
+  const porId = new Map(nodos.map((nodo) => [nodo.id, nodo]))
+  const porSalida = new Map<string, Combinacion[]>()
+  const porEntrada = new Map<string, Combinacion[]>()
+  for (const combo of combinaciones) {
+    for (const id of combo.salidas) {
+      const lista = porSalida.get(id) ?? []
+      lista.push(combo)
+      porSalida.set(id, lista)
+    }
+    for (const id of combo.entradas) {
+      const lista = porEntrada.get(id) ?? []
+      lista.push(combo)
+      porEntrada.set(id, lista)
+    }
+  }
+
+  const porCamino = new Map<number, Set<string>>()
+  const combinacionesPorCamino = new Map<number, Set<Combinacion>>()
+  const union = new Set<string>()
+
+  for (const caminoIndex of caminosSeleccionados) {
+    const raices = nodos
+      .filter((nodo) => nodo.caminoIndex === caminoIndex)
+      .map((nodo) => nodo.id)
+    const incluidos = new Set(raices)
+    const combosIncluidos = new Set<Combinacion>()
+    const procesados = new Set<string>()
+    const pendientes = [...raices]
+
+    while (pendientes.length > 0) {
+      const actual = pendientes.pop()!
+      if (procesados.has(actual)) continue
+      procesados.add(actual)
+      const nodo = porId.get(actual)
+      if (
+        nodo &&
+        nodo.caminoIndex !== null &&
+        nodo.caminoIndex !== caminoIndex &&
+        nodo.clase !== 'elemento'
+      ) {
+        continue
+      }
+      for (const combo of porSalida.get(actual) ?? []) {
+        if (combo.tipo === 'fallo') continue
+        combosIncluidos.add(combo)
+        for (const id of combo.salidas) incluidos.add(id)
+        for (const id of combo.entradas) {
+          incluidos.add(id)
+          if (!procesados.has(id)) pendientes.push(id)
+        }
+      }
+    }
+
+    // Fallos y desbloqueos OR disparados por una secuencia son hojas del
+    // camino. Un AND global no pertenece por contener uno solo de sus nodos.
+    for (const raiz of raices) {
+      for (const combo of porEntrada.get(raiz) ?? []) {
+        if (combo.tipo !== 'fallo' && combo.tipo !== 'desbloqueo') continue
+        combosIncluidos.add(combo)
+        for (const id of [...combo.entradas, ...combo.salidas]) incluidos.add(id)
+      }
+    }
+
+    porCamino.set(caminoIndex, incluidos)
+    combinacionesPorCamino.set(caminoIndex, combosIncluidos)
+    for (const id of incluidos) union.add(id)
+  }
+
+  const porNodo = new Map<string, number[]>()
+  for (const [caminoIndex, ids] of porCamino) {
+    for (const id of ids) {
+      const indices = porNodo.get(id) ?? []
+      indices.push(caminoIndex)
+      porNodo.set(id, indices)
+    }
+  }
+
+  const interseccion = new Set<string>()
+  if (caminosSeleccionados.length >= 2) {
+    const [primero, ...resto] = caminosSeleccionados
+    for (const id of porCamino.get(primero) ?? []) {
+      const nodo = porId.get(id)
+      if (
+        (nodo?.clase === 'elemento' || nodo?.clase === 'secuencia') &&
+        resto.every((index) => porCamino.get(index)?.has(id))
+      ) {
+        interseccion.add(id)
+      }
+    }
+  }
+
+  return { porCamino, combinacionesPorCamino, porNodo, union, interseccion }
 }
 
 // Clave estable para deduplicar aristas acumuladas en el cliente.

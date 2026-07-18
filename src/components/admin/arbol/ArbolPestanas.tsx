@@ -75,34 +75,59 @@ export function ArbolPestanas({
     setPestana('explorador')
   }, [])
 
+  const activarPestana = (id: Pestana) => {
+    if (id === 'mapa') void abrirMapa()
+    else setPestana(id)
+  }
+
+  const alTecladoPestana = (e: React.KeyboardEvent<HTMLButtonElement>, id: Pestana) => {
+    const indice = PESTANAS.findIndex((item) => item.id === id)
+    let siguiente = indice
+    if (e.key === 'ArrowRight') siguiente = (indice + 1) % PESTANAS.length
+    else if (e.key === 'ArrowLeft') siguiente = (indice - 1 + PESTANAS.length) % PESTANAS.length
+    else if (e.key === 'Home') siguiente = 0
+    else if (e.key === 'End') siguiente = PESTANAS.length - 1
+    else return
+    e.preventDefault()
+    const destino = PESTANAS[siguiente].id
+    activarPestana(destino)
+    requestAnimationFrame(() => document.getElementById(`tab-arbol-${destino}`)?.focus())
+  }
+
   return (
     <div
       ref={raizRef}
       className={pantallaCompleta ? 'flex h-screen flex-col overflow-hidden bg-ink p-4' : ''}
     >
-      <div role="tablist" aria-label="Vistas del árbol" className="mb-5 flex shrink-0 flex-wrap gap-2">
-        {PESTANAS.map(({ id, etiqueta, Icono }) => (
-          <button
-            key={id}
-            role="tab"
-            type="button"
-            aria-selected={pestana === id}
-            onClick={() => (id === 'mapa' ? void abrirMapa() : setPestana(id))}
-            className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm transition-colors ${
-              pestana === id
-                ? 'border-brass/60 bg-brass/15 text-parchment shadow-[0_0_18px_rgba(201,163,92,0.12)]'
-                : 'border-line2 bg-panel/45 text-fog hover:border-brass-deep hover:text-parchment'
-            }`}
-          >
-            <Icono className="h-4 w-4" />
-            {etiqueta}
-            {id === 'mapa' && (
-              <span className="rounded-full border border-line px-1.5 py-0.5 text-[10px] text-fog">
-                {totales.nodos} · {totales.aristas}
-              </span>
-            )}
-          </button>
-        ))}
+      <div className="mb-5 flex shrink-0 flex-wrap items-center gap-2">
+        <div role="tablist" aria-label="Vistas del árbol" className="flex flex-wrap gap-2">
+          {PESTANAS.map(({ id, etiqueta, Icono }) => (
+            <button
+              key={id}
+              id={`tab-arbol-${id}`}
+              role="tab"
+              type="button"
+              tabIndex={pestana === id ? 0 : -1}
+              aria-selected={pestana === id}
+              aria-controls={`panel-arbol-${id}`}
+              onClick={() => activarPestana(id)}
+              onKeyDown={(e) => alTecladoPestana(e, id)}
+              className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm transition-colors ${
+                pestana === id
+                  ? 'border-brass/60 bg-brass/15 text-parchment shadow-[0_0_18px_rgba(201,163,92,0.12)]'
+                  : 'border-line2 bg-panel/45 text-fog hover:border-brass-deep hover:text-parchment'
+              }`}
+            >
+              <Icono className="h-4 w-4" />
+              {etiqueta}
+              {id === 'mapa' && (
+                <span className="rounded-full border border-line px-1.5 py-0.5 text-[10px] text-fog">
+                  {totales.nodos} · {totales.aristas}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
           className="btn-ghost ml-auto flex items-center gap-2 px-3 py-2 text-sm"
@@ -114,7 +139,13 @@ export function ArbolPestanas({
         </button>
       </div>
 
-      <div className={`${pantallaCompleta ? 'min-h-0 flex-1 overflow-auto' : ''} ${pestana === 'explorador' ? '' : 'hidden'}`}>
+      <div
+        id="panel-arbol-explorador"
+        role="tabpanel"
+        aria-labelledby="tab-arbol-explorador"
+        hidden={pestana !== 'explorador'}
+        className={pantallaCompleta ? 'min-h-0 flex-1 overflow-auto' : ''}
+      >
         <ExploradorArbol
           inicial={inicial}
           caminos={caminos}
@@ -122,18 +153,37 @@ export function ArbolPestanas({
           pantallaCompleta={pantallaCompleta}
         />
       </div>
-      <div className={`${pantallaCompleta ? 'min-h-0 flex-1 overflow-auto' : ''} ${pestana === 'caminos' ? '' : 'hidden'}`}>
-        <CaminoEspina caminos={caminos} onAbrirEnExplorador={abrirEnExplorador} />
+      <div
+        id="panel-arbol-caminos"
+        role="tabpanel"
+        aria-labelledby="tab-arbol-caminos"
+        hidden={pestana !== 'caminos'}
+        className={pantallaCompleta ? 'min-h-0 flex-1 overflow-auto' : ''}
+      >
+        <CaminoEspina
+          caminos={caminos}
+          onAbrirEnExplorador={abrirEnExplorador}
+          activo={pestana === 'caminos'}
+        />
       </div>
-      {pestana === 'mapa' && (
-        <div className={pantallaCompleta ? 'min-h-0 flex-1 overflow-auto' : ''}>
+      {(pestana === 'mapa' || grafoCompleto) && (
+        <div
+          id="panel-arbol-mapa"
+          role="tabpanel"
+          aria-labelledby="tab-arbol-mapa"
+          hidden={pestana !== 'mapa'}
+          className={pantallaCompleta ? 'min-h-0 flex-1 overflow-auto' : ''}
+        >
           {errorMapa && (
-            <p role="alert" className="mb-3 rounded-md border border-wine bg-wine/20 px-3 py-2 text-sm">
-              {errorMapa}
-            </p>
+            <div role="alert" className="mb-3 flex flex-wrap items-center gap-3 rounded-md border border-wine bg-wine/20 px-3 py-2 text-sm">
+              <p>{errorMapa}</p>
+              <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={() => void abrirMapa()}>
+                Reintentar
+              </button>
+            </div>
           )}
           {cargandoMapa && (
-            <p className="text-sm text-fog">
+            <p role="status" aria-live="polite" className="text-sm text-fog">
               Descargando el grafo completo ({totales.nodos} habilidades, {totales.aristas}{' '}
               conexiones)…
             </p>
@@ -143,6 +193,7 @@ export function ArbolPestanas({
               nodos={grafoCompleto.nodos}
               aristas={grafoCompleto.aristas}
               caminos={caminos}
+              pantallaCompleta={pantallaCompleta}
             />
           )}
         </div>

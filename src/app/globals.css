@@ -13,8 +13,13 @@
   --color-brass-deep: #7a5c24;
   --color-wine: #6e2432;
   --color-abyssal: #131a24;
+  /* Lo espectral: violeta de médium para lo que cruza la frontera. */
+  --color-spectral: #8b76c9;
+  --color-spectral-deep: #4b3f7a;
 
   --font-display: "Cinzel", ui-serif, serif;
+  /* Títulos rituales: aún más ornamentales que el Cinzel corriente. */
+  --font-arcana: "Cinzel Decorative", "Cinzel", ui-serif, serif;
   /* Texto de lectura: sans legible; lo ornamental queda solo en títulos. */
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
@@ -140,6 +145,306 @@ body {
   }
 }
 
+/* ===== Atmósfera del juego: niebla, brasas y luz de vela ===== */
+
+/* Capas de niebla espectral que respiran detrás del contenido. */
+.niebla {
+  position: absolute;
+  width: 130vmax;
+  height: 130vmax;
+  border-radius: 50%;
+  filter: blur(90px);
+  will-change: transform;
+}
+.niebla-a {
+  top: -35%;
+  left: -25%;
+  background: radial-gradient(circle, rgba(139, 118, 201, 0.11), transparent 62%);
+  animation: niebla-deriva-a 38s ease-in-out infinite alternate;
+}
+.niebla-b {
+  right: -30%;
+  bottom: -40%;
+  background: radial-gradient(circle, rgba(201, 163, 92, 0.09), transparent 62%);
+  animation: niebla-deriva-b 52s ease-in-out infinite alternate;
+}
+@keyframes niebla-deriva-a {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(9vw, 6vh, 0) scale(1.12); }
+}
+@keyframes niebla-deriva-b {
+  from { transform: translate3d(0, 0, 0) scale(1.1); }
+  to { transform: translate3d(-8vw, -5vh, 0) scale(1); }
+}
+
+/* Velo cálido que parpadea como una vela al fondo de la sala. */
+.velo-vela {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(90% 55% at 50% 112%, rgba(201, 163, 92, 0.07), transparent 62%);
+  animation: vela-parpadeo 6.5s ease-in-out infinite;
+}
+@keyframes vela-parpadeo {
+  0%, 100% { opacity: 0.85; }
+  18% { opacity: 0.6; }
+  34% { opacity: 1; }
+  52% { opacity: 0.72; }
+  70% { opacity: 0.95; }
+  86% { opacity: 0.66; }
+}
+
+/* Brasas que ascienden y se apagan: polvo del archivo, o algo peor. */
+.brasa {
+  position: absolute;
+  bottom: -2vh;
+  border-radius: 9999px;
+  background: var(--color-brass);
+  box-shadow: 0 0 6px 1px rgba(201, 163, 92, 0.55);
+  opacity: 0;
+  animation-name: brasa-subir;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+@keyframes brasa-subir {
+  0% { transform: translate3d(0, 0, 0); opacity: 0; }
+  8% { opacity: 0.85; }
+  55% { opacity: 0.5; }
+  100% { transform: translate3d(var(--deriva, 20px), -104vh, 0); opacity: 0; }
+}
+
+/* ===== Círculo de invocación (mesa de combinación) ===== */
+
+/* Anillos del grabado: giran despacio, en sentidos opuestos. */
+.anillo-gira,
+.anillo-gira-rev {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.anillo-gira { animation: anillo-rotacion 70s linear infinite; }
+.anillo-gira-rev { animation: anillo-rotacion 95s linear infinite reverse; }
+@keyframes anillo-rotacion {
+  to { transform: rotate(360deg); }
+}
+
+/* Glifos del anillo exterior: texto alquímico sobre la órbita. */
+.glifos {
+  fill: var(--color-brass-deep);
+  font-size: 13px;
+  letter-spacing: 9px;
+  user-select: none;
+}
+
+/* Canalización: el núcleo del círculo respira mientras el archivo responde. */
+.canal-nucleo {
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(201, 163, 92, 0.5), rgba(139, 118, 201, 0.25) 55%, transparent 75%);
+  filter: blur(2px);
+}
+.canal-anillo {
+  border-radius: 9999px;
+  border: 2px dashed rgba(201, 163, 92, 0.8);
+  box-shadow: 0 0 22px -4px rgba(201, 163, 92, 0.8), inset 0 0 18px -8px rgba(139, 118, 201, 0.9);
+  animation: anillo-rotacion 1.4s linear infinite;
+}
+
+/* Insignia «Nuevo» del panel: pulso que pide ser tocado. */
+.badge-nuevo {
+  position: absolute;
+  top: -7px;
+  right: -4px;
+  border-radius: 9999px;
+  border: 1px solid var(--color-spectral);
+  background: var(--color-ink);
+  padding: 1px 7px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-spectral);
+  box-shadow: 0 0 10px -2px rgba(139, 118, 201, 0.9);
+  animation: badge-pulso 2.2s ease-in-out infinite;
+}
+@keyframes badge-pulso {
+  0%, 100% { box-shadow: 0 0 6px -2px rgba(139, 118, 201, 0.6); }
+  50% { box-shadow: 0 0 14px 0 rgba(139, 118, 201, 1); }
+}
+
+/* Barra de progreso del archivo: latón fundiéndose en lo espectral. */
+.progreso-arcano {
+  background: linear-gradient(90deg, var(--color-brass-deep), var(--color-brass) 55%, var(--color-spectral));
+  background-size: 200% 100%;
+  animation: progreso-ondular 5s linear infinite;
+}
+@keyframes progreso-ondular {
+  to { background-position: -200% 0; }
+}
+
+/* Esquinas de sigilo de los modales. */
+.sigilo-esquina {
+  position: absolute;
+  color: var(--color-brass-deep);
+  font-size: 10px;
+  opacity: 0.85;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .niebla-a, .niebla-b, .velo-vela, .brasa,
+  .anillo-gira, .anillo-gira-rev, .canal-anillo,
+  .badge-nuevo, .progreso-arcano {
+    animation: none;
+  }
+  .brasa { display: none; }
+}
+
+/* ===== Potencial del Mystery Pryer =====
+   Las variables de color se comparten con la leyenda; las sombras no alteran
+   dimensiones ni provocan layout shift. El numeral conserva el significado
+   cuando no se percibe el color o la animación. */
+[data-potential-tier="1"], [data-pot-color="1"] {
+  --pot: #7d8790;
+  --pot-sec: #7d8790;
+}
+[data-potential-tier="2"], [data-pot-color="2"] {
+  --pot: #4eb4a6;
+  --pot-sec: #4eb4a6;
+}
+[data-potential-tier="3"], [data-pot-color="3"] {
+  --pot: #7c83ff;
+  --pot-sec: #7c83ff;
+}
+[data-potential-tier="4"], [data-pot-color="4"] {
+  --pot: #e0b85a;
+  --pot-sec: #fff0a5;
+}
+[data-potential-tier="5"], [data-pot-color="5"] {
+  --pot: #fff2b2;
+  --pot-sec: #d78cff;
+}
+
+[data-potential-tier] {
+  border-color: color-mix(in srgb, var(--pot) 68%, var(--color-line));
+}
+[data-potential-tier="1"] {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--pot) 28%, transparent);
+}
+[data-potential-tier="2"] {
+  box-shadow: 0 0 11px -4px color-mix(in srgb, var(--pot) 72%, transparent);
+}
+[data-potential-tier="3"] {
+  box-shadow: 0 0 15px -3px color-mix(in srgb, var(--pot) 78%, transparent);
+  animation: potencial-respirar 4.8s ease-in-out infinite;
+}
+[data-potential-tier="4"] {
+  border-color: color-mix(in srgb, var(--pot) 88%, var(--color-line));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--pot) 40%, transparent),
+    0 0 19px -3px color-mix(in srgb, var(--pot) 82%, transparent);
+  animation: potencial-brillar 5.6s ease-in-out infinite;
+}
+[data-potential-tier="5"] {
+  border-color: color-mix(in srgb, var(--pot) 92%, var(--color-line));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--pot) 58%, transparent),
+    0 0 22px -2px color-mix(in srgb, var(--pot) 85%, transparent),
+    0 0 30px -10px color-mix(in srgb, var(--pot-sec) 80%, transparent);
+  animation: potencial-iridiscente 6.4s ease-in-out infinite;
+}
+
+.badge-potencial {
+  position: absolute;
+  top: -7px;
+  left: -4px;
+  z-index: 2;
+  min-width: 21px;
+  border: 1px solid var(--pot);
+  border-radius: 9999px;
+  background: var(--color-ink);
+  padding: 1px 5px;
+  color: var(--pot);
+  font-family: var(--font-display);
+  font-size: 9px;
+  line-height: 1.35;
+  box-shadow: 0 0 8px -2px var(--pot);
+}
+
+.pot-leyenda { color: var(--pot); }
+
+/* El outline es independiente del halo para que el foco siempre sea visible. */
+[data-potential-tier]:focus-visible {
+  outline: 2px solid var(--color-brass);
+  outline-offset: 3px;
+}
+
+@keyframes potencial-respirar {
+  0%, 100% { box-shadow: 0 0 12px -4px color-mix(in srgb, var(--pot) 62%, transparent); }
+  50% { box-shadow: 0 0 19px -2px color-mix(in srgb, var(--pot) 88%, transparent); }
+}
+@keyframes potencial-brillar {
+  0%, 100% {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--pot) 38%, transparent), 0 0 16px -4px color-mix(in srgb, var(--pot) 70%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--pot-sec) 48%, transparent), 0 0 23px -2px color-mix(in srgb, var(--pot) 92%, transparent);
+  }
+}
+@keyframes potencial-iridiscente {
+  0%, 100% {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--pot) 58%, transparent), 0 0 22px -2px color-mix(in srgb, var(--pot) 84%, transparent), 0 0 30px -10px color-mix(in srgb, var(--pot-sec) 68%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--pot-sec) 52%, transparent), 0 0 25px -1px color-mix(in srgb, var(--pot-sec) 88%, transparent), 0 0 34px -9px color-mix(in srgb, var(--pot) 80%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-potential-tier] { animation: none !important; }
+}
+
+/* ===== Memoria del Aprendiz =====
+   Advertencia de que un par ya se intentó sin resultado. Nunca depende solo
+   del color: el borde carmesí siempre viene acompañado de la cruz explícita.
+   La insignia no altera dimensiones ni provoca layout shift (position:
+   absolute, pointer-events: none). */
+[data-apprentice-failed="true"] {
+  position: relative;
+  border-color: var(--color-wine);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-wine) 78%, transparent),
+    0 0 18px -5px color-mix(in srgb, var(--color-wine) 72%, transparent);
+}
+
+.apprentice-memory-mark {
+  position: absolute;
+  z-index: 5;
+  top: -7px;
+  right: -7px;
+  display: flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-parchment);
+  border-radius: 9999px;
+  background: var(--color-wine);
+  color: var(--color-parchment);
+  pointer-events: none;
+  animation: apprentice-mark-entrada 0.22s ease-out both;
+}
+
+.apprentice-memory-mark svg {
+  width: 14px;
+  height: 14px;
+}
+
+@keyframes apprentice-mark-entrada {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apprentice-memory-mark { animation: none; }
+}
+
 /* ===== Árbol de habilidades (admin) =====
    El atenuado por foco se resuelve aquí y no re-renderizando React: el
    contenedor marca data-foco cuando hay hover/selección/búsqueda/caminos y
@@ -149,7 +454,13 @@ body {
   transition: opacity 0.22s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
   cursor: pointer;
 }
-[data-foco] .arbol-nodo:not(.arbol-resaltado) { opacity: 0.08; }
+.arbol-nodo:focus { outline: none; }
+.arbol-nodo:focus-visible > circle,
+.arbol-nodo:focus-visible > path {
+  stroke: var(--color-brass);
+  stroke-width: 3;
+}
+[data-foco] .arbol-nodo:not(.arbol-resaltado) { opacity: 0.16; }
 
 /* Botones ⊕/⊖ del explorador, anclados a cada nodo. */
 .arbol-expansores {
@@ -175,7 +486,7 @@ body {
   opacity: 0.58;
   transition: opacity 0.22s ease;
 }
-[data-foco] .arbol-combo:not(.arbol-resaltado) { opacity: 0.05; }
+[data-foco] .arbol-combo:not(.arbol-resaltado) { opacity: 0.1; }
 [data-foco] .arbol-combo.arbol-resaltado { opacity: 1; }
 [data-foco] .arbol-combo.arbol-resaltado .arbol-trazo { filter: url(#line-glow); }
 [data-foco] .arbol-combo.arbol-resaltado .arbol-union { filter: url(#skill-glow); }
@@ -197,8 +508,31 @@ body {
   to { transform: rotate(360deg); }
 }
 
+/* En mapas densos, geometría y foco cambian de forma atómica para que nodos
+   y aristas no se separen durante cientos de transiciones simultáneas. */
+[data-denso] .arbol-nodo,
+[data-denso] .arbol-expansores { transition: opacity 0.12s ease; }
+[data-denso] .arbol-combo { transition: opacity 0.12s ease; }
+[data-denso] .arbol-halo,
+[data-denso] .arbol-trazo,
+[data-denso] .arbol-union { filter: none !important; }
+[data-denso] .arbol-trazo-guiones { animation: none !important; }
+
+/* Detalle semántico por zoom: una vista general muestra estructura, no texto
+   microscópico. Los nombres reaparecen al acercarse. */
+[data-zoom="lejano"] .arbol-etiqueta,
+[data-zoom="lejano"] .arbol-detalle-nodo,
+[data-zoom="medio"] .arbol-detalle-nodo { display: none; }
+[data-zoom="lejano"] .arbol-reticula { opacity: 0.35; }
+
+[data-arbol]:focus-visible {
+  outline: 2px solid var(--color-brass);
+  outline-offset: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .arbol-nodo, .arbol-combo, .arbol-expansores { transition: none; }
   .arbol-anillo-seleccion { animation: none; }
   [data-foco] .arbol-combo.arbol-resaltado .arbol-trazo-guiones { animation: none; }
+  [data-arbol] { transition: none !important; }
 }

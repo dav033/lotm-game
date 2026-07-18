@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
+    "test": "tsx --test \"src/**/*.test.ts\" \"prisma/**/*.test.ts\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -17,13 +18,15 @@
     "@prisma/adapter-better-sqlite3": "latest",
     "@prisma/client": "latest",
     "better-sqlite3": "^12.4.1",
+    "framer-motion": "^12.42.2",
     "html2canvas": "^1.4.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.545.0",
     "next": "^15.5.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "zod": "^4.1.11"
+    "zod": "^4.1.11",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",

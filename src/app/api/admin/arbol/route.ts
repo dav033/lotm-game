@@ -23,7 +23,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
   }
   const { searchParams } = new URL(req.url)
-  const vista = searchParams.get('vista') ?? 'completo'
+  const vista = searchParams.get('vista')
+  if (!vista) {
+    return NextResponse.json({ error: 'Falta el parámetro vista.' }, { status: 400 })
+  }
   try {
     switch (vista) {
       case 'completo':
@@ -36,8 +39,9 @@ export async function GET(req: Request) {
         return NextResponse.json(await vecinosDeNodo(id))
       }
       case 'camino-grafo': {
-        const indice = Number(searchParams.get('indice'))
-        if (!Number.isInteger(indice) || indice < 0) {
+        const indiceParam = searchParams.get('indice')
+        const indice = Number(indiceParam)
+        if (indiceParam === null || !Number.isInteger(indice) || indice < 0) {
           return NextResponse.json({ error: 'Índice de camino inválido.' }, { status: 400 })
         }
         return NextResponse.json(await grafoCamino(indice))
@@ -49,8 +53,10 @@ export async function GET(req: Request) {
         if (!espina) return NextResponse.json({ error: 'Camino no encontrado.' }, { status: 404 })
         return NextResponse.json(espina)
       }
-      case 'buscar':
-        return NextResponse.json(await buscarNodos(searchParams.get('q') ?? ''))
+      case 'buscar': {
+        const consulta = (searchParams.get('q') ?? '').slice(0, 80)
+        return NextResponse.json(await buscarNodos(consulta))
+      }
       default:
         return NextResponse.json({ error: `Vista desconocida: ${vista}.` }, { status: 400 })
     }

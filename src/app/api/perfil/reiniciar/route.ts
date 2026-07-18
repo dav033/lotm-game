@@ -3,8 +3,9 @@ import { asegurarPerfil, reiniciarPerfil } from '@/server/perfil'
 
 export const runtime = 'nodejs'
 
-// Borra el progreso del perfil actual y vuelve a entregar los tres elementos
-// iniciales. El perfil (y su cookie) se conservan.
+// Borra el progreso del perfil actual y vuelve a entregar los elementos
+// iniciales (los que tengan isStarter=true en la base). El perfil (y su
+// cookie) se conservan.
 export async function POST() {
   try {
     const profile = await asegurarPerfil()

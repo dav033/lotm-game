@@ -5,11 +5,18 @@ import { buildRecipeInputKey } from './inputKey'
 import { concederLogrosPorElementos } from './logros'
 import { advanceIdFromToken, sequenceLabelOf, toPublicAdvance, toPublicElement } from './publicos'
 import {
+  aplicacionAvanceTieneContenidoActivo,
+  avanceCreableAhora,
+  decidirAplicacionRitual,
+  salidaRecetaEjecutable,
+} from './reglasCombinacion'
+import {
   MENSAJE_SIN_RECETA,
   type CombineResult,
   type PathwayReveal,
   type RecipeOutputData,
 } from './tipos'
+import { RITUAL_KNOWLEDGE_ELEMENT_SLUG } from './ritualKnowledge'
 
 // Error de reglas del juego: su mensaje sí es apto para mostrarse al jugador.
 export class CombinationError extends Error {}
@@ -36,6 +43,7 @@ async function combinarAvanceConSecuencia(
   profileId: string,
   slugs: [string, string],
   advanceIndex: number,
+  confirmRitualRisk: boolean,
 ): Promise<CombineResult> {
   const advanceToken = slugs[advanceIndex]
   const advanceId = advanceIdFromToken(advanceToken)
@@ -44,8 +52,9 @@ async function combinarAvanceConSecuencia(
     throw new CombinationError('Solo puedes combinar un avance con una secuencia.')
   }
 
-  const [advance, sequenceElement, owned] = await Promise.all([
-    db.advance.findUnique({
+  return db.$transaction(async (tx) => {
+  const [advance, sequenceElement, owned, ritualKnowledge] = await Promise.all([
+    tx.advance.findUnique({
       where: { id: advanceId },
       include: {
         ingredients: {
@@ -53,7 +62,16 @@ async function combinarAvanceConSecuencia(
           orderBy: { id: 'asc' },
         },
         sourceSequence: { include: { element: true, pathway: true } },
-        targetSequence: { include: { element: true, pathway: true } },
+        targetSequence: {
+          include: {
+            element: {
+              include: {
+                discoveries: { where: { profileId }, select: { profileId: true } },
+              },
+            },
+            pathway: true,
+          },
+        },
         rituals: {
           include: {
             players: { where: { profileId }, select: { profileId: true } },
@@ -63,9 +81,21 @@ async function combinarAvanceConSecuencia(
         },
       },
     }),
-    db.element.findUnique({ where: { slug: sequenceSlug } }),
-    db.playerAdvance.findUnique({
+    tx.element.findUnique({
+      where: { slug: sequenceSlug },
+      include: {
+        discoveries: { where: { profileId }, select: { profileId: true } },
+      },
+    }),
+    tx.playerAdvance.findUnique({
       where: { profileId_advanceId: { profileId, advanceId } },
+    }),
+    tx.playerDiscovery.findFirst({
+      where: {
+        profileId,
+        element: { slug: RITUAL_KNOWLEDGE_ELEMENT_SLUG, isActive: true },
+      },
+      select: { elementId: true },
     }),
   ])
 
@@ -76,12 +106,7 @@ async function combinarAvanceConSecuencia(
     throw new CombinationError('La secuencia seleccionada no está disponible.')
   }
 
-  const discoveredSequence = await db.playerDiscovery.findUnique({
-    where: {
-      profileId_elementId: { profileId, elementId: sequenceElement.id },
-    },
-  })
-  if (!discoveredSequence) {
+  if (sequenceElement.discoveries.length === 0) {
     throw new CombinationError('Aún no has descubierto esa secuencia.')
   }
 
@@ -90,16 +115,49 @@ async function combinarAvanceConSecuencia(
     { slug: sequenceSlug, quantity: 1 },
   ])
   const isValid =
-    sequenceElement.id === advance.sourceSequence.elementId &&
-    advance.sourceSequence.pathway.isActive &&
-    advance.targetSequence.pathway.isActive &&
-    advance.targetSequence.element.isActive
+    aplicacionAvanceTieneContenidoActivo(advance, sequenceElement.id) &&
+    advance.targetSequence.element.discoveries.length === 0
   const activeRituals = advance.rituals.filter((ritual) => ritual.isActive)
-  const missingRitual =
-    isValid && activeRituals.length > 0 && activeRituals.every((ritual) => ritual.players.length === 0)
+  const ritualDecision = isValid
+    ? decidirAplicacionRitual(
+        advance.rituals.map((ritual) => ({
+          isActive: ritual.isActive,
+          preparado: ritual.players.length > 0,
+        })),
+        ritualKnowledge !== null,
+        confirmRitualRisk,
+      )
+    : 'ALLOW'
+  if (ritualDecision === 'KNOWLEDGE_REQUIRED') {
+    return {
+      kind: 'RITUAL_KNOWLEDGE_REQUIRED',
+      message:
+        'El avance responde, pero no comprendes la preparación necesaria para aplicarlo con seguridad.',
+    }
+  }
+  if (ritualDecision === 'PREPARATION_REQUIRED') {
+    return {
+      kind: 'RITUAL_PREPARATION_REQUIRED',
+      confirmationRequired: true,
+      message: 'Esta ascensión no está protegida. Intentarla puede tener consecuencias.',
+    }
+  }
+  if (confirmRitualRisk && !isValid) {
+    return {
+      kind: 'RESOLVED',
+      success: false,
+      message: 'La ascensión ya no puede intentarse en estas condiciones.',
+      inputKey,
+      results: [],
+      isNewPathwayUnlock: false,
+      pathwayReveal: null,
+      consumedSlugs: [],
+      unlockedAchievements: [],
+    }
+  }
+  const missingRitual = ritualDecision === 'CONFIRMED_UNPROTECTED_FAILURE'
   const now = new Date()
 
-  return db.$transaction(async (tx) => {
     await tx.playerProfile.update({ where: { id: profileId }, data: { lastSeenAt: now } })
     await tx.playerCombinationStat.upsert({
       where: { profileId_inputKey: { profileId, inputKey } },
@@ -122,6 +180,7 @@ async function combinarAvanceConSecuencia(
 
     if (!isValid) {
       return {
+        kind: 'RESOLVED',
         success: false,
         message: 'El avance no reconoce esa secuencia.',
         inputKey,
@@ -178,6 +237,7 @@ async function combinarAvanceConSecuencia(
         now,
       )
       return {
+        kind: 'RESOLVED',
         success: false,
         message: 'El avance fracasa: falta preparar el ritual correspondiente.',
         inputKey,
@@ -265,6 +325,7 @@ async function combinarAvanceConSecuencia(
     )
 
     return {
+      kind: 'RESOLVED',
       success: true,
       message: isNewDiscovery
         ? `Has descubierto la secuencia ${advance.targetSequence.name}.`
@@ -290,6 +351,7 @@ export async function combinarParaPerfil(
   db: PrismaClient,
   profileId: string,
   slugs: [string, string],
+  options: { confirmRitualRisk?: boolean } = {},
 ): Promise<CombineResult> {
   if (slugs.length !== 2) {
     throw new CombinationError('Debes colocar exactamente dos elementos.')
@@ -302,12 +364,21 @@ export async function combinarParaPerfil(
     if (advanceIndexes.length !== 1) {
       throw new CombinationError('Solo puedes combinar un avance con una secuencia.')
     }
-    return combinarAvanceConSecuencia(db, profileId, slugs, advanceIndexes[0])
+    return combinarAvanceConSecuencia(
+      db,
+      profileId,
+      slugs,
+      advanceIndexes[0],
+      options.confirmRitualRisk ?? false,
+    )
   }
 
   const uniqueSlugs = [...new Set(slugs)]
   const elements = await db.element.findMany({
     where: { slug: { in: uniqueSlugs } },
+    include: {
+      discoveries: { where: { profileId }, select: { profileId: true } },
+    },
   })
 
   if (elements.length !== uniqueSlugs.length) {
@@ -319,11 +390,7 @@ export async function combinarParaPerfil(
 
   // El jugador solo puede usar lo que ya descubrió: se verifica SIEMPRE en el
   // servidor, sin confiar en lo que el navegador afirme.
-  const discovered = await db.playerDiscovery.findMany({
-    where: { profileId, elementId: { in: elements.map((e) => e.id) } },
-    select: { elementId: true },
-  })
-  if (discovered.length !== elements.length) {
+  if (elements.some((element) => element.discoveries.length === 0)) {
     throw new CombinationError('Aún no has descubierto ese elemento.')
   }
 
@@ -363,19 +430,11 @@ export async function combinarParaPerfil(
     }),
   ])
 
-  const advance =
-    foundAdvance?.isActive &&
-    foundAdvance.sourceSequence.pathway.isActive &&
-    foundAdvance.targetSequence.pathway.isActive
-      ? foundAdvance
-      : null
+  const advance = avanceCreableAhora(foundAdvance) ? foundAdvance : null
 
   // Una receta cuyos todos los resultados están desactivados se comporta como inexistente.
   const recipeOutputs =
-    found?.outputs.filter(
-      (output) =>
-        output.element.isActive && (output.element.sequence?.advancesTo.length ?? 0) === 0,
-    ) ?? []
+    found?.outputs.filter(salidaRecetaEjecutable) ?? []
   const recipe = recipeOutputs.length > 0 ? found : null
   const now = new Date()
 
@@ -440,6 +499,7 @@ export async function combinarParaPerfil(
     if (!recipe || recipeOutputs.length === 0) {
       if (advanceResult) {
         return {
+          kind: 'RESOLVED',
           success: true,
           message: 'Has obtenido un avance desconocido.',
           inputKey,
@@ -448,9 +508,13 @@ export async function combinarParaPerfil(
           pathwayReveal: null,
           consumedSlugs: [],
           unlockedAchievements: [],
+          // Formar un avance a partir de dos Elementos normales también
+          // cuenta como un resultado genuino para la Memoria del Aprendiz.
+          memoryDelta: { inputKey, status: 'RESOLVED' },
         } satisfies CombineResult
       }
       return {
+        kind: 'RESOLVED',
         success: false,
         message: MENSAJE_SIN_RECETA,
         inputKey,
@@ -459,6 +523,9 @@ export async function combinarParaPerfil(
         pathwayReveal: null,
         consumedSlugs: [],
         unlockedAchievements: [],
+        // NO_RECIPE genuino entre dos Elementos normales: la única ruta que
+        // alimenta la Memoria del Aprendiz con un intento fallido.
+        memoryDelta: { inputKey, status: 'FAILED' },
       } satisfies CombineResult
     }
 
@@ -555,6 +622,7 @@ export async function combinarParaPerfil(
     }
 
     return {
+      kind: 'RESOLVED',
       success: true,
       message,
       inputKey,
@@ -563,6 +631,7 @@ export async function combinarParaPerfil(
       pathwayReveal,
       consumedSlugs: [],
       unlockedAchievements,
+      memoryDelta: { inputKey, status: 'RESOLVED' },
     } satisfies CombineResult
   })
 }

@@ -3,7 +3,8 @@ import { prisma } from '@/server/db'
 import { asegurarPerfil } from '@/server/perfil'
 import { sequenceLabelOf, toPublicAdvance, toPublicElement } from '@/server/domain/publicos'
 import { obtenerLogrosPendientes, reconciliarLogros } from '@/server/domain/logros'
-import { obtenerRitualesDisponibles } from '@/server/domain/rituales'
+import { obtenerEstadoRitual } from '@/server/domain/rituales'
+import { facultadesDesdeSlugs } from '@/server/domain/habilidades'
 
 export const runtime = 'nodejs'
 
@@ -14,7 +15,7 @@ export async function GET() {
     const profile = await asegurarPerfil()
     await prisma.$transaction((tx) => reconciliarLogros(tx, profile.id))
 
-    const [discoveries, advances, totalElementos, pendingAchievements, rituals] = await Promise.all([
+    const [discoveries, advances, totalElementos, pendingAchievements, ritualState] = await Promise.all([
       prisma.playerDiscovery.findMany({
         where: { profileId: profile.id, element: { isActive: true } },
         include: { element: { include: { sequence: { include: { pathway: true } } } } },
@@ -37,7 +38,7 @@ export async function GET() {
       }),
       prisma.element.count({ where: { isActive: true } }),
       obtenerLogrosPendientes(prisma, profile.id),
-      obtenerRitualesDisponibles(prisma, profile.id),
+      obtenerEstadoRitual(prisma, profile.id),
     ])
 
     const elementosDescubiertos = discoveries.map((d) => ({
@@ -62,7 +63,10 @@ export async function GET() {
           ? 0
           : Math.round((elementosDescubiertos.length / totalElementos) * 100),
       pendingAchievements,
-      rituals,
+      ritualState,
+      // Solo metadatos de desbloqueo de facultades; los recuentos de
+      // potencial se calculan aparte, bajo demanda de cada facultad.
+      abilities: facultadesDesdeSlugs(new Set(discoveries.map((d) => d.element.slug))),
     })
   } catch (err) {
     console.error('[api/estado]', err)

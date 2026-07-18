@@ -32,6 +32,12 @@ export default async function PaginaDatosAdmin() {
             Exportar nombres, combinaciones y orígenes
           </a>
         </div>
+        <p className="mt-3 text-xs text-fog">
+          La exportación nominal (v3) está pensada para lectura humana o LLM: por cada
+          elemento incluye quién lo produce, qué lo bloquea, en qué combinaciones,
+          avances y rituales participa, qué desbloquea a su vez, y su profundidad y
+          dificultad dentro del árbol de progresión.
+        </p>
       </section>
 
       <section className="rounded-lg mist-card p-4">
