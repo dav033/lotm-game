@@ -28,6 +28,7 @@ const TierExplanationCard = forwardRef(function TierExplanationCard(
       <div className="explanation-content tier-explanation-content">
         <p className="explanation-scope">{scope}</p>
         <strong className="explanation-tier">{rank}</strong>
+        <div className="tier-explanation-rule" aria-hidden="true" />
         <p className="tier-explanation-description">
           {description || 'Add a short explanation for this tier.'}
         </p>

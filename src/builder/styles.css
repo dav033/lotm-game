@@ -258,12 +258,12 @@
 .explanation-scope{position:absolute;top:4px;left:0;right:0;font-size:10px;font-weight:700;
   letter-spacing:.26em;text-transform:uppercase;color:var(--tier,#d9b869);overflow-wrap:anywhere}
 
-.explanation-tier{font-family:'Cinzel',serif;font-size:268px;font-weight:900;line-height:.78;
+.explanation-tier{font-family:'Cinzel',serif;font-size:268px;font-weight:900;line-height:1.2;
   color:var(--tier);letter-spacing:-.06em;text-shadow:0 0 64px var(--tier-deep)}
-.tier-explanation-description{max-width:29ch;margin-top:42px;font-size:18px;line-height:1.55;
+.tier-explanation-rule{width:42px;height:2px;margin:80px auto 22px;
+  background:var(--tier);box-shadow:0 0 12px var(--tier-deep)}
+.tier-explanation-description{max-width:29ch;font-size:18px;line-height:1.55;
   color:var(--text);white-space:pre-line;overflow-wrap:anywhere}
-.tier-explanation-description::before{content:'';display:block;width:42px;height:2px;
-  margin:0 auto 22px;background:var(--tier);box-shadow:0 0 12px var(--tier-deep)}
 
 .general-explanation-card{--tier:#d9b869;--tier-deep:#4a3a17}
 .general-explanation-content{padding:48px 24px 24px}
