@@ -5,8 +5,15 @@ import {
   type PublicRitualState,
   type RitualKnowledgeCandidate,
 } from './ritualKnowledge'
+import {
+  elementoDisponiblePorPhaseId,
+  faseActualParaPerfil,
+  filtroElementoDisponiblePorPhaseIds,
+} from './fases'
+import { featuresParaFase } from './featureGates'
 
 export type RitualErrorCode =
+  | 'FEATURE_LOCKED'
   | 'KNOWLEDGE_REQUIRED'
   | 'RITUAL_NOT_FOUND'
   | 'SOURCE_REQUIRED'
@@ -23,10 +30,18 @@ export class RitualError extends Error {
   }
 }
 
-async function cargarSnapshotRitual(db: Db, profileId: string) {
+async function cargarSnapshotRitual(
+  db: Db,
+  profileId: string,
+  availablePhaseIds: ReadonlySet<string>,
+) {
+  const availableElementFilter = filtroElementoDisponiblePorPhaseIds(availablePhaseIds)
   const [discoveries, rituals] = await Promise.all([
     db.playerDiscovery.findMany({
-      where: { profileId, element: { isActive: true } },
+      where: {
+        profileId,
+        element: availableElementFilter,
+      },
       select: { elementId: true, element: { select: { slug: true } } },
     }),
     db.ritual.findMany({
@@ -43,7 +58,13 @@ async function cargarSnapshotRitual(db: Db, profileId: string) {
                 number: true,
                 elementId: true,
                 element: {
-                  select: { id: true, name: true, iconKey: true, isActive: true },
+                  select: {
+                    id: true,
+                    name: true,
+                    iconKey: true,
+                    isActive: true,
+                    availableFromPhaseId: true,
+                  },
                 },
                 pathway: { select: { name: true, isActive: true } },
               },
@@ -51,7 +72,7 @@ async function cargarSnapshotRitual(db: Db, profileId: string) {
             targetSequence: {
               select: {
                 elementId: true,
-                element: { select: { isActive: true } },
+                element: { select: { isActive: true, availableFromPhaseId: true } },
                 pathway: { select: { isActive: true } },
               },
             },
@@ -61,7 +82,9 @@ async function cargarSnapshotRitual(db: Db, profileId: string) {
           select: {
             elementId: true,
             quantity: true,
-            element: { select: { name: true, iconKey: true, isActive: true } },
+            element: {
+              select: { name: true, iconKey: true, isActive: true, availableFromPhaseId: true },
+            },
           },
           orderBy: { id: 'asc' },
         },
@@ -74,12 +97,24 @@ async function cargarSnapshotRitual(db: Db, profileId: string) {
   return {
     discoveredElementIds: new Set(discoveries.map((item) => item.elementId)),
     discoveredSlugs: new Set(discoveries.map((item) => item.element.slug)),
-    rituals: rituals satisfies RitualKnowledgeCandidate[],
+    rituals: rituals.filter(
+      (ritual) =>
+        elementoDisponiblePorPhaseId(ritual.advance.sourceSequence.element, availablePhaseIds) &&
+        elementoDisponiblePorPhaseId(ritual.advance.targetSequence.element, availablePhaseIds) &&
+        ritual.ingredients.every((ingredient) =>
+          elementoDisponiblePorPhaseId(ingredient.element, availablePhaseIds),
+        ),
+    ) satisfies RitualKnowledgeCandidate[],
   }
 }
 
 export async function obtenerEstadoRitual(db: Db, profileId: string): Promise<PublicRitualState> {
-  return calcularEstadoRitual(await cargarSnapshotRitual(db, profileId))
+  const phaseState = await faseActualParaPerfil(db, profileId)
+  const features = await featuresParaFase(db, phaseState.sortOrder)
+  if (!features.ADVANCEMENT_RITUALS) return { status: 'HIDDEN', groups: [] }
+  return calcularEstadoRitual(
+    await cargarSnapshotRitual(db, profileId, phaseState.availablePhaseIds),
+  )
 }
 
 export async function realizarRitual(
@@ -87,6 +122,17 @@ export async function realizarRitual(
   profileId: string,
   ritualId: string,
 ): Promise<{ ok: true; ritualState: PublicRitualState }> {
+  const phaseState = await faseActualParaPerfil(db, profileId)
+  const { availablePhaseIds } = phaseState
+  const features = await featuresParaFase(db, phaseState.sortOrder)
+  if (!features.ADVANCEMENT_RITUALS) {
+    throw new RitualError(
+      'Los rituales de avance aún no están disponibles.',
+      'FEATURE_LOCKED',
+      403,
+    )
+  }
+  const availableElementFilter = filtroElementoDisponiblePorPhaseIds(availablePhaseIds)
   const [ritual, discoveries] = await Promise.all([
     db.ritual.findFirst({
       where: { id: ritualId, isActive: true },
@@ -98,14 +144,14 @@ export async function realizarRitual(
             sourceSequence: {
               select: {
                 elementId: true,
-                element: { select: { isActive: true } },
+                element: { select: { isActive: true, availableFromPhaseId: true } },
                 pathway: { select: { isActive: true } },
               },
             },
             targetSequence: {
               select: {
                 elementId: true,
-                element: { select: { isActive: true } },
+                element: { select: { isActive: true, availableFromPhaseId: true } },
                 pathway: { select: { isActive: true } },
               },
             },
@@ -119,12 +165,18 @@ export async function realizarRitual(
           },
         },
         ingredients: {
-          select: { elementId: true, element: { select: { isActive: true } } },
+          select: {
+            elementId: true,
+            element: { select: { isActive: true, availableFromPhaseId: true } },
+          },
         },
       },
     }),
     db.playerDiscovery.findMany({
-      where: { profileId, element: { isActive: true } },
+      where: {
+        profileId,
+        element: availableElementFilter,
+      },
       select: { elementId: true, element: { select: { slug: true } } },
     }),
   ])
@@ -148,8 +200,8 @@ export async function realizarRitual(
   const { advance } = ritual
   const activeContent =
     advance.isActive &&
-    advance.sourceSequence.element.isActive &&
-    advance.targetSequence.element.isActive &&
+    elementoDisponiblePorPhaseId(advance.sourceSequence.element, availablePhaseIds) &&
+    elementoDisponiblePorPhaseId(advance.targetSequence.element, availablePhaseIds) &&
     advance.sourceSequence.pathway.isActive &&
     advance.targetSequence.pathway.isActive
   if (!activeContent) {
@@ -168,7 +220,8 @@ export async function realizarRitual(
   if (
     ritual.ingredients.some(
       (ingredient) =>
-        !ingredient.element.isActive || !discoveredIds.has(ingredient.elementId),
+        !elementoDisponiblePorPhaseId(ingredient.element, availablePhaseIds) ||
+        !discoveredIds.has(ingredient.elementId),
     )
   ) {
     throw new RitualError(

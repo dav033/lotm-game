@@ -56,7 +56,7 @@ export function usePanZoom(
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches
     escena.style.transition =
-      animar && !sinMovimiento ? 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)' : 'none'
+      animar && !sinMovimiento ? 'transform 220ms var(--ease-out-snappy)' : 'none'
     escena.style.transform = `translate(${x}px, ${y}px) scale(${k})`
     const contenedor = contenedorRef.current
     if (contenedor) {

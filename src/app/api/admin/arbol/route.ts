@@ -8,6 +8,8 @@ import {
   grafoCamino,
   vecinosDeNodo,
 } from '@/server/services/arbolGrafo'
+import { prisma } from '@/server/db'
+import { cargarVistaFases } from '@/server/services/fasesProgresion'
 
 export const runtime = 'nodejs'
 
@@ -18,6 +20,7 @@ export const runtime = 'nodejs'
 //   ?vista=espina&id=<pathwayId>   → espina estructurada para la vista de camino
 //   ?vista=buscar&q=texto          → nodos por nombre
 //   ?vista=completo                → grafo entero (solo lo pide el mapa completo)
+//   ?vista=fases                  → fases y grafo completo para su mapa editable
 export async function GET(req: Request) {
   if (!(await haySesionAdmin())) {
     return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
@@ -33,6 +36,13 @@ export async function GET(req: Request) {
         return NextResponse.json(await construirGrafo())
       case 'inicial':
         return NextResponse.json(await datosIniciales())
+      case 'fases': {
+        const [fases, grafo] = await Promise.all([
+          cargarVistaFases(prisma),
+          construirGrafo(),
+        ])
+        return NextResponse.json({ fases, grafo })
+      }
       case 'vecinos': {
         const id = searchParams.get('id')
         if (!id) return NextResponse.json({ error: 'Falta el parámetro id.' }, { status: 400 })

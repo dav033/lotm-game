@@ -9,6 +9,8 @@
 //        elemento activo de ese tipo;
 //      - si `unlockedBySequenceNumber` está configurado, el jugador descubrió
 //        alguna Secuencia con ese número;
+//      - si `unlockedAtDiscoveryCount` está configurado, el jugador tiene al
+//        menos esa cantidad de elementos activos descubiertos (>=);
 //      - si hay requisitos AND (`requiredElementIds`), el jugador descubrió
 //        TODOS esos elementos.
 //      Solo cuentan los campos realmente configurados; si ninguno lo está,
@@ -23,6 +25,7 @@
 export type EspontaneoConfig = {
   unlockedByType: string | null
   unlockedBySequenceNumber: number | null
+  unlockedAtDiscoveryCount: number | null
   requiredElementIds: readonly string[]
   triggerIds: readonly string[]
 }
@@ -31,6 +34,9 @@ export type EspontaneoContexto = {
   discoveredIds: ReadonlySet<string>
   discoveredTypes: ReadonlySet<string>
   discoveredSequenceNumbers: ReadonlySet<number>
+  // Cantidad de elementos ACTIVOS descubiertos por el jugador (PlayerDiscovery
+  // únicamente; no incluye avances preparados ni elementos inactivos).
+  discoveryCount: number
 }
 
 export function desbloqueoEspontaneoSatisfecho(
@@ -43,6 +49,7 @@ export function desbloqueoEspontaneoSatisfecho(
   const grupoConfigurado =
     el.unlockedByType != null ||
     el.unlockedBySequenceNumber != null ||
+    el.unlockedAtDiscoveryCount != null ||
     el.requiredElementIds.length > 0
   if (!grupoConfigurado) return false
 
@@ -51,6 +58,9 @@ export function desbloqueoEspontaneoSatisfecho(
     el.unlockedBySequenceNumber != null &&
     !ctx.discoveredSequenceNumbers.has(el.unlockedBySequenceNumber)
   ) {
+    return false
+  }
+  if (el.unlockedAtDiscoveryCount != null && ctx.discoveryCount < el.unlockedAtDiscoveryCount) {
     return false
   }
   if (

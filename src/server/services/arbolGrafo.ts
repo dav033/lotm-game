@@ -77,6 +77,9 @@ export async function construirGrafo(): Promise<GrafoArbol> {
     if (el.unlockedBySequenceNumber !== null) {
       condiciones.push(`al alcanzar la secuencia ${el.unlockedBySequenceNumber} de cualquier camino`)
     }
+    if (el.unlockedAtDiscoveryCount !== null) {
+      condiciones.push(`al tener al menos ${el.unlockedAtDiscoveryCount} elementos activos descubiertos`)
+    }
 
     nodos.push({
       id: `el:${el.id}`,
@@ -337,6 +340,7 @@ export async function buscarNodos(consulta: string) {
         description: true,
         unlockedByType: true,
         unlockedBySequenceNumber: true,
+        unlockedAtDiscoveryCount: true,
         sequence: { select: { number: true, pathwayId: true } },
       },
     }),
@@ -366,6 +370,9 @@ export async function buscarNodos(consulta: string) {
     }
     if (el.unlockedBySequenceNumber !== null) {
       condiciones.push(`al alcanzar la secuencia ${el.unlockedBySequenceNumber} de cualquier camino`)
+    }
+    if (el.unlockedAtDiscoveryCount !== null) {
+      condiciones.push(`al tener al menos ${el.unlockedAtDiscoveryCount} elementos activos descubiertos`)
     }
     return {
       id: `el:${el.id}`,
@@ -536,6 +543,9 @@ export async function espinaCamino(pathwayId: string): Promise<EspinaCamino | nu
       }
       if (el.unlockedBySequenceNumber !== null) {
         desbloqueos.push(`Al alcanzar la secuencia ${el.unlockedBySequenceNumber} de cualquier camino`)
+      }
+      if (el.unlockedAtDiscoveryCount !== null) {
+        desbloqueos.push(`Al tener al menos ${el.unlockedAtDiscoveryCount} elementos activos descubiertos`)
       }
       for (const t of el.unlockTriggers) desbloqueos.push(`Al descubrir ${t.trigger.name}`)
       if (el.unlockRequirements.length > 0) {

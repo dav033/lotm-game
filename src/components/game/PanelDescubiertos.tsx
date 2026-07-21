@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
+import { SPRING_UI } from './motion'
 import { Search, X } from 'lucide-react'
 import { ELEMENT_TYPES, etiquetaTipo } from '@/server/domain/tipos'
 import {
@@ -152,6 +153,7 @@ function TarjetaElemento({
       ),
   )
   const esNuevo = useJuegoStore((s) => s.recientes.includes(el.slug))
+  const esApertura = useJuegoStore((s) => s.aperturasFase.includes(el.slug))
   const modoInteraccion = useJuegoStore((s) => s.modoInteraccion)
   const analizarConVidente = useJuegoStore((s) => s.analizarConVidente)
   const tier = useJuegoStore((s) => s.potencialPorElemento[el.id])
@@ -197,7 +199,7 @@ function TarjetaElemento({
               : `${el.name}: los avances enmascarados no pueden analizarse`
             : `${el.name}: arrastra sobre otro elemento para combinar, o pulsa para colocar en el círculo${
                 etiquetaPotencial ? `, ${etiquetaPotencial}` : ''
-              }${previouslyFailed ? '. Combinación intentada anteriormente sin resultado.' : ''}`
+              }${esApertura ? '. Apertura de la nueva fase.' : ''}${previouslyFailed ? '. Combinación intentada anteriormente sin resultado.' : ''}`
         }
         title={
           enModoVidente && esAnalizable
@@ -207,9 +209,13 @@ function TarjetaElemento({
         animate={esObjetivo ? { scale: 1.07 } : { scale: 1 }}
         whileHover={{ y: -3 }}
         whileTap={{ scale: 0.94 }}
-        transition={{ type: 'spring', stiffness: 420, damping: 24 }}
+        transition={SPRING_UI}
         className={`relative flex w-full touch-none select-none flex-col items-center gap-1 rounded-lg mist-card p-2 text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-brass ${
-          esObjetivo ? 'border-brass' : 'hover:border-brass-deep'
+          esObjetivo
+            ? 'border-brass'
+            : esApertura
+              ? 'border-spectral ring-1 ring-spectral/70 shadow-[0_0_20px_-8px_var(--color-spectral)]'
+              : 'hover:border-brass-deep'
         } ${
           enModoVidente
             ? esAnalizable
@@ -223,7 +229,11 @@ function TarjetaElemento({
             <X />
           </span>
         )}
-        {esNuevo && (
+        {esApertura ? (
+          <span className="badge-nuevo border-spectral text-spectral" aria-label="Apertura de la nueva fase">
+            ✦ Nueva fase
+          </span>
+        ) : esNuevo && (
           <span className="badge-nuevo" aria-label="Descubierto recientemente">
             ✦ Nuevo
           </span>

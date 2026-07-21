@@ -14,6 +14,12 @@ import {
   ritualesPermitenAplicacion,
   salidaRecetaEjecutable,
 } from '../domain/reglasCombinacion'
+import {
+  elementoDisponiblePorPhaseId,
+  faseActualParaPerfil,
+  filtroElementoDisponiblePorPhaseIds,
+} from '../domain/fases'
+import { featuresParaFase } from '../domain/featureGates'
 
 // Carga de datos del sistema de facultades. El dominio (habilidades.ts) es
 // puro; aquí solo se construye el snapshot con consultas mínimas y sin N+1.
@@ -26,8 +32,16 @@ export async function resolverFacultades(
   db: PrismaClient,
   profileId: string,
 ): Promise<PlayerAbilities> {
+  const { availablePhaseIds } = await faseActualParaPerfil(db, profileId)
+  const availableElementFilter = filtroElementoDisponiblePorPhaseIds(availablePhaseIds)
   const descubrimientos = await db.playerDiscovery.findMany({
-    where: { profileId, element: { isActive: true, slug: { in: SLUGS_FACULTAD } } },
+    where: {
+      profileId,
+      element: {
+        ...availableElementFilter,
+        slug: { in: SLUGS_FACULTAD },
+      },
+    },
     select: { element: { select: { slug: true } } },
   })
   return facultadesDesdeSlugs(new Set(descubrimientos.map((d) => d.element.slug)))
@@ -42,10 +56,17 @@ export async function cargarSnapshotPotencial(
   db: PrismaClient,
   profileId: string,
 ): Promise<SnapshotPotencial> {
+  const phaseState = await faseActualParaPerfil(db, profileId)
+  const { availablePhaseIds } = phaseState
+  const features = await featuresParaFase(db, phaseState.sortOrder)
+  const availableElementFilter = filtroElementoDisponiblePorPhaseIds(availablePhaseIds)
   const [descubrimientos, resueltas, recetas, avances, avancesPropios, ritualesPropios] =
     await db.$transaction([
       db.playerDiscovery.findMany({
-        where: { profileId, element: { isActive: true } },
+        where: {
+          profileId,
+          element: availableElementFilter,
+        },
         select: { elementId: true },
       }),
       db.playerCombinationStat.findMany({
@@ -60,7 +81,7 @@ export async function cargarSnapshotPotencial(
             select: {
               elementId: true,
               quantity: true,
-              element: { select: { isActive: true } },
+              element: { select: { isActive: true, availableFromPhaseId: true } },
             },
           },
           outputs: {
@@ -68,9 +89,21 @@ export async function cargarSnapshotPotencial(
               element: {
                 select: {
                   isActive: true,
+                  availableFromPhaseId: true,
                   sequence: {
                     select: {
-                      advancesTo: { where: { isActive: true }, select: { id: true } },
+                      pathway: { select: { isActive: true } },
+                      advancesTo: {
+                        where: { isActive: true },
+                        select: {
+                          sourceSequence: {
+                            select: {
+                              element: { select: { isActive: true, availableFromPhaseId: true } },
+                              pathway: { select: { isActive: true } },
+                            },
+                          },
+                        },
+                      },
                     },
                   },
                 },
@@ -88,16 +121,20 @@ export async function cargarSnapshotPotencial(
             select: {
               elementId: true,
               quantity: true,
-              element: { select: { isActive: true } },
+              element: { select: { isActive: true, availableFromPhaseId: true } },
             },
           },
           sourceSequence: {
-            select: { elementId: true, pathway: { select: { isActive: true } } },
+            select: {
+              elementId: true,
+              element: { select: { isActive: true, availableFromPhaseId: true } },
+              pathway: { select: { isActive: true } },
+            },
           },
           targetSequence: {
             select: {
               elementId: true,
-              element: { select: { isActive: true } },
+              element: { select: { isActive: true, availableFromPhaseId: true } },
               pathway: { select: { isActive: true } },
             },
           },
@@ -119,10 +156,16 @@ export async function cargarSnapshotPotencial(
       ingredientElementIds: [...new Set(receta.ingredients.map((i) => i.elementId))],
       totalUnidades: receta.ingredients.reduce((suma, i) => suma + i.quantity, 0),
       activa: receta.isActive,
-      ingredientesActivos: receta.ingredients.every((i) => i.element.isActive),
+      ingredientesActivos: receta.ingredients.every((i) =>
+        elementoDisponiblePorPhaseId(i.element, availablePhaseIds),
+      ),
       // Misma regla que el resolvedor: al menos una salida activa y no
       // protegida por un avance que apunte a esa secuencia.
-      salidasValidas: receta.outputs.some(salidaRecetaEjecutable),
+      salidasValidas: receta.outputs.some(
+        (output) =>
+          elementoDisponiblePorPhaseId(output.element, availablePhaseIds) &&
+          salidaRecetaEjecutable(output),
+      ),
     })
   }
 
@@ -131,15 +174,21 @@ export async function cargarSnapshotPotencial(
   const ritualesCumplidos = new Set(ritualesPropios.map((r) => r.ritualId))
 
   for (const avance of avances) {
+    const activeRituals = avance.rituals.filter((ritual) => ritual.isActive)
     formulas.push({
       actionKey: avance.inputKey,
       ingredientElementIds: [...new Set(avance.ingredients.map((i) => i.elementId))],
       totalUnidades: avance.ingredients.reduce((suma, i) => suma + i.quantity, 0),
       activa: avance.isActive,
-      ingredientesActivos: avance.ingredients.every((i) => i.element.isActive),
+      ingredientesActivos: avance.ingredients.every((i) =>
+        elementoDisponiblePorPhaseId(i.element, availablePhaseIds),
+      ),
       // Creación de avance válida cuando ambos caminos están activos (la
       // misma comprobación que hace combinar.ts al crearlo).
-      salidasValidas: avanceCreableAhora(avance),
+      salidasValidas:
+        avanceCreableAhora(avance) &&
+        elementoDisponiblePorPhaseId(avance.sourceSequence.element, availablePhaseIds) &&
+        elementoDisponiblePorPhaseId(avance.targetSequence.element, availablePhaseIds),
     })
 
     aplicaciones.push({
@@ -151,10 +200,12 @@ export async function cargarSnapshotPotencial(
       contenidoActivo: aplicacionAvanceTieneContenidoActivo(
         avance,
         avance.sourceSequence.elementId,
-      ),
+      ) &&
+        elementoDisponiblePorPhaseId(avance.sourceSequence.element, availablePhaseIds) &&
+        elementoDisponiblePorPhaseId(avance.targetSequence.element, availablePhaseIds),
       // Regla idéntica a combinar.ts: sin rituales activos, o al menos uno
       // ya preparado por el perfil.
-      ritualSatisfecho: ritualesPermitenAplicacion(
+      ritualSatisfecho: (activeRituals.length === 0 || features.ADVANCEMENT_RITUALS) && ritualesPermitenAplicacion(
         avance.rituals.map((ritual) => ({
           isActive: ritual.isActive,
           preparado: ritualesCumplidos.has(ritual.id),

@@ -1,6 +1,11 @@
-import type { AchievementPublicData, ElementPublicData } from '@/server/domain/tipos'
+import type {
+  AchievementPublicData,
+  ElementPublicData,
+  ProgressionPhasePublicData,
+} from '@/server/domain/tipos'
 import type { PlayerAbilities } from '@/server/domain/habilidades'
 import type { PublicRitualState } from '@/server/domain/ritualKnowledge'
+import type { FeatureState } from '@/shared/featureGates'
 
 export type { RecetaPendiente, RecetaPendienteElemento } from '@/server/domain/tipos'
 export type { PlayerAbilities } from '@/server/domain/habilidades'
@@ -25,8 +30,17 @@ export type EstadoJuego = {
   descubiertos: number
   porcentaje: number
   pendingAchievements: AchievementPublicData[]
+  features: FeatureState
   ritualState: PublicRitualState
   abilities: PlayerAbilities
+  phase: ProgressionPhasePublicData | null
+  nextPhase: ProgressionPhasePublicData | null
+}
+
+export type TransicionFase = {
+  phase: ProgressionPhasePublicData
+  celebrationMessage: string
+  openingElementSlugs: string[]
 }
 
 // ===== Arrastre (drag & drop por Pointer Events) =====

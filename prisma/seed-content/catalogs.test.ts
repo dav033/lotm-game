@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
+import { INTENTIONAL_RECIPE_ADVANCE_DUAL_OUTCOMES } from '../../src/shared/formulaOverlapPolicy'
 import { buildRecipeInputKey } from '../../src/server/domain/inputKey'
 import { getAdvanceDefinitions } from './advances'
 import { getElementDefinitions } from './elements'
@@ -46,6 +47,13 @@ describe('catálogos del seed', () => {
     assert.equal(elementSlugs.size, elements.length)
   })
 
+  it('mantiene únicos los nombres normalizados de elementos', () => {
+    const normalize = (value: string) =>
+      value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ')
+    const names = elements.map((element) => normalize(element.name))
+    assert.equal(new Set(names).size, names.length)
+  })
+
   it('mantiene recetas sin entradas duplicadas y con referencias existentes', () => {
     const recipes = getRecipeDefinitions()
     const keys = recipes.map((recipe) => inputKey(recipe.ings))
@@ -54,6 +62,11 @@ describe('catálogos del seed', () => {
     for (const recipe of recipes) {
       for (const [slug] of recipe.ings) assert.ok(elementSlugs.has(slug), `Ingrediente inexistente: ${slug}`)
       for (const slug of recipe.outputs) assert.ok(elementSlugs.has(slug), `Salida inexistente: ${slug}`)
+      assert.equal(
+        new Set(recipe.outputs).size,
+        recipe.outputs.length,
+        `Salida duplicada en ${JSON.stringify(recipe.ings)}`,
+      )
     }
   })
 
@@ -126,16 +139,49 @@ describe('catálogos del seed', () => {
     }
   })
 
-  it('permite los solapamientos existentes entre entradas de recetas y avances', () => {
-    const recipeKeys = new Set(getRecipeDefinitions().map((recipe) => inputKey(recipe.ings)))
-    const advanceKeys = new Set(
-      getAdvanceDefinitions().map((advance) =>
-        inputKey(advance.ingredients.map((slug) => [slug, 1])),
+  it('permite únicamente los tres dobles resultados explícitos de receta y avance', () => {
+    const recipesByKey = new Map(
+      getRecipeDefinitions().map((recipe) => [
+        buildRecipeInputKey(recipe.ings.map(([slug, quantity]) => ({ slug, quantity }))),
+        recipe,
+      ]),
+    )
+    const overlaps = getAdvanceDefinitions().flatMap((advance) => {
+      const inputKey = buildRecipeInputKey(
+        advance.ingredients.map((slug) => ({ slug, quantity: 1 })),
+      )
+      const recipe = recipesByKey.get(inputKey)
+      return recipe
+        ? [{ inputKey, recipeOutputSlugs: [...recipe.outputs], advanceTargetSlug: advance.target }]
+        : []
+    })
+
+    assert.deepEqual(
+      overlaps.sort((a, b) => a.inputKey.localeCompare(b.inputKey)),
+      [...INTENTIONAL_RECIPE_ADVANCE_DUAL_OUTCOMES]
+        .map((entry) => ({ ...entry, recipeOutputSlugs: [...entry.recipeOutputSlugs] }))
+        .sort((a, b) => a.inputKey.localeCompare(b.inputKey)),
+    )
+  })
+
+  it('ningún ritual comparte clave con una receta o un avance', () => {
+    const recipeKeys = new Set(
+      getRecipeDefinitions().map((recipe) =>
+        buildRecipeInputKey(recipe.ings.map(([slug, quantity]) => ({ slug, quantity }))),
       ),
     )
-    const overlaps = [...recipeKeys].filter((key) => advanceKeys.has(key))
-
-    assert.ok(overlaps.length > 0)
+    const advanceKeys = new Set(
+      getAdvanceDefinitions().map((advance) =>
+        buildRecipeInputKey(advance.ingredients.map((slug) => ({ slug, quantity: 1 }))),
+      ),
+    )
+    for (const ritual of getRitualDefinitions()) {
+      const key = buildRecipeInputKey(
+        ritual.ingredients.map((slug) => ({ slug, quantity: 1 })),
+      )
+      assert.equal(recipeKeys.has(key), false, `Ritual/receta en conflicto: ${key}`)
+      assert.equal(advanceKeys.has(key), false, `Ritual/avance en conflicto: ${key}`)
+    }
   })
 
   it('completa las secuencias 3 y 2 del Camino del Sleepless', () => {
@@ -200,19 +246,24 @@ describe('catálogos del seed', () => {
   })
 })
 
-describe('integridad del catálogo — rediseño de progresión (fases 1-3)', () => {
+describe('integridad del catálogo — rediseño de progresión temprana (fase 1 y apertura mística)', () => {
   const recipes = getRecipeDefinitions()
   const advances = getAdvanceDefinitions()
 
-  it('no existe el elemento Apuesta', () => {
-    assert.equal(elements.some((e) => e.slug === 'apuesta'), false)
+  it('existe el elemento Apuesta, restaurado en fase 1', () => {
+    const apuesta = elements.find((e) => e.slug === 'apuesta')
+    assert.ok(apuesta)
+    assert.equal(apuesta?.name, 'Apuesta')
+    assert.equal(apuesta?.type, 'CONCEPTO')
   })
 
-  it('ningún ingrediente ni salida referencia a Apuesta', () => {
-    for (const r of recipes) {
-      assert.ok(r.ings.every(([slug]) => slug !== 'apuesta'))
-      assert.ok(r.outputs.every((slug) => slug !== 'apuesta'))
-    }
+  it('Humano + Moneda produce Apuesta (y Trabajo)', () => {
+    const r = recipes.find(
+      (recipe) =>
+        recipe.ings.some(([slug]) => slug === 'humano') &&
+        recipe.ings.some(([slug]) => slug === 'moneda'),
+    )
+    assert.ok(r?.outputs.includes('apuesta'))
   })
 
   it('no existe ningún elemento con el nombre con errata "Persepcion espiritual"', () => {
@@ -236,6 +287,7 @@ describe('integridad del catálogo — rediseño de progresión (fases 1-3)', ()
 
   it('vejez existe exactamente una vez', () => {
     assert.equal(elements.filter((e) => e.slug === 'vejez').length, 1)
+    assert.equal(elements.find((e) => e.slug === 'vejez')?.isActive, false)
   })
 
   it('edad existe exactamente una vez', () => {
@@ -247,17 +299,42 @@ describe('integridad del catálogo — rediseño de progresión (fases 1-3)', ()
     assert.equal(elements.some((e) => e.slug === 'experiencia'), false)
   })
 
-  it('registro es un elemento inicial visible desde el principio', () => {
+  it('registro ya no es un elemento inicial: se fabrica en fase 2 (observación + diferenciación)', () => {
     const registro = elements.find((e) => e.slug === 'registro')
-    assert.equal(registro?.isStarter, true)
-    assert.equal(registro?.isHiddenUntilDiscovered, false)
+    assert.equal(registro?.isStarter ?? false, false)
+    assert.equal(registro?.isHiddenUntilDiscovered ?? true, true)
+    assert.equal(registro?.unlockedAtDiscoveryCount ?? null, null)
+    const recipe = recipes.find(
+      (r) =>
+        r.ings.some(([slug]) => slug === 'observacion') &&
+        r.ings.some(([slug]) => slug === 'diferenciacion'),
+    )
+    assert.deepEqual(recipe?.outputs, ['registro'])
   })
 
-  it('tiempo ya no es un elemento inicial y permanece oculto hasta descubrirse', () => {
+  it('tiempo está prohibido y no tiene fuente inicial, de secuencia o de cantidad', () => {
     const tiempo = elements.find((e) => e.slug === 'tiempo')
-    assert.equal(tiempo?.isStarter, false)
-    assert.equal(tiempo?.isHiddenUntilDiscovered, true)
-    assert.equal(tiempo?.unlockedBySequenceNumber, 6)
+    assert.equal(tiempo?.isActive, false)
+    assert.equal(tiempo?.isStarter ?? false, false)
+    assert.equal(tiempo?.isHiddenUntilDiscovered ?? true, true)
+    assert.equal(tiempo?.unlockedBySequenceNumber ?? null, null)
+    assert.equal(tiempo?.unlockedByType ?? null, null)
+    assert.equal(tiempo?.unlockedAtDiscoveryCount ?? null, null)
+  })
+
+  it('humano y tierra son iniciales visibles desde el principio; ojo y moneda también', () => {
+    for (const slug of ['ojo', 'moneda', 'tierra', 'humano']) {
+      const e = elements.find((el) => el.slug === slug)
+      assert.equal(e?.isStarter, true, `${slug} debería ser inicial`)
+      assert.equal(e?.isHiddenUntilDiscovered, false, `${slug} debería ser visible desde el principio`)
+    }
+  })
+
+  it('misticismo, beyonder y agua no duplican el umbral de su fase', () => {
+    for (const slug of ['misticismo', 'beyonder', 'agua']) {
+      const e = elements.find((el) => el.slug === slug)
+      assert.equal(e?.unlockedAtDiscoveryCount ?? null, null)
+    }
   })
 
   it('Ritual conserva su slug y se revela como descubrimiento importante', () => {
@@ -296,21 +373,23 @@ describe('integridad del catálogo — rediseño de progresión (fases 1-3)', ()
     assert.ok(advances.some((a) => a.target === 'prometheus' && a.source === 'cryptologist'))
   })
 
-  it('las cuatro recetas reservadas de Conocimiento para la Fase 4 están inactivas', () => {
-    const reserved: [string, string][] = [
-      ['conocimiento', 'dato'],
+  it('mantiene activas solo las ramas de Conocimiento propias de Fase 3', () => {
+    const phase3KnowledgeRecipes: [string, string][] = [
       ['conocimiento', 'percepcion'],
       ['conocimiento', 'experiencia-2'],
       ['conocimiento', 'misticismo'],
     ]
-    for (const [a, b] of reserved) {
+    for (const [a, b] of phase3KnowledgeRecipes) {
       const recipe = recipes.find(
         (r) => new Set(r.ings.map(([slug]) => slug)).size === 2 &&
           r.ings.some(([slug]) => slug === a) &&
           r.ings.some(([slug]) => slug === b),
       )
-      assert.ok(recipe, `Falta la receta reservada ${a} + ${b}`)
-      assert.equal(recipe?.isActive, false, `${a} + ${b} debería estar inactiva`)
+      assert.notEqual(recipe?.isActive, false, `${a} + ${b} debe estar activa`)
     }
+    const informacion = recipes.find(
+      (r) => r.ings.some(([slug]) => slug === 'conocimiento') && r.ings.some(([slug]) => slug === 'dato'),
+    )
+    assert.equal(informacion?.isActive, false)
   })
 })

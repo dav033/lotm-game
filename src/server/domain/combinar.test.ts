@@ -5,6 +5,14 @@ import { combinarParaPerfil } from './combinar'
 import { buildPairInputKey } from './inputKey'
 
 const profileId = 'profile'
+const phase1 = {
+  id: 'phase-1',
+  slug: 'fase-1',
+  name: 'Fase 1',
+  sortOrder: 1,
+  unlockAtDiscoveryCount: 0,
+  isActive: true,
+}
 
 function elemento(slug: string, overrides: Record<string, unknown> = {}) {
   return {
@@ -18,6 +26,7 @@ function elemento(slug: string, overrides: Record<string, unknown> = {}) {
     tier: 0,
     isMajorDiscovery: false,
     isActive: true,
+    availableFromPhaseId: phase1.id,
     discoveries: [{ profileId }],
     ...overrides,
   }
@@ -71,6 +80,7 @@ function crearTx(overrides: Partial<Record<string, unknown>> = {}) {
       },
     },
     sequence: { findMany: async () => [] },
+    progressionPhase: { findMany: async () => [phase1] },
     achievement: { findMany: async () => [] },
     ...overrides,
   }
@@ -82,6 +92,8 @@ function crearDb(tx: unknown) {
     element: (tx as { element: unknown }).element,
     recipe: { findFirst: async () => null },
     advance: { findUnique: async () => null },
+    playerDiscovery: { findMany: async () => [] },
+    progressionPhase: { findMany: async () => [phase1] },
     $transaction: async <T>(cb: (client: unknown) => Promise<T>) => cb(tx),
   } as unknown as PrismaClient
 }
@@ -128,6 +140,8 @@ describe('memoryDelta de la Memoria del Aprendiz (combinación entre dos Element
         }),
       },
       advance: { findUnique: async () => null },
+      playerDiscovery: { findMany: async () => [] },
+      progressionPhase: { findMany: async () => [phase1] },
       $transaction: async <T>(cb: (client: unknown) => Promise<T>) => cb(tx),
     } as unknown as PrismaClient
 
@@ -149,10 +163,18 @@ describe('memoryDelta de la Memoria del Aprendiz (combinación entre dos Element
           id: 'advance-1',
           isActive: true,
           ingredients: [],
-          sourceSequence: { pathway: { isActive: true, name: 'Camino', iconKey: null } },
-          targetSequence: { pathway: { isActive: true } },
+          sourceSequence: {
+            element: { isActive: true, availableFromPhaseId: phase1.id },
+            pathway: { isActive: true, name: 'Camino', iconKey: null },
+          },
+          targetSequence: {
+            element: { isActive: true, availableFromPhaseId: phase1.id },
+            pathway: { isActive: true },
+          },
         }),
       },
+      playerDiscovery: { findMany: async () => [] },
+      progressionPhase: { findMany: async () => [phase1] },
       $transaction: async <T>(cb: (client: unknown) => Promise<T>) => cb(tx),
     } as unknown as PrismaClient
 
@@ -161,5 +183,52 @@ describe('memoryDelta de la Memoria del Aprendiz (combinación entre dos Element
     if (result.kind !== 'RESOLVED') return
     assert.equal(result.success, true)
     assert.deepEqual(result.memoryDelta, { inputKey, status: 'RESOLVED' })
+  })
+
+  it('una clave permitida de doble efecto entrega receta y avance en la misma acción', async () => {
+    const output = elemento('horror', { discoveries: [] })
+    const { tx } = crearTx()
+    const db = {
+      element: (tx as { element: unknown }).element,
+      recipe: {
+        findFirst: async () => ({
+          id: 'recipe-dual',
+          outputs: [
+            {
+              quantity: 1,
+              chance: 1,
+              sortOrder: 0,
+              element: { ...output, sequence: null },
+            },
+          ],
+        }),
+      },
+      advance: {
+        findUnique: async () => ({
+          id: 'advance-dual',
+          isActive: true,
+          ingredients: [],
+          sourceSequence: {
+            element: { isActive: true, availableFromPhaseId: phase1.id },
+            pathway: { isActive: true, name: 'Camino', iconKey: null },
+          },
+          targetSequence: {
+            element: { isActive: true, availableFromPhaseId: phase1.id },
+            pathway: { isActive: true },
+          },
+        }),
+      },
+      playerDiscovery: { findMany: async () => [] },
+      progressionPhase: { findMany: async () => [phase1] },
+      $transaction: async <T>(cb: (client: unknown) => Promise<T>) => cb(tx),
+    } as unknown as PrismaClient
+
+    const result = await combinarParaPerfil(db, profileId, ['ojo', 'moneda'])
+    assert.equal(result.kind, 'RESOLVED')
+    if (result.kind !== 'RESOLVED') return
+    assert.equal(result.success, true)
+    assert.equal(result.results.length, 2)
+    assert.equal(result.results.some((item) => item.element.kind === 'ADVANCE'), true)
+    assert.equal(result.results.some((item) => item.element.kind === 'ELEMENT'), true)
   })
 })

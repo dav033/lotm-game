@@ -1,4 +1,7 @@
 import { z } from 'zod'
+import { FEATURE_KEYS } from '@/shared/featureGates'
+import { defaultPhaseCelebrationMessage } from '@/shared/phaseCelebrations'
+import { legacyPhaseRule, phaseRuleSchema } from '@/shared/phaseRules'
 import { elementTypeSchema } from './domain/tipos'
 
 // Texto visible: longitud acotada y sin HTML arbitrario.
@@ -30,7 +33,6 @@ export const elementoSchema = z.object({
     .default(''),
   type: elementTypeSchema,
   tier: z.coerce.number().int().min(0).max(99).default(0),
-  isStarter: z.coerce.boolean().default(false),
   isHiddenUntilDiscovered: z.coerce.boolean().default(true),
   isMajorDiscovery: z.coerce.boolean().default(false),
   revealTitle: texto(120).default(''),
@@ -40,6 +42,11 @@ export const elementoSchema = z.object({
   // cualquiera de esos elementos concretos.
   unlockedByType: z.union([z.literal(''), elementTypeSchema]).default(''),
   unlockedBySequenceNumber: z.union([z.literal(''), z.coerce.number().int().min(0).max(99)]).default(''),
+  // Desbloqueo espontáneo por cantidad: se satisface cuando el jugador tiene
+  // al menos esta cantidad de elementos activos descubiertos (>=).
+  unlockedAtDiscoveryCount: z
+    .union([z.literal(''), z.coerce.number().int().min(0).max(9999)])
+    .default(''),
   triggerIds: z.array(z.string().min(1)).max(50).default([]),
   isActive: z.coerce.boolean().default(true),
   categoriaIds: z.array(z.string().min(1)).default([]),
@@ -60,6 +67,18 @@ export const categoriaSchema = z.object({
   parentId: z.string().default(''),
   sortOrder: z.coerce.number().int().min(0).max(9999).default(0),
   isHidden: z.coerce.boolean().default(false),
+  isActive: z.coerce.boolean().default(true),
+})
+
+// El tamaño del cierre alcanzable se deriva automáticamente; advancementRule
+// define la condición editable que realmente abre la fase.
+export const faseSchema = z.object({
+  slug: slugSchema,
+  name: texto(80).refine((s) => s.length > 0, 'El nombre es obligatorio.'),
+  description: texto(500).default(''),
+  sortOrder: z.coerce.number().int().min(1).max(9999),
+  advancementRule: phaseRuleSchema.default({ type: 'ALWAYS' }),
+  celebrationMessage: texto(500).default(''),
   isActive: z.coerce.boolean().default(true),
 })
 
@@ -198,6 +217,20 @@ export const importCategoriaSchema = z.object({
   isActive: z.boolean().default(true),
 })
 
+const importFaseV2Schema = z.object({
+  slug: slugSchema,
+  name: texto(80),
+  description: texto(500).default(''),
+  sortOrder: z.number().int().min(1).max(9999),
+  unlockAtDiscoveryCount: z.number().int().min(0).max(9999),
+  isActive: z.boolean().default(true),
+})
+
+export const importFaseSchema = importFaseV2Schema.extend({
+  advancementRule: phaseRuleSchema,
+  celebrationMessage: texto(500).default(''),
+})
+
 export const importElementoSchema = z.object({
   slug: slugSchema,
   name: texto(80),
@@ -213,8 +246,10 @@ export const importElementoSchema = z.object({
   revealText: texto(500).nullish(),
   unlockedByType: elementTypeSchema.nullish(),
   unlockedBySequenceNumber: z.number().int().min(0).max(99).nullish(),
+  unlockedAtDiscoveryCount: z.number().int().min(0).max(9999).nullish(),
   unlockedByElements: z.array(slugSchema).default([]),
   unlockedByAllElements: z.array(slugSchema).max(50).default([]),
+  openingPhaseSlug: slugSchema.nullish().optional(),
   isActive: z.boolean().default(true),
   categorias: z
     .array(z.object({ slug: slugSchema, isPrimary: z.boolean().default(false) }))
@@ -239,6 +274,19 @@ export const importSecuenciaSchema = z.object({
   elementSlug: slugSchema,
 })
 
+const importFormulaIngredientsSchema = z
+  .array(z.object({ elementSlug: slugSchema, quantity: z.number().int().min(1).max(2) }))
+  .min(1)
+  .max(2)
+  .superRefine((ingredients, ctx) => {
+    if (ingredients.reduce((total, ingredient) => total + ingredient.quantity, 0) !== 2) {
+      ctx.addIssue({ code: 'custom', message: 'La fórmula debe usar exactamente dos unidades.' })
+    }
+    if (new Set(ingredients.map((ingredient) => ingredient.elementSlug)).size !== ingredients.length) {
+      ctx.addIssue({ code: 'custom', message: 'La fórmula repite un ingrediente.' })
+    }
+  })
+
 export const importRecetaSchema = z.object({
   name: texto(120).nullish(),
   outputs: z
@@ -254,11 +302,13 @@ export const importRecetaSchema = z.object({
     .max(10),
   successText: texto(300).nullish(),
   hintText: texto(300).nullish(),
+  minimumDiscoveries: z.number().int().min(0).max(9999).default(0),
   isActive: z.boolean().default(true),
-  ingredientes: z
-    .array(z.object({ elementSlug: slugSchema, quantity: z.number().int().min(1).max(99) }))
-    .min(1)
-    .max(8),
+  ingredientes: importFormulaIngredientsSchema,
+}).superRefine((recipe, ctx) => {
+  if (new Set(recipe.outputs.map((output) => output.elementSlug)).size !== recipe.outputs.length) {
+    ctx.addIssue({ code: 'custom', path: ['outputs'], message: 'La receta repite un resultado.' })
+  }
 })
 
 export const importAvanceSchema = z.object({
@@ -267,28 +317,15 @@ export const importAvanceSchema = z.object({
   sourceSequenceNumber: z.number().int().min(0).max(99),
   targetSequenceNumber: z.number().int().min(0).max(99),
   isActive: z.boolean().default(true),
-  ingredientes: z
-    .array(z.object({ elementSlug: slugSchema, quantity: z.number().int().min(1).max(2) }))
-    .min(1)
-    .max(2)
-    .refine(
-      (ingredients) => ingredients.reduce((total, ingredient) => total + ingredient.quantity, 0) === 2,
-      'Un avance debe usar exactamente dos unidades.',
-    ),
+  ingredientes: importFormulaIngredientsSchema,
 })
 
 export const importRitualSchema = z.object({
   name: texto(120),
   requiredSequenceNumber: z.number().int().min(0).max(99).default(6),
   isActive: z.boolean().default(true),
-  advanceIngredients: z
-    .array(z.object({ elementSlug: slugSchema, quantity: z.number().int().min(1).max(2) }))
-    .min(1)
-    .max(2),
-  ingredientes: z
-    .array(z.object({ elementSlug: slugSchema, quantity: z.number().int().min(1).max(99) }))
-    .min(1)
-    .max(8),
+  advanceIngredients: importFormulaIngredientsSchema,
+  ingredientes: importFormulaIngredientsSchema,
   failureOutputSlugs: z.array(slugSchema).max(20).default([]),
 })
 
@@ -315,8 +352,7 @@ export const importLogroSchema = z.discriminatedUnion('triggerType', [
   }),
 ])
 
-export const importDocumentoSchema = z.object({
-  version: z.literal(1),
+const importDocumentCollections = {
   categorias: z.array(importCategoriaSchema).default([]),
   elementos: z.array(importElementoSchema).default([]),
   caminos: z.array(importCaminoSchema).default([]),
@@ -325,6 +361,60 @@ export const importDocumentoSchema = z.object({
   avances: z.array(importAvanceSchema).default([]),
   rituales: z.array(importRitualSchema).default([]),
   logros: z.array(importLogroSchema).default([]),
+}
+
+const importDocumentoV2Schema = z.object({
+  version: z.literal(2),
+  fases: z.array(importFaseV2Schema).default([]),
+  ...importDocumentCollections,
 })
+
+const importDocumentoV3Schema = z.object({
+  version: z.literal(3),
+  fases: z.array(importFaseSchema),
+  ...importDocumentCollections,
+})
+
+const importDocumentoV4Schema = z.object({
+  version: z.literal(4),
+  fases: z.array(importFaseSchema),
+  featureGates: z.array(z.object({
+    key: z.enum(FEATURE_KEYS),
+    minimumPhaseSortOrder: z.number().int().min(1).max(9999),
+  })).default([]),
+  ...importDocumentCollections,
+})
+
+const importDocumentoV5Schema = z.object({
+  version: z.literal(5),
+  fases: z.array(importFaseSchema),
+  featureGates: z.array(z.object({
+    key: z.enum(FEATURE_KEYS),
+    minimumPhaseSortOrder: z.number().int().min(1).max(9999),
+  })).default([]),
+  ...importDocumentCollections,
+})
+
+export const importDocumentoSchema = z
+  .union([importDocumentoV5Schema, importDocumentoV4Schema, importDocumentoV3Schema, importDocumentoV2Schema])
+  .transform((document) => {
+    if (document.version === 5) return document
+    const fases = document.version === 2
+      ? document.fases.map((phase) => ({
+          ...phase,
+          advancementRule: legacyPhaseRule(phase.unlockAtDiscoveryCount),
+          celebrationMessage: defaultPhaseCelebrationMessage(phase.sortOrder),
+        }))
+      : document.fases.map((phase) => ({
+          ...phase,
+          celebrationMessage: defaultPhaseCelebrationMessage(phase.sortOrder),
+        }))
+    return {
+      ...document,
+      version: 5 as const,
+      featureGates: document.version === 4 ? document.featureGates : [],
+      fases,
+    }
+  })
 
 export type ImportDocumento = z.infer<typeof importDocumentoSchema>

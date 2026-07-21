@@ -16,11 +16,11 @@ import {
   type DiagElementResult,
 } from '@/server/domain/diagnostico'
 import {
-  EXPLOSION_REGRESSION_SLUGS,
+  DISCOVERY_COUNT_TRANSITION_THRESHOLD,
   PHASE1_CLOSURE_SLUGS,
-  PHASE2_CLOSURE_SLUGS,
-  PHASE3_CLOSURE_SLUGS,
 } from '../../../../../prisma/seed-content/progression'
+import { PHASE_2_AVAILABLE_SLUGS } from '../../../../../prisma/seed-content/phases'
+import { simulateProgression } from '../../../../../prisma/seed-content/progression-simulator'
 
 export const runtime = 'nodejs'
 
@@ -37,6 +37,7 @@ export default async function PaginaDiagnostico() {
     secuenciasDiag,
     avancesDiag,
     ritualesDiag,
+    simInput,
   } = await cargarAnalisisProgresion(prisma)
 
   const nombreDe = new Map(elementos.map((e) => [e.id, e.name]))
@@ -64,22 +65,25 @@ export default async function PaginaDiagnostico() {
     desencadenantes,
   )
 
-  const idPorSlug = new Map(elementos.map((e) => [e.slug, e.id]))
-  const auditoriaFase = (slugs: readonly string[]) => {
-    const faltantes = slugs.filter((slug) => {
-      const id = idPorSlug.get(slug)
-      return id == null || !(analisis.get(id)?.reachable ?? false)
-    })
-    return { total: slugs.length, alcanzados: slugs.length - faltantes.length, faltantes }
+  const auditoriaFase = (slugs: readonly string[], discoveryCountCap: number) => {
+    const cierre = simulateProgression(simInput, { discoveryCountCap }).discovered
+    const esperados = new Set<string>(slugs)
+    const faltantes = slugs.filter((slug) => !cierre.has(slug))
+    const sobrantes = [...cierre].filter((slug) => !esperados.has(slug)).sort()
+    return {
+      total: slugs.length,
+      alcanzados: slugs.length - faltantes.length,
+      faltantes,
+      sobrantes,
+    }
   }
-  const fase1 = auditoriaFase(PHASE1_CLOSURE_SLUGS)
-  const fase2 = auditoriaFase(PHASE2_CLOSURE_SLUGS)
-  const fase3 = auditoriaFase(PHASE3_CLOSURE_SLUGS)
-  const fugasDeExplosion = EXPLOSION_REGRESSION_SLUGS.filter((slug) => {
-    const id = idPorSlug.get(slug)
-    return id != null && (analisis.get(id)?.reachable ?? false)
-  })
-
+  const hitos = [
+    [`Cierre de Fase 1 (${PHASE1_CLOSURE_SLUGS.length})`, PHASE1_CLOSURE_SLUGS, 0],
+    [`Cierre de Fase 2 (${PHASE_2_AVAILABLE_SLUGS.length})`, PHASE_2_AVAILABLE_SLUGS, DISCOVERY_COUNT_TRANSITION_THRESHOLD],
+  ] as const
+  const auditoriasHitos = hitos.map(([etiqueta, slugs, cap]) =>
+    [etiqueta, auditoriaFase(slugs, cap)] as const,
+  )
   const referenciasInactivas = recetas.filter(
     (r) =>
       r.isActive &&
@@ -128,31 +132,30 @@ export default async function PaginaDiagnostico() {
 
       <div className="space-y-4">
         <Seccion
-          titulo="Auditoría de fases (1-3)"
-          vacio={fase1.faltantes.length === 0 && fase2.faltantes.length === 0 && fase3.faltantes.length === 0 && fugasDeExplosion.length === 0}
+          titulo="Auditoría de hitos de progresión"
+          vacio={
+            auditoriasHitos.every(([, a]) => a.faltantes.length === 0 && a.sobrantes.length === 0)
+          }
           alerta
         >
           <ul className="mb-2 space-y-1 text-parchment">
-            <li>Fase 1: {fase1.alcanzados}/{fase1.total}</li>
-            <li>Fase 2: {fase2.alcanzados}/{fase2.total}</li>
-            <li>Fase 3: {fase3.alcanzados}/{fase3.total}</li>
+            {auditoriasHitos.map(([etiqueta, a]) => (
+              <li key={etiqueta}>{etiqueta}: {a.alcanzados}/{a.total}</li>
+            ))}
           </ul>
-          {[
-            ['Fase 1', fase1.faltantes],
-            ['Fase 2', fase2.faltantes],
-            ['Fase 3', fase3.faltantes],
-          ].map(([etiqueta, faltantes]) =>
-            faltantes.length > 0 ? (
-              <p key={etiqueta as string} className="text-wine">
-                {etiqueta} — esperados y no alcanzables: {(faltantes as string[]).join(', ')}
+          {auditoriasHitos.map(([etiqueta, a]) =>
+            a.faltantes.length > 0 ? (
+              <p key={etiqueta} className="text-wine">
+                {etiqueta} — esperados y no alcanzables: {a.faltantes.join(', ')}
               </p>
             ) : null,
           )}
-          {fugasDeExplosion.length > 0 && (
-            <p className="text-wine">
-              Fuga de contenido reservado (no debería ser alcanzable en fases 1-3):{' '}
-              {fugasDeExplosion.join(', ')}
-            </p>
+          {auditoriasHitos.map(([etiqueta, a]) =>
+            a.sobrantes.length > 0 ? (
+              <p key={`${etiqueta}-sobrantes`} className="text-wine">
+                {etiqueta} — alcanzados antes de tiempo: {a.sobrantes.join(', ')}
+              </p>
+            ) : null,
           )}
         </Seccion>
 

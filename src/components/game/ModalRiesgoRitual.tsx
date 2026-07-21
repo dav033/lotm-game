@@ -32,7 +32,7 @@ export function ModalRiesgoRitual({
           autoFocus
           disabled={cargando}
           onClick={onCancelar}
-          className="rounded-md border border-line2 px-5 py-2.5 text-sm text-parchment transition hover:border-brass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass disabled:opacity-40"
+          className="rounded-md border border-line2 px-5 py-2.5 text-sm text-parchment transition hover:border-brass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass active:scale-[0.97] disabled:opacity-40 disabled:active:scale-100"
         >
           Cancelar
         </button>
@@ -40,7 +40,7 @@ export function ModalRiesgoRitual({
           type="button"
           disabled={cargando}
           onClick={onConfirmar}
-          className="rounded-md border border-wine bg-wine/20 px-5 py-2.5 text-sm text-parchment transition hover:bg-wine/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine disabled:opacity-40"
+          className="rounded-md border border-wine bg-wine/20 px-5 py-2.5 text-sm text-parchment transition hover:bg-wine/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine active:scale-[0.97] disabled:opacity-40 disabled:active:scale-100"
         >
           {cargando ? 'Consultando…' : 'Intentar sin protección'}
         </button>

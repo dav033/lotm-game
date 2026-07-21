@@ -1,7 +1,17 @@
 import type { PrismaClient } from '@/generated/prisma/client'
+import { isIntentionalRecipeAdvanceDualOutcome } from '@/shared/formulaOverlapPolicy'
+import {
+  parsePhaseRule,
+  phaseRuleElementSlugs,
+  serializePhaseRule,
+  summarizePhaseRule,
+  type PhaseRule,
+} from '@/shared/phaseRules'
+import { descubrirIniciales } from '../domain/descubrimientos'
 import { buildRecipeInputKey } from '../domain/inputKey'
 import { DIFICULTAD_LABELS, etiquetaRuta } from '../domain/diagnostico'
 import { importDocumentoSchema, type ImportDocumento } from '../schemas'
+import { sincronizarStartersConPrimeraFase } from './fasesProgresion'
 import { cargarAnalisisProgresion } from './progresion'
 
 export class ImportError extends Error {}
@@ -25,6 +35,7 @@ export type RecetaNominal = {
   tipo: 'RECETA'
   nombre?: string
   ingredientes: string[]
+  descubrimientosMinimos: number
   isActive: boolean
 }
 
@@ -37,6 +48,7 @@ export type ElementoDesencadenanteNominal = {
 
 export type OrigenElementoNominal =
   | { tipo: 'INICIAL' }
+  | { tipo: 'APERTURA_FASE'; fase: string }
   | { tipo: 'SIN_ORIGEN_CONFIGURADO' }
   | RecetaNominal
   | {
@@ -61,6 +73,7 @@ export type OrigenElementoNominal =
     }
   | { tipo: 'DESBLOQUEO_TIPO'; tipoElemento: string }
   | { tipo: 'DESBLOQUEO_SECUENCIA'; secuencia: number; alcance: 'CUALQUIER_CAMINO' }
+  | { tipo: 'DESBLOQUEO_CANTIDAD'; cantidadMinima: number }
   | { tipo: 'DESBLOQUEO_ELEMENTO'; desencadenante: ElementoDesencadenanteNominal }
   | { tipo: 'DESBLOQUEO_CONJUNTO'; requisitos: ElementoDesencadenanteNominal[] }
 
@@ -71,6 +84,7 @@ export type UsoRecetaNominal = {
   nombre?: string
   ingredientes: string[]
   produce: string[]
+  descubrimientosMinimos: number
   isActive: boolean
 }
 
@@ -108,9 +122,20 @@ export type ElementoNominal = {
   rutaMasFacil: string
   /** Resumen de vías alternativas ("2 recetas · 1 avance"). */
   resumenRutas: string
+  faseApertura: string | null
+  condicionesDesbloqueo: {
+    cualquieraDe: ElementoDesencadenanteNominal[]
+    todas: {
+      tipoElemento: string | null
+      secuencia: number | null
+      cantidadMinima: number | null
+      elementos: ElementoDesencadenanteNominal[]
+    }
+  }
   // Bloqueos espontáneos (qué lo despierta) y su reverso (a quién despierta).
   desbloqueadoPorTipo: string | null
   desbloqueadoPorSecuencia: number | null
+  desbloqueadoPorCantidad: number | null
   desbloqueadoPorCualquieraDe: string[]
   desbloqueadoPorTodos: string[]
   desbloquea: string[]
@@ -173,6 +198,7 @@ export type CaminoNominal = {
 }
 
 export type NodoNominal =
+  | FaseNominal
   | ElementoNominal
   | RecetaNominal
   | CaminoNominal
@@ -181,9 +207,24 @@ export type NodoNominal =
   | AvanceNominal
   | RitualNominal
 
+export type FaseNominal = {
+  tipo: 'FASE'
+  slug: string
+  nombre: string
+  descripcion: string
+  orden: number
+  isActive: boolean
+  cierreAlcanzableAnterior: number
+  reglaAvance: PhaseRule
+  resumenRegla: string
+  mensajeCelebracion: string
+  elementosIniciales: string[]
+}
+
 export type DocumentoElementosNominal = {
-  version: 3
+  version: 4
   exportadoEn: string
+  fases: FaseNominal[]
   elementos: ElementoNominal[]
   caminos: CaminoNominal[]
 }
@@ -196,11 +237,12 @@ export type DocumentoElementosNominal = {
 export async function exportarElementosYCombinaciones(
   db: PrismaClient,
 ): Promise<DocumentoElementosNominal> {
-  const [elementos, caminos, progresion] = await Promise.all([
+  const [elementos, caminos, fases, progresion] = await Promise.all([
     db.element.findMany({
       include: {
         sequence: { include: { pathway: { select: { name: true } } } },
         categories: { include: { category: { select: { name: true } } } },
+        availableFromPhase: { select: { slug: true, name: true } },
         unlockTriggers: {
           include: {
             trigger: {
@@ -307,6 +349,15 @@ export async function exportarElementosYCombinaciones(
       },
       orderBy: { createdAt: 'asc' },
     }),
+    db.progressionPhase.findMany({
+      orderBy: { sortOrder: 'asc' },
+      include: {
+        elements: {
+          select: { name: true },
+          orderBy: { name: 'asc' },
+        },
+      },
+    }),
     cargarAnalisisProgresion(db),
   ])
 
@@ -378,10 +429,27 @@ export async function exportarElementosYCombinaciones(
         }
       : {}),
   })
+  const elementNameBySlug = new Map(elementos.map((elemento) => [elemento.slug, elemento.name]))
 
   return {
-    version: 3 as const,
+    version: 4 as const,
     exportadoEn: new Date().toISOString(),
+    fases: fases.map((fase) => {
+      const rule = parsePhaseRule(fase.advancementRuleJson, fase.unlockAtDiscoveryCount)
+      return {
+        tipo: 'FASE' as const,
+        slug: fase.slug,
+        nombre: fase.name,
+        descripcion: fase.description,
+        orden: fase.sortOrder,
+        isActive: fase.isActive,
+        cierreAlcanzableAnterior: fase.unlockAtDiscoveryCount,
+        reglaAvance: rule,
+        resumenRegla: summarizePhaseRule(rule, elementNameBySlug),
+        mensajeCelebracion: fase.celebrationMessage,
+        elementosIniciales: fase.elements.map((elemento) => elemento.name),
+      }
+    }),
     elementos: elementos.map((elemento) => {
       const res = progresion.analisis.get(elemento.id)
 
@@ -392,6 +460,7 @@ export async function exportarElementosYCombinaciones(
           tipo: 'RECETA' as const,
           ...(output.recipe.name ? { nombre: output.recipe.name } : {}),
           ingredientes: nombresPorUnidad(output.recipe.ingredients),
+          descubrimientosMinimos: output.recipe.minimumDiscoveries,
           isActive: output.recipe.isActive,
         }))
 
@@ -403,6 +472,7 @@ export async function exportarElementosYCombinaciones(
           ...(uso.recipe.name ? { nombre: uso.recipe.name } : {}),
           ingredientes: nombresPorUnidad(uso.recipe.ingredients),
           produce: nombresElementos(uso.recipe.outputs),
+          descubrimientosMinimos: uso.recipe.minimumDiscoveries,
           isActive: uso.recipe.isActive,
         }))
 
@@ -434,6 +504,9 @@ export async function exportarElementosYCombinaciones(
 
       const origenes: OrigenElementoNominal[] = [
         ...(elemento.isStarter ? [{ tipo: 'INICIAL' as const }] : []),
+        ...(elemento.availableFromPhase
+          ? [{ tipo: 'APERTURA_FASE' as const, fase: elemento.availableFromPhase.name }]
+          : []),
         ...combinaciones,
         ...(avancesPorElemento.get(elemento.id) ?? []),
         ...(fallosPorElemento.get(elemento.id) ?? []),
@@ -446,6 +519,14 @@ export async function exportarElementosYCombinaciones(
                 tipo: 'DESBLOQUEO_SECUENCIA' as const,
                 secuencia: elemento.unlockedBySequenceNumber,
                 alcance: 'CUALQUIER_CAMINO' as const,
+              },
+            ]
+          : []),
+        ...(elemento.unlockedAtDiscoveryCount !== null
+          ? [
+              {
+                tipo: 'DESBLOQUEO_CANTIDAD' as const,
+                cantidadMinima: elemento.unlockedAtDiscoveryCount,
               },
             ]
           : []),
@@ -482,8 +563,23 @@ export async function exportarElementosYCombinaciones(
         dificultad: DIFICULTAD_LABELS[res?.difficulty ?? 'impossible'],
         rutaMasFacil: res ? etiquetaRuta(res.bestRoute) : 'Sin ruta válida',
         resumenRutas: res?.routeSummary ?? '—',
+        faseApertura: elemento.availableFromPhase?.name ?? null,
+        condicionesDesbloqueo: {
+          cualquieraDe: elemento.unlockTriggers
+            .map((trigger) => referenciaDesencadenante(trigger.trigger))
+            .sort((a, b) => a.elemento.localeCompare(b.elemento, 'es')),
+          todas: {
+            tipoElemento: elemento.unlockedByType,
+            secuencia: elemento.unlockedBySequenceNumber,
+            cantidadMinima: elemento.unlockedAtDiscoveryCount,
+            elementos: elemento.unlockRequirements
+              .map((requirement) => referenciaDesencadenante(requirement.required))
+              .sort((a, b) => a.elemento.localeCompare(b.elemento, 'es')),
+          },
+        },
         desbloqueadoPorTipo: elemento.unlockedByType,
         desbloqueadoPorSecuencia: elemento.unlockedBySequenceNumber,
+        desbloqueadoPorCantidad: elemento.unlockedAtDiscoveryCount,
         desbloqueadoPorCualquieraDe: elemento.unlockTriggers
           .map((trigger) => trigger.trigger.name)
           .sort((a, b) => a.localeCompare(b, 'es')),
@@ -560,13 +656,16 @@ export async function exportarElementosYCombinaciones(
 }
 
 export async function exportarContenido(db: PrismaClient) {
-  const [categorias, elementos, caminos, secuencias, recetas, avances, rituales, logros] = await Promise.all([
+  const [fases, featureGates, categorias, elementos, caminos, secuencias, recetas, avances, rituales, logros] = await Promise.all([
+    db.progressionPhase.findMany({ orderBy: { sortOrder: 'asc' } }),
+    db.featureGate.findMany({ orderBy: { key: 'asc' } }),
     db.category.findMany({ include: { parent: { select: { slug: true } } }, orderBy: { sortOrder: 'asc' } }),
     db.element.findMany({
       include: {
         categories: { include: { category: { select: { slug: true } } } },
         unlockTriggers: { include: { trigger: { select: { slug: true } } } },
         unlockRequirements: { include: { required: { select: { slug: true } } } },
+        availableFromPhase: { select: { slug: true } },
       },
       orderBy: { slug: 'asc' },
     }),
@@ -608,8 +707,25 @@ export async function exportarContenido(db: PrismaClient) {
   ])
 
   return {
-    version: 1 as const,
+    version: 5 as const,
     exportadoEn: new Date().toISOString(),
+    fases: fases.map((phase) => ({
+      slug: phase.slug,
+      name: phase.name,
+      description: phase.description,
+      sortOrder: phase.sortOrder,
+      unlockAtDiscoveryCount: phase.unlockAtDiscoveryCount,
+      advancementRule: parsePhaseRule(
+        phase.advancementRuleJson,
+        phase.unlockAtDiscoveryCount,
+      ),
+      celebrationMessage: phase.celebrationMessage,
+      isActive: phase.isActive,
+    })),
+    featureGates: featureGates.map((gate) => ({
+      key: gate.key,
+      minimumPhaseSortOrder: gate.minimumPhaseSortOrder,
+    })),
     categorias: categorias.map((c) => ({
       slug: c.slug,
       name: c.name,
@@ -634,8 +750,10 @@ export async function exportarContenido(db: PrismaClient) {
       revealText: e.revealText,
       unlockedByType: e.unlockedByType,
       unlockedBySequenceNumber: e.unlockedBySequenceNumber,
+      unlockedAtDiscoveryCount: e.unlockedAtDiscoveryCount,
       unlockedByElements: e.unlockTriggers.map((t) => t.trigger.slug),
       unlockedByAllElements: e.unlockRequirements.map((r) => r.required.slug),
+      openingPhaseSlug: e.availableFromPhase?.slug ?? null,
       isActive: e.isActive,
       categorias: e.categories.map((ec) => ({
         slug: ec.category.slug,
@@ -668,6 +786,7 @@ export async function exportarContenido(db: PrismaClient) {
       })),
       successText: r.successText,
       hintText: r.hintText,
+      minimumDiscoveries: r.minimumDiscoveries,
       isActive: r.isActive,
       ingredientes: r.ingredients.map((i) => ({
         elementSlug: i.element.slug,
@@ -729,6 +848,8 @@ export async function exportarContenido(db: PrismaClient) {
 // ---------- Validación previa a la importación ----------
 
 export type ResumenImportacion = {
+  fases: number
+  featureGates: number
   categorias: number
   elementos: number
   caminos: number
@@ -788,6 +909,7 @@ export function validarDocumento(raw: unknown): { doc: ImportDocumento; resumen:
   }
   const seqPorElemento = new Set<string>()
   const seqPorCaminoNumero = new Set<string>()
+  const elementoPorCaminoNumero = new Map<string, string>()
   for (const s of doc.secuencias) {
     if (!caminoSlugs.has(s.pathwaySlug))
       problemas.push(`La secuencia ${s.number} referencia el camino inexistente «${s.pathwaySlug}».`)
@@ -800,8 +922,10 @@ export function validarDocumento(raw: unknown): { doc: ImportDocumento; resumen:
     if (seqPorCaminoNumero.has(key))
       problemas.push(`El camino «${s.pathwaySlug}» repite la secuencia número ${s.number}.`)
     seqPorCaminoNumero.add(key)
+    elementoPorCaminoNumero.set(key, s.elementSlug)
   }
   const claves = new Set<string>()
+  const recetasPorClave = new Map<string, (typeof doc.recetas)[number]>()
   for (const r of doc.recetas) {
     if (r.outputs.length === 0) {
       problemas.push('Una receta no tiene ningún resultado.')
@@ -820,8 +944,10 @@ export function validarDocumento(raw: unknown): { doc: ImportDocumento; resumen:
     )
     if (claves.has(key)) problemas.push(`Hay recetas duplicadas para la combinación «${key}».`)
     claves.add(key)
+    recetasPorClave.set(key, r)
   }
   const advanceKeys = new Set<string>()
+  const advancesByKey = new Map<string, (typeof doc.avances)[number]>()
   for (const advance of doc.avances) {
     if (!caminoSlugs.has(advance.pathwaySlug)) {
       problemas.push(`Un avance usa el camino inexistente «${advance.pathwaySlug}».`)
@@ -846,9 +972,25 @@ export function validarDocumento(raw: unknown): { doc: ImportDocumento; resumen:
         quantity: ingredient.quantity,
       })),
     )
-    if (claves.has(key)) problemas.push(`La combinación «${key}» está repetida entre recetas y avances.`)
+    const overlappingRecipe = recetasPorClave.get(key)
+    const targetSlug = elementoPorCaminoNumero.get(
+      `${advance.pathwaySlug}#${advance.targetSequenceNumber}`,
+    )
+    if (
+      overlappingRecipe &&
+      (!targetSlug ||
+        !isIntentionalRecipeAdvanceDualOutcome({
+          inputKey: key,
+          recipeOutputSlugs: overlappingRecipe.outputs.map((output) => output.elementSlug),
+          advanceTargetSlug: targetSlug,
+        }))
+    ) {
+      problemas.push(`La combinación «${key}» está repetida entre recetas y avances.`)
+    }
+    if (advanceKeys.has(key)) problemas.push(`Hay avances duplicados para la combinación «${key}».`)
     claves.add(key)
     advanceKeys.add(key)
+    advancesByKey.set(key, advance)
   }
   const ritualKeys = new Set<string>()
   for (const ritual of doc.rituales) {
@@ -869,6 +1011,15 @@ export function validarDocumento(raw: unknown): { doc: ImportDocumento; resumen:
       ritual.advanceIngredients.map((ingredient) => ({ slug: ingredient.elementSlug, quantity: ingredient.quantity })),
     )
     if (!advanceKeys.has(advanceKey)) problemas.push(`El ritual «${ritual.name}» usa un avance inexistente.`)
+    const linkedAdvance = advancesByKey.get(advanceKey)
+    if (
+      linkedAdvance &&
+      ritual.requiredSequenceNumber !== linkedAdvance.sourceSequenceNumber
+    ) {
+      problemas.push(
+        `El ritual «${ritual.name}» exige la secuencia ${ritual.requiredSequenceNumber}, pero su avance parte de la ${linkedAdvance.sourceSequenceNumber}.`,
+      )
+    }
   }
   const logroSlugs = new Set<string>()
   for (const achievement of doc.logros) {
@@ -882,10 +1033,41 @@ export function validarDocumento(raw: unknown): { doc: ImportDocumento; resumen:
       problemas.push(`El logro «${achievement.slug}» usa una secuencia inexistente.`)
     }
   }
+  const phaseSlugs = new Set<string>()
+  const phaseOrders = new Set<number>()
+  for (const phase of doc.fases) {
+    if (phaseSlugs.has(phase.slug)) problemas.push(`Hay fases con el slug repetido «${phase.slug}».`)
+    if (phaseOrders.has(phase.sortOrder)) problemas.push(`Hay fases con el orden repetido ${phase.sortOrder}.`)
+    phaseSlugs.add(phase.slug)
+    phaseOrders.add(phase.sortOrder)
+    for (const elementSlug of phaseRuleElementSlugs(phase.advancementRule)) {
+      if (!elSlugs.has(elementSlug)) {
+        problemas.push(
+          `La regla de la fase «${phase.slug}» referencia el elemento inexistente «${elementSlug}».`,
+        )
+      }
+    }
+  }
+  for (const element of doc.elementos) {
+    if (
+      element.openingPhaseSlug !== undefined &&
+      element.openingPhaseSlug !== null &&
+      !phaseSlugs.has(element.openingPhaseSlug)
+    ) {
+      problemas.push(
+        `El elemento «${element.slug}» referencia la fase inexistente «${element.openingPhaseSlug}».`,
+      )
+    }
+  }
+  if (new Set(doc.featureGates.map((gate) => gate.key)).size !== doc.featureGates.length) {
+    problemas.push('Hay features repetidas.')
+  }
 
   return {
     doc,
     resumen: {
+      fases: doc.fases.length,
+      featureGates: doc.featureGates.length,
       categorias: doc.categorias.length,
       elementos: doc.elementos.length,
       caminos: doc.caminos.length,
@@ -913,7 +1095,19 @@ export async function importarContenido(
 
   await db.$transaction(async (tx) => {
     if (modo === 'reemplazar') {
-      // El progreso de los jugadores sobre elementos eliminados cae en cascada.
+      const progressCounts = await Promise.all([
+        tx.playerDiscovery.count(),
+        tx.playerPathwayUnlock.count(),
+        tx.playerAdvance.count(),
+        tx.playerRitual.count(),
+        tx.playerAchievement.count(),
+        tx.playerCombinationStat.count(),
+      ])
+      if (progressCounts.some((count) => count > 0)) {
+        throw new ImportError(
+          'No se puede reemplazar el catálogo mientras exista progreso de jugadores. Usa fusión o una base nueva.',
+        )
+      }
       await tx.recipeIngredient.deleteMany({})
       await tx.recipe.deleteMany({})
       await tx.advance.deleteMany({})
@@ -922,7 +1116,38 @@ export async function importarContenido(
       await tx.pathway.deleteMany({})
       await tx.elementCategory.deleteMany({})
       await tx.element.deleteMany({})
+      await tx.progressionPhase.deleteMany({})
       await tx.category.deleteMany({})
+    }
+
+    for (const phase of doc.fases) {
+      const phaseData = {
+        name: phase.name,
+        description: phase.description,
+        sortOrder: phase.sortOrder,
+        unlockAtDiscoveryCount: phase.unlockAtDiscoveryCount,
+        advancementRuleJson: serializePhaseRule(phase.advancementRule),
+        celebrationMessage: phase.celebrationMessage,
+        isActive: phase.isActive,
+      }
+      await tx.progressionPhase.upsert({
+        where: { slug: phase.slug },
+        update: phaseData,
+        create: { slug: phase.slug, ...phaseData },
+      })
+    }
+    const phaseIdBySlug = new Map(
+      (
+        await tx.progressionPhase.findMany({ select: { id: true, slug: true } })
+      ).map((phase) => [phase.slug, phase.id]),
+    )
+
+    for (const gate of doc.featureGates) {
+      await tx.featureGate.upsert({
+        where: { key: gate.key },
+        update: { minimumPhaseSortOrder: gate.minimumPhaseSortOrder },
+        create: gate,
+      })
     }
 
     // Categorías: primero sin padre (dos pasadas para tolerar cualquier orden).
@@ -970,6 +1195,14 @@ export async function importarContenido(
         revealText: e.revealText ?? null,
         unlockedByType: e.unlockedByType ?? null,
         unlockedBySequenceNumber: e.unlockedBySequenceNumber ?? null,
+        unlockedAtDiscoveryCount: e.unlockedAtDiscoveryCount ?? null,
+        ...(e.openingPhaseSlug !== undefined
+          ? {
+              availableFromPhaseId: e.openingPhaseSlug
+                ? (phaseIdBySlug.get(e.openingPhaseSlug) ?? null)
+                : null,
+            }
+          : {}),
         isActive: e.isActive,
       }
       const el = await tx.element.upsert({
@@ -1070,7 +1303,18 @@ export async function importarContenido(
       const inputKey = buildRecipeInputKey(
         r.ingredientes.map((i) => ({ slug: i.elementSlug, quantity: i.quantity })),
       )
-      if (await tx.advance.findUnique({ where: { inputKey } })) {
+      const existingAdvance = await tx.advance.findUnique({
+        where: { inputKey },
+        select: { targetSequence: { select: { element: { select: { slug: true } } } } },
+      })
+      if (
+        existingAdvance &&
+        !isIntentionalRecipeAdvanceDualOutcome({
+          inputKey,
+          recipeOutputSlugs: r.outputs.map((output) => output.elementSlug),
+          advanceTargetSlug: existingAdvance.targetSequence.element.slug,
+        })
+      ) {
         throw new ImportError(`La combinación «${inputKey}» ya pertenece a un avance.`)
       }
       const ingredientes: { elementId: string; quantity: number }[] = []
@@ -1084,6 +1328,7 @@ export async function importarContenido(
         successText: r.successText ?? null,
         hintText: r.hintText ?? null,
         isActive: r.isActive,
+        minimumDiscoveries: r.minimumDiscoveries,
       }
       const receta = await tx.recipe.upsert({
         where: { inputKey },
@@ -1111,6 +1356,7 @@ export async function importarContenido(
               number: advance.sourceSequenceNumber,
             },
           },
+          include: { element: { select: { slug: true } } },
         }),
         tx.sequence.findUnique({
           where: {
@@ -1119,6 +1365,7 @@ export async function importarContenido(
               number: advance.targetSequenceNumber,
             },
           },
+          include: { element: { select: { slug: true } } },
         }),
       ])
       if (!sourceSequence || !targetSequence) {
@@ -1137,7 +1384,18 @@ export async function importarContenido(
           quantity: ingredient.quantity,
         })),
       )
-      if (await tx.recipe.findUnique({ where: { inputKey } })) {
+      const existingRecipe = await tx.recipe.findUnique({
+        where: { inputKey },
+        select: { outputs: { select: { element: { select: { slug: true } } } } },
+      })
+      if (
+        existingRecipe &&
+        !isIntentionalRecipeAdvanceDualOutcome({
+          inputKey,
+          recipeOutputSlugs: existingRecipe.outputs.map((output) => output.element.slug),
+          advanceTargetSlug: targetSequence.element.slug,
+        })
+      ) {
         throw new ImportError(`La combinación «${inputKey}» ya pertenece a una receta.`)
       }
       const saved = await tx.advance.upsert({
@@ -1255,6 +1513,9 @@ export async function importarContenido(
         create: { slug: achievement.slug, ...data },
       })
     }
+    await sincronizarStartersConPrimeraFase(tx)
+    const profiles = await tx.playerProfile.findMany({ select: { id: true } })
+    for (const profile of profiles) await descubrirIniciales(tx, profile.id)
   })
 
   return resumen

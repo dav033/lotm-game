@@ -2,33 +2,55 @@ import { Lock } from 'lucide-react'
 import { prisma } from '@/server/db'
 import { obtenerPerfilActual } from '@/server/perfil'
 import { IconoElemento } from '@/components/game/IconoElemento'
+import { descubrirIniciales } from '@/server/domain/descubrimientos'
+import { faseActualParaPerfil, filtroElementoDisponiblePorPhaseIds } from '@/server/domain/fases'
 import { ELEMENT_TYPE_LABELS, etiquetaTipo } from '@/server/domain/tipos'
 
 export const runtime = 'nodejs'
 
 export default async function PaginaColeccion() {
   const perfil = await obtenerPerfilActual()
+  if (perfil) await descubrirIniciales(prisma, perfil.id)
+  const phaseState = perfil ? await faseActualParaPerfil(prisma, perfil.id) : null
+  const availablePhaseIds = [...(phaseState?.availablePhaseIds ?? [])]
+  const availableElementFilter = filtroElementoDisponiblePorPhaseIds(availablePhaseIds)
 
-  const [categorias, elementos, caminos, descubrimientos, desbloqueos, pistas] =
+  const [categoriasCargadas, elementos, caminos, descubrimientos, desbloqueos, pistas] =
     await Promise.all([
       prisma.category.findMany({
         where: { isActive: true },
         orderBy: { sortOrder: 'asc' },
       }),
       prisma.element.findMany({
-        where: { isActive: true },
+        where: availableElementFilter,
         include: { categories: true, sequence: true },
         orderBy: [{ tier: 'asc' }, { name: 'asc' }],
       }),
       prisma.pathway.findMany({
-        where: { isActive: true },
+        where: {
+          isActive: true,
+          sequences: {
+            some: {
+              element: availableElementFilter,
+            },
+          },
+        },
         include: {
-          sequences: { orderBy: { number: 'desc' }, include: { element: true } },
+          sequences: {
+            where: {
+              element: availableElementFilter,
+            },
+            orderBy: { number: 'desc' },
+            include: { element: true },
+          },
         },
       }),
       perfil
-        ? prisma.playerDiscovery.findMany({
-            where: { profileId: perfil.id },
+          ? prisma.playerDiscovery.findMany({
+            where: {
+              profileId: perfil.id,
+              element: availableElementFilter,
+            },
             select: { elementId: true },
           })
         : Promise.resolve([]),
@@ -39,13 +61,44 @@ export default async function PaginaColeccion() {
           })
         : Promise.resolve([]),
       prisma.recipe.findMany({
-        where: { isActive: true, hintText: { not: null } },
-        select: { hintText: true, outputs: { select: { elementId: true } } },
+        where: {
+          isActive: true,
+          hintText: { not: null },
+          outputs: {
+            some: {
+              element: availableElementFilter,
+            },
+          },
+        },
+        select: {
+          hintText: true,
+          outputs: {
+            where: {
+              element: availableElementFilter,
+            },
+            select: { elementId: true },
+          },
+        },
       }),
     ])
 
+  const categoryById = new Map(categoriasCargadas.map((category) => [category.id, category]))
+  const visibleCategoryIds = new Set(
+    elementos.flatMap((element) => element.categories.map((category) => category.categoryId)),
+  )
+  const pendingCategoryIds = [...visibleCategoryIds]
+  while (pendingCategoryIds.length > 0) {
+    const parentId = categoryById.get(pendingCategoryIds.pop()!)?.parentId
+    if (parentId && !visibleCategoryIds.has(parentId)) {
+      visibleCategoryIds.add(parentId)
+      pendingCategoryIds.push(parentId)
+    }
+  }
+  const categorias = categoriasCargadas.filter((category) => visibleCategoryIds.has(category.id))
+
   const descubierto = new Set(descubrimientos.map((d) => d.elementId))
   const desbloqueado = new Set(desbloqueos.map((u) => u.pathwayId))
+  const caminosDesbloqueados = caminos.filter((camino) => desbloqueado.has(camino.id)).length
   const pistaDe = new Map<string, string>()
   for (const p of pistas) {
     for (const output of p.outputs) {
@@ -174,7 +227,7 @@ export default async function PaginaColeccion() {
           })}
           <div className="rounded-lg mist-card p-4">
             <div className="text-2xl font-bold text-parchment">
-              {desbloqueado.size}/{caminos.length}
+              {caminosDesbloqueados}/{caminos.length}
             </div>
             <div className="text-xs uppercase tracking-wider text-fog">
               Caminos · {secuenciasDescubiertas.length}/{secuenciasTotales.length} secuencias

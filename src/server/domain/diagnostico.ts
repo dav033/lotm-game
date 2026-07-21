@@ -16,6 +16,7 @@ export type DiagElement = {
   isActive: boolean
   unlockedByType: string | null
   unlockedBySequenceNumber: number | null
+  unlockedAtDiscoveryCount: number | null
   requiredElementIds: string[]
 }
 
@@ -262,7 +263,12 @@ export function analizarProgresion(
   advances: DiagAdvance[],
   triggers: DiagTrigger[] = [],
 ): Map<string, DiagElementResult> {
-  const activos = elements.filter((e) => e.isActive)
+  const elementosDeSecuenciaInactiva = new Set(
+    sequences.filter((sequence) => !sequence.isActive).map((sequence) => sequence.elementId),
+  )
+  const activos = elements.filter(
+    (e) => e.isActive && !elementosDeSecuenciaInactiva.has(e.id),
+  )
   const activosPorId = new Map(activos.map((e) => [e.id, e]))
   const ritualKnowledgeElementId = activos.find(
     (element) => element.slug === RITUAL_KNOWLEDGE_ELEMENT_SLUG,
@@ -375,6 +381,15 @@ export function analizarProgresion(
   while (cambiado) {
     cambiado = false
 
+    // Cantidad de elementos activos alcanzables hasta esta ronda de la
+    // relajación: aproxima "descubrimientos activos" para evaluar los
+    // umbrales unlockedAtDiscoveryCount. Como
+    // `alcanzable` solo crece durante la relajación, es monótono.
+    let alcanzableCount = 0
+    for (const e of activos) {
+      if (alcanzable.get(e.id)) alcanzableCount++
+    }
+
     // 1. Desbloqueos espontáneos: ruta directa por trigger (OR entre
     // desencadenantes) o ruta de restricciones declarativas donde TODOS los
     // campos configurados (tipo, número de secuencia, requisitos AND) deben
@@ -411,6 +426,7 @@ export function analizarProgresion(
       const restriccionesConfiguradas =
         e.unlockedByType != null ||
         e.unlockedBySequenceNumber != null ||
+        e.unlockedAtDiscoveryCount != null ||
         e.requiredElementIds.length > 0
       if (restriccionesConfiguradas) {
         const idsGrupo: string[] = []
@@ -470,6 +486,14 @@ export function analizarProgresion(
           }
         }
 
+        if (satisfecha && e.unlockedAtDiscoveryCount != null) {
+          if (alcanzableCount < e.unlockedAtDiscoveryCount) {
+            satisfecha = false
+          } else {
+            etiquetas.push(`cantidad >= ${e.unlockedAtDiscoveryCount} descubrimientos`)
+          }
+        }
+
         if (satisfecha && e.requiredElementIds.length > 0) {
           const requisitosAlcanzables = e.requiredElementIds.every(
             (id) => alcanzable.get(id) ?? false,
@@ -485,7 +509,7 @@ export function analizarProgresion(
           }
         }
 
-        if (satisfecha && idsGrupo.length > 0) {
+        if (satisfecha && (idsGrupo.length > 0 || e.unlockedAtDiscoveryCount != null)) {
           const c = costoConjunto(idsGrupo, costo)
           const p = profundidadConjunto(idsGrupo, profundidad)
           if (c != null && p != null) {
@@ -744,6 +768,16 @@ export function analizarProgresion(
         participacionSpontaneous.get(detonador.elementId)?.add(regla)
       }
     }
+    if (e.unlockedAtDiscoveryCount != null) {
+      participacionSpontaneous.get(e.id)?.add(`cantidad:${e.id}`)
+    }
+  }
+
+  // Cantidad final (estable) de elementos activos alcanzables, usada para
+  // evaluar umbrales al calcular alternativas/participación estáticas.
+  let alcanzableCountFinal = 0
+  for (const e of activos) {
+    if (alcanzable.get(e.id)) alcanzableCountFinal++
   }
 
   // Alternativas: recetas ejecutables y avances/rituales preparables.
@@ -782,6 +816,9 @@ export function analizarProgresion(
     }
     if (e.unlockedBySequenceNumber != null) {
       alternativas += secuenciasAlcanzablesPorNumero(e.unlockedBySequenceNumber).length
+    }
+    if (e.unlockedAtDiscoveryCount != null && alcanzableCountFinal >= e.unlockedAtDiscoveryCount) {
+      alternativas += 1
     }
     alternativas += (triggersPorElemento.get(e.id) ?? []).filter(
       (t) => alcanzable.get(t.triggerId) ?? false,
@@ -1053,6 +1090,7 @@ export function elementosSinUso(
     const enSpontaneous =
       e.unlockedByType != null ||
       e.unlockedBySequenceNumber != null ||
+      e.unlockedAtDiscoveryCount != null ||
       e.requiredElementIds.length > 0
     const esRequisitoAND = activos.some((x) => x.requiredElementIds.includes(e.id))
     return (

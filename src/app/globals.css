@@ -24,6 +24,11 @@
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
+:root {
+  /* Curva ease-out compartida para transiciones de UI (paneles, árbol, pan/zoom). */
+  --ease-out-snappy: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 html {
   background: var(--color-ink);
 }
@@ -278,6 +283,46 @@ body {
   to { background-position: -200% 0; }
 }
 
+/* Menús y paneles emergentes anclados a un disparador (dropdowns, popovers):
+   entran con un ligero scale+fade desde su borde superior, nunca desde 0. */
+@keyframes menu-entra {
+  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.menu-entra {
+  transform-origin: top;
+  animation: menu-entra 160ms var(--ease-out-snappy) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu-entra { animation: none; }
+}
+
+/* Panel de pestaña recién mostrado (admin): evita el corte seco al cambiar
+   de vista. Solo corre mientras el panel pasa de hidden a visible. */
+@keyframes panel-entra {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.panel-entra {
+  animation: panel-entra 180ms var(--ease-out-snappy) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel-entra { animation: none; }
+}
+
+/* Panel de detalle anclado al borde derecho (árbol de habilidades): entra
+   deslizándose desde su propio borde, nunca desde el centro. */
+@keyframes aside-entra {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.aside-entra {
+  animation: aside-entra 200ms var(--ease-out-snappy) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .aside-entra { animation: none; }
+}
+
 /* Esquinas de sigilo de los modales. */
 .sigilo-esquina {
   position: absolute;
@@ -451,7 +496,7 @@ body {
    cada nodo o combinación solo lleva la clase .arbol-resaltado. */
 .arbol-nodo {
   opacity: var(--op, 1);
-  transition: opacity 0.22s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 0.22s ease, transform 0.45s var(--ease-out-snappy);
   cursor: pointer;
 }
 .arbol-nodo:focus { outline: none; }
@@ -464,7 +509,7 @@ body {
 
 /* Botones ⊕/⊖ del explorador, anclados a cada nodo. */
 .arbol-expansores {
-  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.45s var(--ease-out-snappy);
 }
 .arbol-expansor { cursor: pointer; }
 .arbol-expansor circle {

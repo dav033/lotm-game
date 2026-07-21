@@ -52,6 +52,12 @@ export type ElementPublicData = {
   sequenceLabel?: string | null
 }
 
+export type ProgressionPhasePublicData = {
+  slug: string
+  name: string
+  sortOrder: number
+}
+
 export type PathwayReveal = {
   categoryPath: string[]
   pathwayName: string

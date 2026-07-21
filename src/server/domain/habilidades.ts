@@ -109,7 +109,7 @@ export type FormulaPotencial = {
    * La fórmula produciría algo ahora: para recetas, al menos una salida
    * activa y no protegida por un avance (misma regla que combinar.ts); para
    * creación de avances, ambos caminos activos.
-   */
+  */
   salidasValidas: boolean
 }
 

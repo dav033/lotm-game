@@ -1,42 +1,96 @@
-import { forwardRef } from 'react'
+import React, { forwardRef } from 'react'
+import { parseTierText } from '../tierText'
 
-// Tierlist slide: one pathway per slide — big icon, pathway name, the assigned
-// rank letter (colors the whole card), and a free-text verdict block.
-const TierCard = forwardRef(function TierCard({ path, icon, rank, tier, text }, ref) {
-  const cardStyle = { '--tier': tier.c, '--tier-deep': tier.d }
+// Tierlist slide: one pathway per slide, with a compact identity summary and
+// the remaining space reserved for explanation points.
+const TierCard = forwardRef(function TierCard(
+  { path, icon, sequence, sequenceName, rank, tier, text, footerText = '', backgroundImage = null },
+  ref,
+) {
+  const points = parseTierText(text)
+  const estimatedLines = points.reduce((total, point) => total + Math.max(1, Math.ceil(point.length / 44)), 0)
+  const pointDensity = estimatedLines <= 5 ? ' sparse' : estimatedLines >= 11 ? ' dense' : ''
+  const footerDensity = footerText.length <= 70 ? ' sparse' : footerText.length > 160 ? ' dense' : ''
+  const cardStyle = {
+    '--tier': tier.c,
+    '--tier-deep': tier.d,
+  }
 
   return (
-    <div className="tier-card" id="card" ref={ref} style={cardStyle}>
-      <div className="frame" />
-      <div className="scanlines" />
+    <article
+      className="tier-card"
+      id="card"
+      ref={ref}
+      style={cardStyle}
+      aria-label={`${path}${sequence === null ? ' pathway' : ` sequence ${sequence} ${sequenceName}`}, tier ${rank}`}
+    >
+      {backgroundImage && (
+        <>
+          <div
+            className="tier-background"
+            style={{ backgroundImage: `url("${backgroundImage}")` }}
+            aria-hidden="true"
+          />
+          <div className="tier-background-overlay" aria-hidden="true" />
+        </>
+      )}
+      <div className="frame" aria-hidden="true" />
+      <div className="scanlines" aria-hidden="true" />
       <div className="content tier-content">
-        <div className="tier-head">
+        <p className="tier-head">
           <span className="tier-head-hl">TIERLIST</span> · THE 22 PATHWAYS
-        </div>
+        </p>
 
-        <div className="tier-hero">
+        <header className="tier-summary">
           <div className="tier-iconwrap">
-            <img className="tier-icon" src={icon} alt={path} />
+            <img
+              className="tier-icon"
+              src={icon}
+              alt={`${path} pathway icon`}
+              width="58"
+              height="58"
+            />
           </div>
-          <div className="tier-path">{path}</div>
+          <div className="tier-identity">
+            <span className="tier-pathlabel">Pathway</span>
+            <p className="tier-path">{path}</p>
+            {sequence !== null && (
+              <p className="tier-sequence">Seq {sequence} · {sequenceName}</p>
+            )}
+          </div>
+          <p className="tier-rankwrap">
+            <span className="tier-ranklabel">Tier</span>
+            <strong className="tier-rank">{rank}</strong>
+          </p>
+        </header>
+
+        <div className="tier-body">
+          <section
+            className={'tier-text' + (points.length ? '' : ' empty') + pointDensity}
+            aria-label="Explanation"
+          >
+            <p className="tier-text-label">Explanation</p>
+            {points.length ? (
+              <ul className="tier-points">
+                {points.map((point, index) => <li key={index}>{point}</li>)}
+              </ul>
+            ) : (
+              <p className="tier-empty">Add one explanation point per line in the panel.</p>
+            )}
+          </section>
+
+          {footerText && (
+            <p className={'tier-footer-text' + footerDensity}>{footerText}</p>
+          )}
         </div>
 
-        <div className="tier-rankwrap">
-          <div className="tier-ranklabel">TIER</div>
-          <div className="tier-rank">{rank}</div>
-        </div>
-
-        <div className={'tier-text' + (text ? '' : ' empty')}>
-          {text || 'Write your verdict in the panel →'}
-        </div>
-
-        <div className="progress">
+        <div className="progress tier-progress" aria-hidden="true">
           <div className="ptrack">
             <span className="pfill" style={{ width: '100%', background: tier.c }} />
           </div>
         </div>
       </div>
-    </div>
+    </article>
   )
 })
 

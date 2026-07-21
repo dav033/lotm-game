@@ -1,4 +1,4 @@
-import { forwardRef, useState } from 'react'
+import React, { forwardRef, useState } from 'react'
 
 const Card = forwardRef(function Card(
   { name, image, accent, sequences, pathLabel, dom, powerLabel, powerValue, onUploadImage, onDropImages },

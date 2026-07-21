@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { SPRING_UI } from './motion'
 import { CircleX, Gauge, LoaderCircle, X } from 'lucide-react'
 import { BandejaPreparacion } from './BandejaPreparacion'
 import { parPreviamenteFallido } from './estadoHabilidades'
@@ -143,7 +144,7 @@ export function MesaCombinacion({ iniciarArrastre }: { iniciarArrastre: IniciarA
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 whileHover={{ y: -4 }}
                 whileTap={{ scale: 0.97 }}
-                transition={{ type: 'spring', stiffness: 320, damping: 22, delay: idx * 0.08 }}
+                transition={{ ...SPRING_UI, delay: idx * 0.08 }}
                 className="mx-auto max-w-sm rounded-lg mist-card brass-ring p-5 text-center hover:border-brass-deep focus:outline-none focus-visible:ring-2 focus-visible:ring-brass"
               >
                 {r.isNewDiscovery && (
@@ -290,7 +291,7 @@ function Receptaculo({
       data-drop-slot={index}
       data-apprentice-failed={previouslyFailed ? 'true' : undefined}
       animate={esObjetivo ? { scale: 1.08 } : { scale: 1 }}
-      transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+      transition={SPRING_UI}
       className={`relative flex h-28 w-28 flex-col items-center justify-center gap-1 rounded-full border-2 sm:h-[7.5rem] sm:w-[7.5rem] ${
         el
           ? 'mist-card border-brass-deep shadow-[0_0_26px_-8px_rgba(201,163,92,0.7)]'
@@ -357,6 +358,7 @@ function Receptaculo({
 // Mientras el archivo delibera: anillo de energía girando sobre un núcleo
 // que respira en el centro del círculo.
 function Canalizacion() {
+  const sinMovimiento = useReducedMotion()
   return (
     <motion.div
       className="pointer-events-none absolute inset-0 flex items-center justify-center"
@@ -368,7 +370,11 @@ function Canalizacion() {
     >
       <motion.div
         className="canal-nucleo absolute h-32 w-32"
-        animate={{ scale: [1, 1.22, 1], opacity: [0.55, 1, 0.55] }}
+        animate={
+          sinMovimiento
+            ? { opacity: [0.55, 1, 0.55] }
+            : { scale: [1, 1.22, 1], opacity: [0.55, 1, 0.55] }
+        }
         transition={{ repeat: Infinity, duration: 1.15, ease: 'easeInOut' }}
       />
       <div className="canal-anillo absolute h-36 w-36" />

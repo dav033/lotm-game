@@ -5,11 +5,15 @@ import html2canvas from 'html2canvas'
 import JSZip from 'jszip'
 import Card from './components/Card.jsx'
 import CoverCard from './components/CoverCard.jsx'
+import FullImageCoverCard from './components/FullImageCoverCard.jsx'
 import TierCard from './components/TierCard.jsx'
+import TierExplanationCard from './components/TierExplanationCard.jsx'
+import GeneralExplanationCard from './components/GeneralExplanationCard.jsx'
 import Panel from './components/Panel.jsx'
 import Filmstrip from './components/Filmstrip.jsx'
 import { PATHWAYS, PATH_NAMES, tierColor, powerTier, TIER_RANKS } from './data/pathways.js'
 import { PATHWAY_ICONS } from './data/pathwayIcons.js'
+import { PATHWAY_BACKGROUNDS } from './data/pathwayBackgrounds.js'
 import { loadData, saveData } from './storage.js'
 
 const COVER_ACCENT = { c: '#d9b869', d: '#4a3a17', pct: 100 }
@@ -31,10 +35,22 @@ const DEFAULT_STATE = {
   coverImage2: null,
   coverTitle: 'Fate',
   coverPartNum: '1',
+  fullCoverImage: null,
+  fullCoverTitle: '',
   tierPath: 'Fool',
+  tierSeq: null,
   tierRank: 'S',
   tierText: '',
+  tierFooterText: '',
+  tierBackgroundImage: null,
+  explanationPath: null,
+  tierExplanationText: '',
+  tierExplanationBackgroundImage: null,
+  generalExplanationTitle: '',
+  generalExplanationText: '',
 }
+
+const normalizeState = (value) => ({ ...DEFAULT_STATE, ...(value ?? {}) })
 
 const newId = () =>
   (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()))
@@ -64,17 +80,20 @@ export default function App() {
     let alive = true
     loadData().then((data) => {
       if (!alive) return
-      const restoredBatch = data?.batch ?? []
+      const restoredBatch = (data?.batch ?? []).map((card) => ({
+        ...card,
+        state: normalizeState(card.state),
+      }))
       if (restoredBatch.length > 0) {
         const active =
           restoredBatch.find((c) => c.id === data?.editingId) ?? restoredBatch[0]
         setBatch(restoredBatch)
         setEditingId(active.id)
-        setState(active.state ?? DEFAULT_STATE)
+        setState(active.state)
       } else {
         // Fresh start: seed one card so there is always something to edit.
         const id = newId()
-        const seedState = data?.state ?? DEFAULT_STATE
+        const seedState = normalizeState(data?.state)
         setBatch([{ id, label: labelFor(seedState), url: null, state: seedState }])
         setEditingId(id)
         setState(seedState)
@@ -143,7 +162,21 @@ export default function App() {
   // identity (name + image) so batching variants is fast. Then select it.
   const onNewCard = () => {
     const id = newId()
-    const fresh = { ...state, name: '', image: null, coverImage1: null, coverImage2: null, tierText: '' }
+    const fresh = {
+      ...state,
+      name: '',
+      image: null,
+      coverImage1: null,
+      coverImage2: null,
+      fullCoverImage: null,
+      tierText: '',
+      tierFooterText: '',
+      tierBackgroundImage: null,
+      tierExplanationText: '',
+      tierExplanationBackgroundImage: null,
+      generalExplanationTitle: '',
+      generalExplanationText: '',
+    }
     setBatch((b) => [...b, { id, label: labelFor(fresh), url: null, state: fresh }])
     setEditingId(id)
     setState(fresh)
@@ -153,7 +186,7 @@ export default function App() {
     const item = batch.find((x) => x.id === id)
     if (!item) return
     setEditingId(id)
-    setState(item.state)
+    setState(normalizeState(item.state))
   }
 
   const editingIndex = batch.findIndex((x) => x.id === editingId)
@@ -278,16 +311,28 @@ export default function App() {
     }))
 
   const isCover = state.type === 'Cover'
+  const isFullImageCover = state.type === 'Full Image Cover'
   const isTier = state.type === 'Tier'
+  const isTierExplanation = state.type === 'Tier Explanation'
+  const isGeneralExplanation = state.type === 'General Explanation'
   // Older saved cards predate the tier fields — fall back to sane defaults.
   const tierPath = PATHWAYS[state.tierPath] ? state.tierPath : 'Fool'
+  const tierSeq = Number.isInteger(state.tierSeq) && state.tierSeq >= 0 && state.tierSeq <= 9
+    ? state.tierSeq
+    : null
   const tierRank = TIER_RANKS[state.tierRank] ? state.tierRank : 'S'
-  const accent = isCover
+  const accent = isCover || isFullImageCover
     ? COVER_ACCENT
-    : isTier
+    : isTier || isTierExplanation
       ? { ...TIER_RANKS[tierRank], pct: 100 }
+      : isGeneralExplanation
+        ? COVER_ACCENT
       : powerTier(state.type, state.power, state.grade)
   const pathLabel = [...new Set(sequences.map((s) => s.path))].join(' · ')
+  const explanationPath = PATHWAYS[state.explanationPath] ? state.explanationPath : null
+  const explanationScope = isTierExplanation ? 'All pathways' : explanationPath ?? 'All pathways'
+  const tierBackgroundImage = state.tierBackgroundImage
+    || (tierSeq === null ? null : PATHWAY_BACKGROUNDS[tierPath] ?? null)
 
   if (!loaded) {
     return <div className="app-loading">Loading your cards…</div>
@@ -319,14 +364,41 @@ export default function App() {
               part={state.coverPartNum}
               onUploadImage={onUploadImage}
             />
+          ) : isFullImageCover ? (
+            <FullImageCoverCard
+              ref={cardRef}
+              image={state.fullCoverImage}
+              title={state.fullCoverTitle}
+              onUploadImage={onUploadImage}
+            />
           ) : isTier ? (
             <TierCard
               ref={cardRef}
               path={tierPath}
               icon={PATHWAY_ICONS[tierPath]}
+              sequence={tierSeq}
+              sequenceName={tierSeq === null ? null : PATHWAYS[tierPath][9 - tierSeq]}
               rank={tierRank}
               tier={TIER_RANKS[tierRank]}
               text={state.tierText ?? ''}
+              footerText={state.tierFooterText ?? ''}
+              backgroundImage={tierBackgroundImage}
+            />
+          ) : isTierExplanation ? (
+            <TierExplanationCard
+              ref={cardRef}
+              rank={tierRank}
+              tier={TIER_RANKS[tierRank]}
+              description={state.tierExplanationText ?? ''}
+              backgroundImage={state.tierExplanationBackgroundImage}
+              scope={explanationScope}
+            />
+          ) : isGeneralExplanation ? (
+            <GeneralExplanationCard
+              ref={cardRef}
+              title={state.generalExplanationTitle ?? ''}
+              description={state.generalExplanationText ?? ''}
+              scope={explanationScope}
             />
           ) : (
             <Card
@@ -373,6 +445,15 @@ export default function App() {
 // Filename-friendly label for a card's current state.
 function labelFor(s) {
   if (s.type === 'Cover') return `${s.coverTitle || 'cover'}_part${s.coverPartNum || ''}`.replace(/\s+/g, '_')
-  if (s.type === 'Tier') return `tier_${s.tierRank || 'S'}_${s.tierPath || 'pathway'}`.replace(/\s+/g, '_')
+  if (s.type === 'Full Image Cover') return `full_cover_${s.fullCoverTitle || 'untitled'}`.replace(/\s+/g, '_')
+  if (s.type === 'Tier') {
+    return `tier_${s.tierRank || 'S'}_${s.tierPath || 'pathway'}${Number.isInteger(s.tierSeq) ? `_seq${s.tierSeq}` : ''}`.replace(/\s+/g, '_')
+  }
+  if (s.type === 'Tier Explanation') {
+    return `tier_explanation_${s.tierRank || 'S'}${s.explanationPath ? `_${s.explanationPath}` : ''}`.replace(/\s+/g, '_')
+  }
+  if (s.type === 'General Explanation') {
+    return `general_explanation_${s.generalExplanationTitle || 'untitled'}${s.explanationPath ? `_${s.explanationPath}` : ''}`.replace(/\s+/g, '_')
+  }
   return `${s.name || 'card'}_seq${s.seq}`
 }

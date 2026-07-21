@@ -1,14 +1,14 @@
 'use client'
 
 import { useEffect } from 'react'
-import { AnimatePresence } from 'framer-motion'
-import { RotateCcw } from 'lucide-react'
+import { AnimatePresence, MotionConfig } from 'framer-motion'
+import { RotateCcw, Sparkles } from 'lucide-react'
 import { Ambiente } from './Ambiente'
 import { Avisos } from './Avisos'
 import { GhostArrastre } from './GhostArrastre'
 import { MesaCombinacion } from './MesaCombinacion'
 import { ModalLogro } from './ModalLogro'
-import { ModalRevelacion } from './ModalRevelacion'
+import { ModalAvanceFase } from './ModalAvanceFase'
 import { ModalRiesgoRitual } from './ModalRiesgoRitual'
 import { ModalTutorialAvance } from './ModalTutorialAvance'
 import { PanelDescubiertos } from './PanelDescubiertos'
@@ -29,13 +29,18 @@ export default function Juego({ esAdmin = false }: { esAdmin?: boolean }) {
     iniciarJuego(esAdmin)
   }, [esAdmin, iniciarJuego])
 
-  // Cabecera: tres datos primitivos, suscritos por separado.
+  // Cabecera: datos primitivos, suscritos por separado.
   const descubiertos = useJuegoStore((s) => s.estado?.descubiertos)
   const totalElementos = useJuegoStore((s) => s.estado?.totalElementos)
   const porcentaje = useJuegoStore((s) => s.estado?.porcentaje ?? 0)
+  const phaseName = useJuegoStore((s) => s.estado?.phase?.name)
+  const nextPhase = useJuegoStore((s) => s.estado?.nextPhase)
+  const estadoCargado = useJuegoStore((s) => s.estado !== null)
 
   const reiniciando = useJuegoStore((s) => s.reiniciando)
   const reiniciar = useJuegoStore((s) => s.reiniciar)
+  const faseAvanzando = useJuegoStore((s) => s.faseAvanzando)
+  const avanzarFase = useJuegoStore((s) => s.avanzarFase)
   const realizarRitual = useJuegoStore((s) => s.realizarRitual)
   const ritualState = useJuegoStore((s) => s.ritualState)
   const ritualActionLoading = useJuegoStore((s) => s.ritualActionLoading)
@@ -55,20 +60,33 @@ export default function Juego({ esAdmin = false }: { esAdmin?: boolean }) {
   }, [modoInteraccion, cancelarModoVidente])
 
   // Modales: uno a la vez, con prioridad revelación → tutorial → logro.
-  const reveal = useJuegoStore((s) =>
-    s.reveal && s.reveal.results.length > 0 ? s.reveal.pathwayReveal : null,
-  )
   const tutorialAvance = useJuegoStore((s) => s.tutorialAvance)
   const logroPendiente = useJuegoStore((s) => s.logrosPendientes[0] ?? null)
-  const cerrarReveal = useJuegoStore((s) => s.cerrarReveal)
   const cerrarTutorialAvance = useJuegoStore((s) => s.cerrarTutorialAvance)
   const cerrarLogro = useJuegoStore((s) => s.cerrarLogro)
   const pendingRitualRisk = useJuegoStore((s) => s.pendingRitualRisk)
   const cancelarRiesgoRitual = useJuegoStore((s) => s.cancelarRiesgoRitual)
   const confirmarRiesgoRitual = useJuegoStore((s) => s.confirmarRiesgoRitual)
   const combinando = useJuegoStore((s) => s.combinando)
+  const transicionFase = useJuegoStore((s) => s.transicionFase)
+  const elementos = useJuegoStore((s) => s.estado?.elementos)
+  const cerrarTransicionFase = useJuegoStore((s) => s.cerrarTransicionFase)
+  const aperturasTransicion = transicionFase
+    ? (elementos ?? []).filter((elemento) => transicionFase.openingElementSlugs.includes(elemento.slug))
+    : []
+
+  const verAperturasEnLienzo = () => {
+    cerrarTransicionFase()
+    requestAnimationFrame(() => {
+      const lienzo = document.getElementById('lienzo-transmutacion')
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      lienzo?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
+      lienzo?.focus({ preventScroll: true })
+    })
+  }
 
   return (
+    <MotionConfig reducedMotion="user">
     <div className="mist-bg min-h-screen">
       <Ambiente />
 
@@ -86,8 +104,30 @@ export default function Juego({ esAdmin = false }: { esAdmin?: boolean }) {
                 : '…'}
             </span>
           </span>
-          <div className="ml-auto flex items-center gap-4 text-sm">
+          <span
+            className="rounded-full border border-line2 px-3 py-0.5 text-sm text-fog"
+            title="Fase de progresión actual"
+          >
+            Fase actual:{' '}
+            <span className="text-brass">
+              {phaseName ?? (estadoCargado ? 'Sin fase disponible' : '…')}
+            </span>
+          </span>
+          <div className="ml-auto flex flex-wrap items-center gap-4 text-sm">
+            {nextPhase && (
+              <button
+                type="button"
+                onClick={() => void avanzarFase()}
+                disabled={faseAvanzando || combinando || reiniciando}
+                aria-busy={faseAvanzando}
+                className="flex min-h-11 items-center gap-1.5 rounded-md border border-brass-deep bg-brass/10 px-3 text-brass transition-colors hover:border-brass hover:bg-brass/15 focus-visible:ring-2 focus-visible:ring-brass disabled:cursor-wait disabled:opacity-50"
+              >
+                <Sparkles className="h-4 w-4" aria-hidden />
+                {faseAvanzando ? 'Abriendo fase…' : `Avanzar a ${nextPhase.name}`}
+              </button>
+            )}
             <button
+              type="button"
               onClick={() => void reiniciar()}
               disabled={reiniciando}
               className="flex items-center gap-1.5 text-fog transition hover:text-brass disabled:opacity-50"
@@ -167,13 +207,19 @@ export default function Juego({ esAdmin = false }: { esAdmin?: boolean }) {
             onConfirmar={() => void confirmarRiesgoRitual()}
           />
         )}
-        {!pendingRitualRisk && reveal && (
-          <ModalRevelacion key="revelacion" reveal={reveal} onCerrar={cerrarReveal} />
+        {!pendingRitualRisk && transicionFase && (
+          <ModalAvanceFase
+            key={`fase-${transicionFase.phase.slug}`}
+            transicion={transicionFase}
+            aperturas={aperturasTransicion}
+            onCerrar={cerrarTransicionFase}
+            onVerLienzo={verAperturasEnLienzo}
+          />
         )}
-        {!pendingRitualRisk && !reveal && tutorialAvance && (
+        {!pendingRitualRisk && !transicionFase && tutorialAvance && (
           <ModalTutorialAvance key="tutorial-avance" onCerrar={cerrarTutorialAvance} />
         )}
-        {!pendingRitualRisk && !reveal && !tutorialAvance && logroPendiente && (
+        {!pendingRitualRisk && !transicionFase && !tutorialAvance && logroPendiente && (
           <ModalLogro
             key={`logro-${logroPendiente.id}`}
             logro={logroPendiente}
@@ -182,5 +228,6 @@ export default function Juego({ esAdmin = false }: { esAdmin?: boolean }) {
         )}
       </AnimatePresence>
     </div>
+    </MotionConfig>
   )
 }

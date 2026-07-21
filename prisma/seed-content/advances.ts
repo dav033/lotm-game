@@ -3,6 +3,7 @@ export type AdvanceSeed = {
   ingredients: string[]
   source: string
   target: string
+  isActive?: boolean
 }
 
 export function getAdvanceDefinitions(): AdvanceSeed[] {

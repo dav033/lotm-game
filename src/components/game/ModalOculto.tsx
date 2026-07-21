@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { useEffect, useRef } from 'react'
+import { SPRING_MODAL } from './motion'
 
 const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -94,7 +95,7 @@ export function ModalOculto({
         initial={{ opacity: 0, scale: 0.88, y: 28 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.94, y: 14 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 26 }}
+        transition={SPRING_MODAL}
       >
         <span className="sigilo-esquina left-2.5 top-2" aria-hidden>✦</span>
         <span className="sigilo-esquina right-2.5 top-2" aria-hidden>✦</span>

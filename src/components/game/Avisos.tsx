@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from 'framer-motion'
 import { Flame, TriangleAlert } from 'lucide-react'
+import { SPRING_UI } from './motion'
 import { useJuegoStore } from './store'
 
 // Avisos efímeros apilados en la base de la pantalla: feedback inmediato de
@@ -26,7 +27,7 @@ export function Avisos() {
             initial={{ opacity: 0, y: 18, scale: 0.94 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.96 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+            transition={SPRING_UI}
             className={`pointer-events-auto flex w-full items-center gap-2.5 rounded-md border bg-panel2/95 px-4 py-2.5 text-left text-sm text-parchment shadow-xl backdrop-blur ${
               aviso.tono === 'peligro' ? 'border-wine' : 'border-line2'
             }`}

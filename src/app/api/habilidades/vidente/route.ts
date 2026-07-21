@@ -42,18 +42,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Ese elemento no está en el archivo.' }, { status: 404 })
     }
 
-    const descubrimiento = await prisma.playerDiscovery.findUnique({
-      where: { profileId_elementId: { profileId: profile.id, elementId: element.id } },
-      select: { elementId: true },
-    })
-    if (!descubrimiento) {
+    const snapshot = await cargarSnapshotPotencial(prisma, profile.id)
+    if (!snapshot.discoveredElementIds.has(element.id)) {
       return NextResponse.json(
         { error: 'Solo puedes analizar elementos que ya has descubierto.' },
         { status: 422 },
       )
     }
 
-    const snapshot = await cargarSnapshotPotencial(prisma, profile.id)
     const conteos = calcularPotencialPorElemento(snapshot)
     return NextResponse.json(
       resultadoVidentePublico(element.id, conteos.get(element.id) ?? 0),

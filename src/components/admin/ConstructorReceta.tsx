@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { AnimatePresence, motion, MotionConfig } from 'framer-motion'
 import {
   guardarReceta,
   previsualizarReceta,
@@ -17,19 +18,36 @@ export type { ElementoOpcion, RecetaEditable, RecetaOutputEditable } from './tip
 
 type Fila = { elementId: string; quantity: number }
 
+// Misma curva que --ease-out-snappy en globals.css, para que las listas de
+// esta pantalla se sientan consistentes con el resto del panel admin.
+const EASE_OUT_SNAPPY = [0.22, 1, 0.36, 1] as const
+const FILA_MOTION = {
+  layout: true,
+  initial: { opacity: 0, scale: 0.94 },
+  animate: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.94 },
+  transition: { duration: 0.16, ease: EASE_OUT_SNAPPY },
+} as const
+
 export default function ConstructorReceta({
   elementos,
   receta,
   ingredientesIniciales,
+  outputsIniciales = [],
   caminos = [],
   categorias = [],
+  onSaved,
+  onCancel,
 }: {
   elementos: ElementoOpcion[]
   receta: RecetaEditable | null
   ingredientesIniciales: Fila[]
+  outputsIniciales?: RecetaOutputEditable[]
   // Para vincular el primer resultado a un camino (existente o nuevo).
   caminos?: { id: string; name: string }[]
   categorias?: { id: string; name: string }[]
+  onSaved?: () => void | Promise<void>
+  onCancel?: () => void
 }) {
   const router = useRouter()
   const [todos, setTodos] = useState<ElementoOpcion[]>(elementos)
@@ -37,7 +55,7 @@ export default function ConstructorReceta({
     receta?.ingredientes ?? ingredientesIniciales,
   )
   const [outputs, setOutputs] = useState<RecetaOutputEditable[]>(
-    receta?.outputs ?? [],
+    receta?.outputs ?? outputsIniciales,
   )
   const [nombre, setNombre] = useState(receta?.name ?? '')
   const [successText, setSuccessText] = useState(receta?.successText ?? '')
@@ -153,7 +171,10 @@ export default function ConstructorReceta({
     }
     startGuardar(async () => {
       const res = await guardarReceta(receta?.id ?? null, datos)
-      if (res.ok) router.push('/admin/recetas')
+      if (res.ok) {
+        if (onSaved) await onSaved()
+        else router.push('/admin/recetas')
+      }
       else setError(res.error)
     })
   }
@@ -166,6 +187,7 @@ export default function ConstructorReceta({
   }
 
   return (
+    <MotionConfig reducedMotion="user">
     <div className="max-w-2xl space-y-5">
       {error && (
         <p role="alert" className="rounded-md border border-wine bg-wine/20 px-3 py-2 text-sm">{error}</p>
@@ -186,42 +208,44 @@ export default function ConstructorReceta({
           }}
         />
         <ul className="mt-3 space-y-2">
-          {filas.map((f) => {
-            const el = porId.get(f.elementId)
-            return (
-              <li key={f.elementId} className="flex items-center gap-3">
-                <IconoElemento iconKey={el?.iconKey ?? 'sparkles'} className="h-5 w-5 text-brass" />
-                <span className="flex-1 text-sm text-parchment">{el?.name ?? '?'}</span>
-                <label className="flex items-center gap-1 text-xs text-fog">
-                  Cantidad
-                  <input
-                    type="number"
-                    min={1}
-                    max={9}
-                    value={f.quantity}
-                    onChange={(e) =>
-                      setFilas((prev) =>
-                        prev.map((x) =>
-                          x.elementId === f.elementId
-                            ? { ...x, quantity: Math.max(1, Number(e.target.value) || 1) }
-                            : x,
-                        ),
-                      )
-                    }
-                    className="campo w-16"
-                  />
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setFilas((prev) => prev.filter((x) => x.elementId !== f.elementId))}
-                  className="text-fog hover:text-parchment"
-                  aria-label={`Quitar ${el?.name ?? 'ingrediente'}`}
-                >
-                  ✕
-                </button>
-              </li>
-            )
-          })}
+          <AnimatePresence initial={false}>
+            {filas.map((f) => {
+              const el = porId.get(f.elementId)
+              return (
+                <motion.li key={f.elementId} {...FILA_MOTION} className="flex items-center gap-3">
+                  <IconoElemento iconKey={el?.iconKey ?? 'sparkles'} className="h-5 w-5 text-brass" />
+                  <span className="flex-1 text-sm text-parchment">{el?.name ?? '?'}</span>
+                  <label className="flex items-center gap-1 text-xs text-fog">
+                    Cantidad
+                    <input
+                      type="number"
+                      min={1}
+                      max={9}
+                      value={f.quantity}
+                      onChange={(e) =>
+                        setFilas((prev) =>
+                          prev.map((x) =>
+                            x.elementId === f.elementId
+                              ? { ...x, quantity: Math.max(1, Number(e.target.value) || 1) }
+                              : x,
+                          ),
+                        )
+                      }
+                      className="campo w-16"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFilas((prev) => prev.filter((x) => x.elementId !== f.elementId))}
+                    className="text-fog hover:text-parchment"
+                    aria-label={`Quitar ${el?.name ?? 'ingrediente'}`}
+                  >
+                    ✕
+                  </button>
+                </motion.li>
+              )
+            })}
+          </AnimatePresence>
           {filas.length === 0 && <li className="text-sm italic text-fog">Aún no hay ingredientes.</li>}
         </ul>
         <p className={`mt-2 text-xs ${totalUnidades === 2 ? 'text-fog' : 'text-wine'}`}>
@@ -245,58 +269,60 @@ export default function ConstructorReceta({
           }}
         />
         <ul className="mt-3 space-y-2">
-          {outputs.map((o, idx) => {
-            const el = porId.get(o.elementId)
-            return (
-              <li key={o.elementId} className="flex items-center gap-3">
-                <IconoElemento iconKey={el?.iconKey ?? 'sparkles'} className="h-5 w-5 text-brass" />
-                <span className="flex-1 text-sm text-parchment">{el?.name ?? '?'}</span>
-                <label className="flex items-center gap-1 text-xs text-fog">
-                  Cantidad
-                  <input
-                    type="number"
-                    min={1}
-                    max={9}
-                    value={o.quantity}
-                    onChange={(e) =>
-                      setOutputs((prev) =>
-                        prev.map((x, i) =>
-                          i === idx ? { ...x, quantity: Math.max(1, Number(e.target.value) || 1) } : x,
-                        ),
-                      )
-                    }
-                    className="campo w-16"
-                  />
-                </label>
-                <label className="flex items-center gap-1 text-xs text-fog">
-                  Prob.
-                  <input
-                    type="number"
-                    min={0}
-                    max={1}
-                    step={0.1}
-                    value={o.chance}
-                    onChange={(e) =>
-                      setOutputs((prev) =>
-                        prev.map((x, i) =>
-                          i === idx ? { ...x, chance: Math.min(1, Math.max(0, Number(e.target.value) || 1)) } : x,
-                        ),
-                      )
-                    }
-                    className="campo w-16"
-                  />
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setOutputs((prev) => prev.filter((_, i) => i !== idx))}
-                  className="text-fog hover:text-parchment"
-                  aria-label={`Quitar ${el?.name ?? 'resultado'}`}
-                >
-                  ✕
-                </button>
-              </li>
-            )
-          })}
+          <AnimatePresence initial={false}>
+            {outputs.map((o, idx) => {
+              const el = porId.get(o.elementId)
+              return (
+                <motion.li key={o.elementId} {...FILA_MOTION} className="flex items-center gap-3">
+                  <IconoElemento iconKey={el?.iconKey ?? 'sparkles'} className="h-5 w-5 text-brass" />
+                  <span className="flex-1 text-sm text-parchment">{el?.name ?? '?'}</span>
+                  <label className="flex items-center gap-1 text-xs text-fog">
+                    Cantidad
+                    <input
+                      type="number"
+                      min={1}
+                      max={9}
+                      value={o.quantity}
+                      onChange={(e) =>
+                        setOutputs((prev) =>
+                          prev.map((x, i) =>
+                            i === idx ? { ...x, quantity: Math.max(1, Number(e.target.value) || 1) } : x,
+                          ),
+                        )
+                      }
+                      className="campo w-16"
+                    />
+                  </label>
+                  <label className="flex items-center gap-1 text-xs text-fog">
+                    Prob.
+                    <input
+                      type="number"
+                      min={0}
+                      max={1}
+                      step={0.1}
+                      value={o.chance}
+                      onChange={(e) =>
+                        setOutputs((prev) =>
+                          prev.map((x, i) =>
+                            i === idx ? { ...x, chance: Math.min(1, Math.max(0, Number(e.target.value) || 1)) } : x,
+                          ),
+                        )
+                      }
+                      className="campo w-16"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setOutputs((prev) => prev.filter((_, i) => i !== idx))}
+                    className="text-fog hover:text-parchment"
+                    aria-label={`Quitar ${el?.name ?? 'resultado'}`}
+                  >
+                    ✕
+                  </button>
+                </motion.li>
+              )
+            })}
+          </AnimatePresence>
           {outputs.length === 0 && <li className="text-sm italic text-fog">Aún no hay resultados.</li>}
         </ul>
         {outputs.length === 0 && (
@@ -313,20 +339,28 @@ export default function ConstructorReceta({
         <p className="mt-1 text-xs text-fog">
           Clave interna (automática): <code>{inputKey ?? '—'}</code>
         </p>
-        {existenteData && (
-          <div className="mt-3 rounded-md border border-brass-deep/30 bg-brass/5 p-3">
-            <p className="text-sm text-brass">
-              Ya existe una receta para esta combinación.
-            </p>
-            <button
-              type="button"
-              onClick={cargarExistente}
-              className="mt-2 text-sm text-brass underline hover:text-parchment"
+        <AnimatePresence>
+          {existenteData && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: -6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: -6 }}
+              transition={{ duration: 0.18, ease: EASE_OUT_SNAPPY }}
+              className="mt-3 rounded-md border border-brass-deep/30 bg-brass/5 p-3"
             >
-              Cargar resultados existentes para editar
-            </button>
-          </div>
-        )}
+              <p className="text-sm text-brass">
+                Ya existe una receta para esta combinación.
+              </p>
+              <button
+                type="button"
+                onClick={cargarExistente}
+                className="mt-2 text-sm text-brass underline hover:text-parchment"
+              >
+                Cargar resultados existentes para editar
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="mt-3 flex items-center gap-3">
           <button type="button" onClick={probar} disabled={probando || filas.length === 0} className="btn-ghost">
             {probando ? 'Probando…' : 'Probar combinación'}
@@ -353,62 +387,76 @@ export default function ConstructorReceta({
           ))}
           <option value="nuevo">+ Crear un camino nuevo…</option>
         </select>
-        {caminoSel === 'nuevo' && (
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <div>
-              <label htmlFor="rc-nombre" className="etiqueta">Nombre del camino nuevo</label>
-              <input
-                id="rc-nombre"
-                value={nuevoNombreCamino}
-                maxLength={80}
-                placeholder="p. ej. Camino del Apotecario"
-                onChange={(e) => setNuevoNombreCamino(e.target.value)}
-                className="campo"
-              />
-            </div>
-            <div>
-              <label htmlFor="rc-cat" className="etiqueta">Categoría del camino</label>
-              <select
-                id="rc-cat"
-                value={nuevaCategoriaId}
-                onChange={(e) => setNuevaCategoriaId(e.target.value)}
-                className="campo"
-              >
-                <option value="">— Selecciona —</option>
-                {categorias.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
-        {caminoSel && (
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <div>
-              <label htmlFor="rc-numero" className="etiqueta">Número de secuencia</label>
-              <input
-                id="rc-numero"
-                type="number"
-                min={0}
-                max={99}
-                value={numeroSecuencia}
-                onChange={(e) => setNumeroSecuencia(Math.min(99, Math.max(0, Number(e.target.value) || 0)))}
-                className="campo"
-              />
-            </div>
-            <div>
-              <label htmlFor="rc-seq" className="etiqueta">Nombre de la secuencia</label>
-              <input
-                id="rc-seq"
-                value={nombreSecuencia}
-                maxLength={80}
-                placeholder={porId.get(outputs[0]?.elementId ?? '')?.name ?? 'Como el resultado'}
-                onChange={(e) => setNombreSecuencia(e.target.value)}
-                className="campo"
-              />
-            </div>
-          </div>
-        )}
+        <AnimatePresence>
+          {caminoSel === 'nuevo' && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.16, ease: EASE_OUT_SNAPPY }}
+              className="mt-3 grid gap-3 sm:grid-cols-2"
+            >
+              <div>
+                <label htmlFor="rc-nombre" className="etiqueta">Nombre del camino nuevo</label>
+                <input
+                  id="rc-nombre"
+                  value={nuevoNombreCamino}
+                  maxLength={80}
+                  placeholder="p. ej. Camino del Apotecario"
+                  onChange={(e) => setNuevoNombreCamino(e.target.value)}
+                  className="campo"
+                />
+              </div>
+              <div>
+                <label htmlFor="rc-cat" className="etiqueta">Categoría del camino</label>
+                <select
+                  id="rc-cat"
+                  value={nuevaCategoriaId}
+                  onChange={(e) => setNuevaCategoriaId(e.target.value)}
+                  className="campo"
+                >
+                  <option value="">— Selecciona —</option>
+                  {categorias.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            </motion.div>
+          )}
+          {caminoSel && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.16, ease: EASE_OUT_SNAPPY }}
+              className="mt-3 grid gap-3 sm:grid-cols-2"
+            >
+              <div>
+                <label htmlFor="rc-numero" className="etiqueta">Número de secuencia</label>
+                <input
+                  id="rc-numero"
+                  type="number"
+                  min={0}
+                  max={99}
+                  value={numeroSecuencia}
+                  onChange={(e) => setNumeroSecuencia(Math.min(99, Math.max(0, Number(e.target.value) || 0)))}
+                  className="campo"
+                />
+              </div>
+              <div>
+                <label htmlFor="rc-seq" className="etiqueta">Nombre de la secuencia</label>
+                <input
+                  id="rc-seq"
+                  value={nombreSecuencia}
+                  maxLength={80}
+                  placeholder={porId.get(outputs[0]?.elementId ?? '')?.name ?? 'Como el resultado'}
+                  onChange={(e) => setNombreSecuencia(e.target.value)}
+                  className="campo"
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {caminoIncompleto && (
           <p className="mt-2 text-xs text-wine">
             Completa el nombre y la categoría del camino nuevo.
@@ -444,10 +492,15 @@ export default function ConstructorReceta({
         >
           {guardando ? 'Guardando…' : receta ? 'Guardar cambios' : 'Crear receta'}
         </button>
-        <button type="button" onClick={() => router.push('/admin/recetas')} className="btn-ghost">
-          Volver
+        <button
+          type="button"
+          onClick={onCancel ?? (() => router.push('/admin/recetas'))}
+          className="btn-ghost"
+        >
+          {onCancel ? 'Cancelar' : 'Volver'}
         </button>
       </div>
     </div>
+    </MotionConfig>
   )
 }

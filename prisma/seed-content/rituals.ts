@@ -3,10 +3,48 @@ export type RitualSeed = {
   advanceName: string
   ingredients: string[]
   requiredSequenceNumber: number
+  isActive?: boolean
+  failureOutputs?: string[]
 }
+
+export const DEFAULT_RITUAL_FAILURE_OUTPUTS = [
+  'perdida-de-control',
+  'monstruo-descontrol',
+  'corrupcion-de-alborotador',
+] as const
 
 export function getRitualDefinitions(): RitualSeed[] {
   return [
+    {
+      name: 'Ritual de avance a Shepherd',
+      advanceName: 'Avance a Shepherd',
+      ingredients: ['influencia', 'alma'],
+      requiredSequenceNumber: 6,
+    },
+    {
+      name: 'Ritual de avance a Marionetista',
+      advanceName: 'Avance a Marionetista',
+      ingredients: ['sirena', 'canto'],
+      requiredSequenceNumber: 6,
+    },
+    {
+      name: 'Ritual de avance a Winner',
+      advanceName: 'Avance a Winner',
+      ingredients: ['mala-suerte', 'tiempo'],
+      requiredSequenceNumber: 6,
+    },
+    {
+      name: 'Ritual de avance a Bizarro Sorcerer',
+      advanceName: 'Avance a Bizarro Sorcerer',
+      ingredients: ['demigod', 'muerte'],
+      requiredSequenceNumber: 5,
+    },
+    {
+      name: 'Ritual de avance a Black Knight',
+      advanceName: 'Avance a Black Knight',
+      ingredients: ['comunidad', 'degeneracion'],
+      requiredSequenceNumber: 5,
+    },
     {
       name: 'Ritual de avance a Priest of Light',
       advanceName: 'Avance a Priest of Light',

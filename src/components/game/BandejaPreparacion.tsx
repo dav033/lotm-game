@@ -1,6 +1,7 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
+import { SPRING_UI } from './motion'
 import { ArchiveRestore, Trash2, X } from 'lucide-react'
 import { IconoElemento } from './IconoElemento'
 import { useJuegoStore } from './store'
@@ -21,7 +22,13 @@ export function BandejaPreparacion({ iniciarArrastre }: { iniciarArrastre: Inici
   const limpiarBandeja = useJuegoStore((s) => s.limpiarBandeja)
 
   return (
-    <section className="mt-7" aria-label="Lienzo de transmutación" aria-busy={combinando}>
+    <section
+      id="lienzo-transmutacion"
+      tabIndex={-1}
+      className="mt-7 scroll-mt-28 focus:outline-none"
+      aria-label="Lienzo de transmutación"
+      aria-busy={combinando}
+    >
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <ArchiveRestore className="h-4 w-4 text-brass" aria-hidden />
         <h3 className="font-[family-name:var(--font-display)] text-sm uppercase tracking-[0.18em] text-parchment">
@@ -120,6 +127,7 @@ function ElementoBandeja({
   const colocar = useJuegoStore((s) => s.colocar)
   const quitar = useJuegoStore((s) => s.quitarDeBandeja)
   const combinando = useJuegoStore((s) => s.combinando)
+  const esApertura = useJuegoStore((s) => s.aperturasFase.includes(elemento.slug))
   const esObjetivo = useJuegoStore(
     (s) =>
       s.objetivo?.tipo === 'elemento' &&
@@ -134,7 +142,7 @@ function ElementoBandeja({
       initial={{ opacity: 0, scale: 0.72, x: '-50%', y: '-50%' }}
       animate={{ opacity: 1, scale: esObjetivo ? 1.08 : 1, x: '-50%', y: '-50%' }}
       exit={{ opacity: 0, scale: 0.55, x: '-50%', y: '-50%' }}
-      transition={{ type: 'spring', stiffness: 390, damping: 27 }}
+      transition={SPRING_UI}
       style={{
         left: `clamp(2.75rem, ${instancia.x * 100}%, calc(100% - 2.75rem))`,
         top: `clamp(2.5rem, ${instancia.y * 100}%, calc(100% - 2.5rem))`,
@@ -158,13 +166,20 @@ function ElementoBandeja({
         }}
         whileHover={combinando ? undefined : { y: -3 }}
         whileTap={combinando ? undefined : { scale: 0.95 }}
-        aria-label={`${elemento.name}: pulsa para colocar en el círculo o arrastra para mover y combinar`}
+        aria-label={`${elemento.name}${esApertura ? ', apertura de la nueva fase' : ''}: pulsa para colocar en el círculo o arrastra para mover y combinar`}
         className={`flex min-h-16 w-20 touch-none select-none flex-col items-center justify-center gap-1 rounded-lg border bg-panel/95 px-2 py-2 text-center shadow-lg backdrop-blur-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brass disabled:cursor-wait disabled:opacity-50 ${
           esObjetivo
             ? 'border-spectral ring-2 ring-spectral shadow-[0_0_22px_-7px_var(--color-spectral)]'
-            : 'border-brass-deep/70 hover:border-brass'
+            : esApertura
+              ? 'border-spectral ring-2 ring-spectral/70 shadow-[0_0_24px_-7px_var(--color-spectral)]'
+              : 'border-brass-deep/70 hover:border-brass'
         }`}
       >
+        {esApertura && (
+          <span className="absolute -top-3 rounded-full border border-spectral bg-ink px-2 py-0.5 text-[8px] uppercase tracking-wider text-spectral">
+            Nueva fase
+          </span>
+        )}
         <IconoElemento iconKey={elemento.iconKey} className="h-6 w-6 text-brass" />
         <span className="max-w-full truncate text-[10px] leading-tight text-parchment">
           {elemento.name}

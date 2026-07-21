@@ -57,8 +57,8 @@ export default async function PaginaElementosAdmin({
       isStarter: e.isStarter,
       isMajorDiscovery: e.isMajorDiscovery,
       espontaneo:
-        e.unlockedByType || e._count.unlockTriggers > 0
-          ? `Descubrimiento espontáneo${e.unlockedByType ? ` · por tipo ${etiquetaTipo(e.unlockedByType)}` : ''}${e._count.unlockTriggers > 0 ? ` · ${e._count.unlockTriggers} desencadenante(s)` : ''}`
+        e.unlockedByType || e.unlockedAtDiscoveryCount != null || e._count.unlockTriggers > 0
+          ? `Descubrimiento espontáneo${e.unlockedByType ? ` · por tipo ${etiquetaTipo(e.unlockedByType)}` : ''}${e.unlockedAtDiscoveryCount != null ? ` · desde ${e.unlockedAtDiscoveryCount} descubrimientos` : ''}${e._count.unlockTriggers > 0 ? ` · ${e._count.unlockTriggers} desencadenante(s)` : ''}`
           : null,
       secuencia: e.sequence
         ? { numero: e.sequence.number, camino: e.sequence.pathway.name }

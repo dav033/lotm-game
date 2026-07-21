@@ -27,7 +27,12 @@ export async function asegurarPerfil() {
   const id = store.get(PROFILE_COOKIE)?.value
   if (id) {
     const existing = await prisma.playerProfile.findUnique({ where: { id } })
-    if (existing) return existing
+    if (existing) {
+      // Reconcilia starters y desbloqueos declarativos añadidos después de que
+      // el perfil fue creado, sin reiniciar ni alterar descubrimientos previos.
+      await descubrirIniciales(prisma, existing.id)
+      return existing
+    }
   }
   const profile = await prisma.playerProfile.create({ data: {} })
   await descubrirIniciales(prisma, profile.id)

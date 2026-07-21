@@ -2,15 +2,24 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import type { Db } from '../db'
 import { realizarRitual, RitualError } from './rituales'
-import type { RitualKnowledgeCandidate } from './ritualKnowledge'
 
 type Config = {
+  featureEnabled?: boolean
   knowledge?: boolean
   source?: boolean
   target?: boolean
   ingredient?: boolean
   activeContent?: boolean
   alternativeCompleted?: boolean
+}
+
+const phase = {
+  id: 'phase-1',
+  slug: 'fase-1',
+  name: 'Fase 1',
+  sortOrder: 1,
+  unlockAtDiscoveryCount: 0,
+  isActive: true,
 }
 
 function createDb(config: Config = {}) {
@@ -24,7 +33,7 @@ function createDb(config: Config = {}) {
     if (config.ingredient !== false) rows.push({ elementId: 'ingredient', element: { slug: 'ingredient' } })
     return rows
   }
-  const candidate = (): RitualKnowledgeCandidate => ({
+  const candidate = () => ({
     id: 'ritual-1',
     advanceId: 'advance-1',
     isActive: true,
@@ -33,12 +42,18 @@ function createDb(config: Config = {}) {
       sourceSequence: {
         number: 6,
         elementId: 'source',
-        element: { id: 'source', name: 'Escriba', iconKey: 'book', isActive: true },
+        element: {
+          id: 'source',
+          name: 'Escriba',
+          iconKey: 'book',
+          isActive: true,
+          availableFromPhaseId: phase.id,
+        },
         pathway: { name: 'Puerta', isActive: true },
       },
       targetSequence: {
         elementId: 'target',
-        element: { isActive: true },
+        element: { isActive: true, availableFromPhaseId: phase.id },
         pathway: { isActive: true },
       },
     },
@@ -46,7 +61,12 @@ function createDb(config: Config = {}) {
       {
         elementId: 'ingredient',
         quantity: 1,
-        element: { name: 'Ingrediente', iconKey: 'sparkles', isActive: true },
+        element: {
+          name: 'Ingrediente',
+          iconKey: 'sparkles',
+          isActive: true,
+          availableFromPhaseId: phase.id,
+        },
       },
     ],
     players: completed.has('ritual-1') ? [{ profileId: 'profile' }] : [],
@@ -57,12 +77,12 @@ function createDb(config: Config = {}) {
       isActive: config.activeContent !== false,
       sourceSequence: {
         elementId: 'source',
-        element: { isActive: true },
+        element: { isActive: true, availableFromPhaseId: phase.id },
         pathway: { isActive: true },
       },
       targetSequence: {
         elementId: 'target',
-        element: { isActive: true },
+        element: { isActive: true, availableFromPhaseId: phase.id },
         pathway: { isActive: true },
       },
       rituals: [
@@ -72,7 +92,12 @@ function createDb(config: Config = {}) {
           : []),
       ],
     },
-    ingredients: [{ elementId: 'ingredient', element: { isActive: true } }],
+    ingredients: [
+      {
+        elementId: 'ingredient',
+        element: { isActive: true, availableFromPhaseId: phase.id },
+      },
+    ],
   }
   const db = {
     ritual: {
@@ -91,7 +116,14 @@ function createDb(config: Config = {}) {
           : [requested]
       },
     },
-    playerDiscovery: { findMany: async () => discoveries() },
+    playerDiscovery: { findMany: async () => discoveries(), count: async () => discoveries().length },
+    progressionPhase: { findMany: async () => [phase] },
+    featureGate: {
+      findMany: async () => [{
+        key: 'ADVANCEMENT_RITUALS',
+        minimumPhaseSortOrder: config.featureEnabled === false ? 2 : 1,
+      }],
+    },
     playerRitual: {
       upsert: async () => {
         upsertCalls += 1
@@ -113,6 +145,15 @@ async function expectCode(config: Config, code: RitualError['code']) {
 }
 
 describe('realizarRitual', () => {
+  it('rechaza antes de la fase configurada sin crear una preparación', async () => {
+    const fixture = createDb({ featureEnabled: false })
+    await assert.rejects(
+      () => realizarRitual(fixture.db, 'profile', 'ritual-1'),
+      (error: unknown) => error instanceof RitualError && error.code === 'FEATURE_LOCKED',
+    )
+    assert.equal(fixture.upsertCalls(), 0)
+  })
+
   it('rechaza sin conocimiento ritual', async () => {
     await expectCode({ knowledge: false }, 'KNOWLEDGE_REQUIRED')
   })

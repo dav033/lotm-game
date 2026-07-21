@@ -5,28 +5,46 @@
 export function salidaRecetaEjecutable(output: {
   element: {
     isActive: boolean
-    sequence?: { advancesTo: unknown[] } | null
+    sequence?: {
+      pathway: { isActive: boolean }
+      advancesTo: {
+        sourceSequence: { element: { isActive: boolean }; pathway: { isActive: boolean } }
+      }[]
+    } | null
   }
 }): boolean {
-  return output.element.isActive && (output.element.sequence?.advancesTo.length ?? 0) === 0
+  if (!output.element.isActive) return false
+  const sequence = output.element.sequence
+  if (!sequence) return true
+  if (!sequence.pathway.isActive) return false
+  return !sequence.advancesTo.some(
+    (advance) =>
+      advance.sourceSequence.element.isActive && advance.sourceSequence.pathway.isActive,
+  )
 }
 
 export function avanceCreableAhora(advance: {
   isActive: boolean
-  sourceSequence: { pathway: { isActive: boolean } }
-  targetSequence: { pathway: { isActive: boolean } }
+  sourceSequence: { element: { isActive: boolean }; pathway: { isActive: boolean } }
+  targetSequence: { element: { isActive: boolean }; pathway: { isActive: boolean } }
 } | null | undefined): boolean {
   return Boolean(
     advance?.isActive &&
       advance.sourceSequence.pathway.isActive &&
-      advance.targetSequence.pathway.isActive,
+      advance.targetSequence.pathway.isActive &&
+      advance.sourceSequence.element.isActive &&
+      advance.targetSequence.element.isActive,
   )
 }
 
 export function aplicacionAvanceTieneContenidoActivo(
   advance: {
     isActive: boolean
-    sourceSequence: { elementId: string; pathway: { isActive: boolean } }
+    sourceSequence: {
+      elementId: string
+      element: { isActive: boolean }
+      pathway: { isActive: boolean }
+    }
     targetSequence: {
       element: { isActive: boolean }
       pathway: { isActive: boolean }
@@ -37,6 +55,7 @@ export function aplicacionAvanceTieneContenidoActivo(
   return (
     advance.isActive &&
     advance.sourceSequence.elementId === sourceElementId &&
+    advance.sourceSequence.element.isActive &&
     advance.sourceSequence.pathway.isActive &&
     advance.targetSequence.pathway.isActive &&
     advance.targetSequence.element.isActive

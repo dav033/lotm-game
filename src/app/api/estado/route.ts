@@ -5,6 +5,8 @@ import { sequenceLabelOf, toPublicAdvance, toPublicElement } from '@/server/doma
 import { obtenerLogrosPendientes, reconciliarLogros } from '@/server/domain/logros'
 import { obtenerEstadoRitual } from '@/server/domain/rituales'
 import { facultadesDesdeSlugs } from '@/server/domain/habilidades'
+import { faseActualParaPerfil, filtroElementoDisponiblePorPhaseIds } from '@/server/domain/fases'
+import { featuresParaFase } from '@/server/domain/featureGates'
 
 export const runtime = 'nodejs'
 
@@ -14,10 +16,18 @@ export async function GET() {
   try {
     const profile = await asegurarPerfil()
     await prisma.$transaction((tx) => reconciliarLogros(tx, profile.id))
+    const phaseState = await faseActualParaPerfil(prisma, profile.id)
+    const features = await featuresParaFase(prisma, phaseState.sortOrder)
+    const nextPhase = phaseState.phases.find((phase) => phase.sortOrder > phaseState.sortOrder) ?? null
+    const availablePhaseIds = [...phaseState.availablePhaseIds]
+    const availableElementFilter = filtroElementoDisponiblePorPhaseIds(availablePhaseIds)
 
     const [discoveries, advances, totalElementos, pendingAchievements, ritualState] = await Promise.all([
       prisma.playerDiscovery.findMany({
-        where: { profileId: profile.id, element: { isActive: true } },
+        where: {
+          profileId: profile.id,
+          element: availableElementFilter,
+        },
         include: { element: { include: { sequence: { include: { pathway: true } } } } },
         orderBy: { firstDiscoveredAt: 'asc' },
       }),
@@ -36,7 +46,9 @@ export async function GET() {
         },
         orderBy: { firstObtainedAt: 'asc' },
       }),
-      prisma.element.count({ where: { isActive: true } }),
+      prisma.element.count({
+        where: availableElementFilter,
+      }),
       obtenerLogrosPendientes(prisma, profile.id),
       obtenerEstadoRitual(prisma, profile.id),
     ])
@@ -63,10 +75,17 @@ export async function GET() {
           ? 0
           : Math.round((elementosDescubiertos.length / totalElementos) * 100),
       pendingAchievements,
+      features,
       ritualState,
       // Solo metadatos de desbloqueo de facultades; los recuentos de
       // potencial se calculan aparte, bajo demanda de cada facultad.
       abilities: facultadesDesdeSlugs(new Set(discoveries.map((d) => d.element.slug))),
+      phase: phaseState.phase
+        ? { slug: phaseState.phase.slug, name: phaseState.phase.name, sortOrder: phaseState.phase.sortOrder }
+        : null,
+      nextPhase: nextPhase
+        ? { slug: nextPhase.slug, name: nextPhase.name, sortOrder: nextPhase.sortOrder }
+        : null,
     })
   } catch (err) {
     console.error('[api/estado]', err)

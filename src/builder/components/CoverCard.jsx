@@ -1,4 +1,4 @@
-import { forwardRef, useRef, useState } from 'react'
+import React, { forwardRef, useRef, useState } from 'react'
 
 const coverDefaultImage = '/cover-default.jpg'
 

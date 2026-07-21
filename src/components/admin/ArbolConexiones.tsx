@@ -58,13 +58,32 @@ export function ArbolConexiones({
   aristas,
   caminos,
   pantallaCompleta = false,
+  seleccionId,
+  onSeleccionChange,
+  mostrarDetalle = true,
+  titulo = 'Mapa de progresión',
+  subtitulo,
 }: {
   nodos: NodoArbol[]
   aristas: AristaArbol[]
   caminos: CaminoLeyenda[]
   pantallaCompleta?: boolean
+  seleccionId?: string | null
+  onSeleccionChange?: (id: string | null) => void
+  mostrarDetalle?: boolean
+  titulo?: string
+  subtitulo?: string
 }) {
-  const [seleccion, setSeleccion] = useState<string | null>(null)
+  const [seleccionInterna, setSeleccionInterna] = useState<string | null>(null)
+  const seleccion = seleccionId === undefined ? seleccionInterna : seleccionId
+  const setSeleccion = useCallback(
+    (value: string | null | ((actual: string | null) => string | null)) => {
+      const siguiente = typeof value === 'function' ? value(seleccion) : value
+      if (seleccionId === undefined) setSeleccionInterna(siguiente)
+      onSeleccionChange?.(siguiente)
+    },
+    [onSeleccionChange, seleccion, seleccionId],
+  )
   const [caminosSeleccionados, setCaminosSeleccionados] = useState<number[]>([])
   const [aislado, setAislado] = useState(false)
   const [ramaAislada, setRamaAislada] = useState(false)
@@ -409,7 +428,7 @@ export function ArbolConexiones({
     const contenedor = contenedorRef.current
     if (!contenedor || contenedor.clientWidth === 0) return
     // El panel de detalle tapa el borde derecho; se descuenta del encuadre.
-    const anchoUtil = contenedor.clientWidth - (seleccion ? 320 : 0)
+    const anchoUtil = contenedor.clientWidth - (mostrarDetalle && seleccion ? 320 : 0)
     const espacioVertical = contenedor.clientHeight - 64
     const kCalculada = Math.min(
       aislado || ramaAislada ? 1.15 : 1,
@@ -441,7 +460,7 @@ export function ArbolConexiones({
     const maxY = Math.max(...posiciones.map((pos) => pos.y + NODO_H))
     const ancho = maxX - minX
     const alto = maxY - minY
-    const anchoUtil = contenedor.clientWidth - (seleccion ? 320 : 0)
+    const anchoUtil = contenedor.clientWidth - (mostrarDetalle && seleccion ? 320 : 0)
     const espacioVertical = contenedor.clientHeight - 64
     const kCalculada = Math.min(
       1.25,
@@ -530,7 +549,7 @@ export function ArbolConexiones({
     const id = e.currentTarget.dataset.id
     if (!id) return
     setSeleccion((previa) => (previa === id ? null : id))
-  }, [])
+  }, [setSeleccion])
   const alDobleClickNodo = useCallback((e: React.MouseEvent<SVGGElement>) => {
     e.stopPropagation()
     const id = e.currentTarget.dataset.id
@@ -538,14 +557,14 @@ export function ArbolConexiones({
     setSeleccion(id)
     setAislado(true)
     setRamaAislada(false)
-  }, [])
+  }, [setSeleccion])
   const alTecladoNodo = useCallback((e: React.KeyboardEvent<SVGGElement>) => {
     if (e.key !== 'Enter' && e.key !== ' ') return
     e.preventDefault()
     e.stopPropagation()
     const id = e.currentTarget.dataset.id
     if (id) setSeleccion((previa) => (previa === id ? null : id))
-  }, [])
+  }, [setSeleccion])
 
   const nodoSeleccionado = seleccion ? (porId.get(seleccion) ?? null) : null
   const entradas = seleccion
@@ -605,7 +624,7 @@ export function ArbolConexiones({
             aria-label="Buscar habilidad por nombre"
           />
           {resultadosBusqueda.length > 0 && (
-            <ul className="absolute left-0 top-full z-30 mt-1 w-72 overflow-hidden rounded-xl border border-line2 bg-[#111016]/95 py-1 shadow-[0_18px_60px_rgba(0,0,0,0.65)] backdrop-blur-md">
+            <ul className="menu-entra absolute left-0 top-full z-30 mt-1 w-72 overflow-hidden rounded-xl border border-line2 bg-[#111016]/95 py-1 shadow-[0_18px_60px_rgba(0,0,0,0.65)] backdrop-blur-md">
               {resultadosBusqueda.map((nodo) => {
                 const color = colorDeCamino(nodo.caminoIndex) ?? COLOR_NEUTRO
                 return (
@@ -634,7 +653,7 @@ export function ArbolConexiones({
             </ul>
           )}
           {consulta.length >= 2 && resultadosBusqueda.length === 0 && (
-            <p role="status" className="absolute left-0 top-full z-30 mt-1 w-72 rounded-xl border border-line2 bg-[#111016]/95 px-3 py-2 text-sm text-fog shadow-[0_18px_60px_rgba(0,0,0,0.65)]">
+            <p role="status" className="menu-entra absolute left-0 top-full z-30 mt-1 w-72 rounded-xl border border-line2 bg-[#111016]/95 px-3 py-2 text-sm text-fog shadow-[0_18px_60px_rgba(0,0,0,0.65)]">
               Sin resultados en la vista actual.
             </p>
           )}
@@ -816,16 +835,18 @@ export function ArbolConexiones({
             )}
             <div>
               <p className={`font-[family-name:var(--font-display)] text-xs uppercase tracking-[0.22em] ${ramaAislada ? 'text-[#9de5f5]' : 'text-brass'}`}>
-                {ramaAislada ? 'Árbol dependiente' : 'Mapa de progresión'}
+                {ramaAislada ? 'Árbol dependiente' : titulo}
               </p>
               <p className="text-[10px] text-fog">
                 {ramaAislada
                   ? `${nodoSeleccionado?.nombre ?? 'Selección'} · ${totalDependientesSeleccionados} descendientes en ${profundidadMaximaSeleccionada} niveles`
-                  : caminosSeleccionados.length === 0
-                    ? 'Las ramas avanzan de izquierda a derecha · las líneas que convergen en un punto se combinan'
-                    : caminosSeleccionados.length === 1
-                      ? `${caminos.find((camino) => camino.index === caminosSeleccionados[0])?.nombre ?? 'Camino'} · dependencias completas resaltadas`
-                      : `${caminosSeleccionados.length} caminos · ${componentesCaminos.interseccion.size} elementos compartidos por todos`}
+                  : subtitulo ?? (
+                    caminosSeleccionados.length === 0
+                      ? 'Las ramas avanzan de izquierda a derecha · las líneas que convergen en un punto se combinan'
+                      : caminosSeleccionados.length === 1
+                        ? `${caminos.find((camino) => camino.index === caminosSeleccionados[0])?.nombre ?? 'Camino'} · dependencias completas resaltadas`
+                        : `${caminosSeleccionados.length} caminos · ${componentesCaminos.interseccion.size} elementos compartidos por todos`
+                  )}
               </p>
             </div>
           </div>
@@ -1094,10 +1115,10 @@ export function ArbolConexiones({
           </g>
         </svg>
 
-        {nodoSeleccionado && (
+        {mostrarDetalle && nodoSeleccionado && (
           <aside
             aria-label={`Detalle de ${nodoSeleccionado.nombre}`}
-            className={`absolute bottom-3 right-3 top-16 w-[min(19rem,calc(100%-1.5rem))] overflow-y-auto rounded-xl border p-4 text-sm transition-colors ${
+            className={`aside-entra absolute bottom-3 right-3 top-16 w-[min(19rem,calc(100%-1.5rem))] overflow-y-auto rounded-xl border p-4 text-sm transition-colors ${
               ramaAislada
                 ? 'border-[#77c7e8]/40 bg-[#0d151e]/95 shadow-[0_18px_60px_rgba(0,0,0,0.65),0_0_35px_rgba(78,159,201,0.12)]'
                 : 'border-line2 bg-[#111016]/98 shadow-[0_18px_60px_rgba(0,0,0,0.65)]'
@@ -1169,7 +1190,7 @@ export function ArbolConexiones({
               <button
                 type="button"
                 aria-pressed={aislado}
-                className={`min-h-14 rounded-lg border px-2 py-2 text-xs transition-all ${
+                className={`min-h-14 rounded-lg border px-2 py-2 text-xs transition-[color,background-color,border-color,box-shadow] duration-200 ease-out ${
                   aislado
                     ? 'border-brass/60 bg-brass/15 text-parchment shadow-[0_0_18px_rgba(201,163,92,0.12)]'
                     : 'border-line2 bg-panel/45 text-fog hover:border-brass-deep hover:text-parchment'
@@ -1188,7 +1209,7 @@ export function ArbolConexiones({
               <button
                 type="button"
                 aria-pressed={ramaAislada}
-                className={`min-h-14 rounded-lg border px-2 py-2 text-xs transition-all ${
+                className={`min-h-14 rounded-lg border px-2 py-2 text-xs transition-[color,background-color,border-color,box-shadow] duration-200 ease-out ${
                   ramaAislada
                     ? 'border-[#77c7e8]/60 bg-gradient-to-br from-[#77c7e8]/20 to-[#9a89e8]/15 text-[#c8f3fb] shadow-[0_0_22px_rgba(119,199,232,0.16)]'
                     : 'border-line2 bg-panel/45 text-fog hover:border-[#77c7e8]/45 hover:text-[#c8f3fb]'

@@ -52,7 +52,7 @@ export default function ImportadorDatos() {
       const res = await ejecutarImportacion(json, modo)
       if (res.ok && res.resumen) {
         setExito(
-          `Importación completada: ${res.resumen.categorias} categorías, ${res.resumen.elementos} elementos, ${res.resumen.caminos} caminos, ${res.resumen.secuencias} secuencias, ${res.resumen.recetas} recetas, ${res.resumen.avances} avances, ${res.resumen.rituales} rituales y ${res.resumen.logros} logros.`,
+          `Importación completada: ${res.resumen.fases} fases, ${res.resumen.featureGates} features, ${res.resumen.categorias} categorías, ${res.resumen.elementos} elementos, ${res.resumen.caminos} caminos, ${res.resumen.secuencias} secuencias, ${res.resumen.recetas} recetas, ${res.resumen.avances} avances, ${res.resumen.rituales} rituales y ${res.resumen.logros} logros.`,
         )
         setResumen(null)
         setJson('')
@@ -91,7 +91,7 @@ export default function ImportadorDatos() {
           rows={8}
           value={json}
           onChange={(e) => { setJson(e.target.value); setResumen(null); setExito(null) }}
-          placeholder='{"version": 1, "elementos": [...], ...}'
+          placeholder='{"version": 5, "fases": […], "featureGates": […], "elementos": […]}'
           className="campo font-mono text-xs"
         />
       </div>
@@ -104,6 +104,8 @@ export default function ImportadorDatos() {
         <div className="rounded-lg mist-card p-4">
           <h3 className="etiqueta">Resumen de la importación</h3>
           <ul className="mb-3 grid grid-cols-2 gap-1 text-sm text-parchment sm:grid-cols-5">
+            <li>{resumen.fases} fases</li>
+            <li>{resumen.featureGates} features</li>
             <li>{resumen.categorias} categorías</li>
             <li>{resumen.elementos} elementos</li>
             <li>{resumen.caminos} caminos</li>

@@ -38,7 +38,7 @@ export default function NavPrincipal() {
                 key={href}
                 href={href}
                 aria-current={activo ? 'page' : undefined}
-                className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition ${
+                className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition active:scale-[0.97] ${
                   activo
                     ? 'bg-panel2 text-brass'
                     : 'text-fog hover:bg-panel hover:text-parchment'

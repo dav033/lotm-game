@@ -12,7 +12,8 @@ export default async function PaginaDatosAdmin() {
         Importar y exportar contenido
       </h1>
       <p className="mb-6 text-sm text-fog">
-        El JSON incluye categorías, elementos, caminos, secuencias y recetas.
+        El JSON incluye fases con sus reglas, categorías, elementos, caminos,
+        secuencias, recetas, avances, rituales y logros.
         Las claves internas (inputKey) se recalculan siempre al importar; las
         del archivo se ignoran. La importación se ejecuta en una transacción:
         si algo falla, no queda nada a medias.
@@ -33,10 +34,10 @@ export default async function PaginaDatosAdmin() {
           </a>
         </div>
         <p className="mt-3 text-xs text-fog">
-          La exportación nominal (v3) está pensada para lectura humana o LLM: por cada
-          elemento incluye quién lo produce, qué lo bloquea, en qué combinaciones,
-          avances y rituales participa, qué desbloquea a su vez, y su profundidad y
-          dificultad dentro del árbol de progresión.
+          La exportación nominal (v4) está pensada para lectura humana o LLM: incluye
+          todas las fases y sus expresiones AND/OR, y por cada elemento indica quién lo
+          produce, qué lo bloquea, en qué combinaciones, avances y rituales participa,
+          qué desbloquea a su vez, y su profundidad y dificultad.
         </p>
       </section>
 

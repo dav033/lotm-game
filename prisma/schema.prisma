@@ -14,29 +14,37 @@ datasource db {
 // ---------- Contenido del juego ----------
 
 model Element {
-  id                       String   @id @default(cuid())
+  id                       String            @id @default(cuid())
   // Identificador estable y sin acentos; inmutable una vez referenciado.
-  slug                     String   @unique
+  slug                     String            @unique
   name                     String
-  description              String   @default("")
-  iconKey                  String   @default("sparkles")
+  description              String            @default("")
+  iconKey                  String            @default("sparkles")
   imageUrl                 String?
   // MUNDANO | CONCEPTO | MISTICISMO | BEYONDER | CRIATURA | OBJETO | OTRO
   // (texto validado con Zod; sin enum de motor para portabilidad)
-  type                     String   @default("OTRO")
-  tier                     Int      @default(0)
-  isStarter                Boolean  @default(false)
-  isHiddenUntilDiscovered  Boolean  @default(true)
-  isMajorDiscovery         Boolean  @default(false)
+  type                     String            @default("OTRO")
+  tier                     Int               @default(0)
+  isStarter                Boolean           @default(false)
+  isHiddenUntilDiscovered  Boolean           @default(true)
+  isMajorDiscovery         Boolean           @default(false)
   revealTitle              String?
   revealText               String?
   // Si se define, el elemento se desbloquea solo cuando el jugador descubre
   // un elemento de este tipo (conceptos que no se fabrican con recetas).
   unlockedByType           String?
   unlockedBySequenceNumber Int?
-  isActive                 Boolean  @default(true)
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  // Umbral declarativo: se desbloquea cuando el jugador tiene al menos esta
+  // cantidad de PlayerDiscovery activos (>=, no igualdad exacta). Forma
+  // parte del mismo grupo AND que unlockedByType/unlockedBySequenceNumber.
+  unlockedAtDiscoveryCount Int?
+  // Null = pool global, descubrible por sus rutas orgánicas. Una fase asignada
+  // concede el elemento automáticamente cuando se abre.
+  availableFromPhaseId     String?
+  availableFromPhase       ProgressionPhase? @relation(fields: [availableFromPhaseId], references: [id], onDelete: SetNull)
+  isActive                 Boolean           @default(true)
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
 
   categories         ElementCategory[]
   sequence           Sequence?
@@ -45,14 +53,41 @@ model Element {
   advanceIngredients AdvanceIngredient[]
   ritualIngredients  RitualIngredient[]
   ritualConsequences RitualFailureOutput[]
-  achievements       Achievement[]          @relation("AchievementElementTrigger")
+  achievements       Achievement[]              @relation("AchievementElementTrigger")
   discoveries        PlayerDiscovery[]
   // Desencadenantes que desbloquean ESTE elemento / elementos que este desbloquea.
-  unlockTriggers     ElementUnlockTrigger[] @relation("ElementoDesbloqueado")
-  desencadena        ElementUnlockTrigger[] @relation("ElementoDesencadenante")
+  unlockTriggers     ElementUnlockTrigger[]     @relation("ElementoDesbloqueado")
+  desencadena        ElementUnlockTrigger[]     @relation("ElementoDesencadenante")
   // Requisitos AND para desbloquear ESTE elemento / elementos de los que este es requisito.
   unlockRequirements ElementUnlockRequirement[] @relation("ElementoConRequisitos")
   requiredFor        ElementUnlockRequirement[] @relation("ElementoRequisito")
+}
+
+model ProgressionPhase {
+  id                     String   @id @default(cuid())
+  slug                   String   @unique
+  name                   String
+  description            String   @default("")
+  sortOrder              Int      @unique
+  // Métrica derivada: tamaño del cierre alcanzable antes de abrir esta fase.
+  // Se conserva separada de la regla editable para evaluar porcentajes.
+  unlockAtDiscoveryCount Int
+  // AST JSON validado en aplicación: ALWAYS, conteo, porcentaje, elemento,
+  // o grupos AND/OR anidados. Usa slugs estables para referencias.
+  advancementRuleJson    String   @default("{\"type\":\"ALWAYS\"}")
+  celebrationMessage     String   @default("")
+  isActive               Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  elements Element[]
+}
+
+// Funcionalidades globales del juego que se habilitan al alcanzar un orden
+// de fase. El orden permite configurar fases futuras que aún no existen.
+model FeatureGate {
+  key                   String @id
+  minimumPhaseSortOrder Int
 }
 
 // Desbloqueo espontáneo por elemento concreto: `element` se desbloquea cuando
@@ -235,20 +270,30 @@ model Achievement {
 }
 
 model Recipe {
-  id          String   @id @default(cuid())
-  name        String?
+  id                 String   @id @default(cuid())
+  name               String?
   // Clave determinista de los ingredientes ("adivinacion*1|percepcion*1").
   // Derivada SIEMPRE de RecipeIngredient; nunca escrita a mano.
-  inputKey    String   @unique
-  successText String?
-  hintText    String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  inputKey           String   @unique
+  successText        String?
+  hintText           String?
+  // Umbral declarativo: la receta solo puede usarse cuando el perfil tiene
+  // al menos esta cantidad de elementos activos descubiertos.
+  minimumDiscoveries Int      @default(0)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   ingredients RecipeIngredient[]
   outputs     RecipeOutput[]
   stats       PlayerCombinationStat[]
+}
+
+// Evita que el seed periódico recree fórmulas que el administrador retiró.
+// No se relaciona con Recipe porque la receta suprimida ya no existe.
+model RecipeSeedSuppression {
+  inputKey     String   @id
+  suppressedAt DateTime @default(now())
 }
 
 model RecipeOutput {
@@ -256,7 +301,9 @@ model RecipeOutput {
   recipeId  String
   recipe    Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   elementId String
-  element   Element @relation(fields: [elementId], references: [id], onDelete: Cascade)
+  // El elemento no puede borrar solo esta fila y dejar una receta incompleta.
+  // La acción de elementos elimina primero la receta padre completa.
+  element   Element @relation(fields: [elementId], references: [id], onDelete: Restrict)
   quantity  Int     @default(1)
   // Probabilidad de que este resultado aparezca (0-1). Si es 1, siempre aparece.
   chance    Float   @default(1.0)
@@ -271,7 +318,7 @@ model RecipeIngredient {
   recipeId  String
   recipe    Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   elementId String
-  element   Element @relation(fields: [elementId], references: [id], onDelete: Cascade)
+  element   Element @relation(fields: [elementId], references: [id], onDelete: Restrict)
   quantity  Int     @default(1)
 
   // Un mismo elemento no puede aparecer en dos filas de la misma receta.

@@ -5,6 +5,7 @@ import { exigirAdminAccion, NoAutorizadoError } from '../adminAuth'
 import { prisma } from '../db'
 import { caminoSchema, secuenciaSchema } from '../schemas'
 import { buscarRecetaEquivalente, crearReceta, RecetaError } from '../services/recetas'
+import { sincronizarUmbralesFases } from '../services/fasesProgresion'
 import type { EstadoAccion } from './tipos'
 
 export async function guardarCamino(
@@ -40,6 +41,7 @@ export async function guardarCamino(
     } else {
       await prisma.pathway.create({ data: { ...data, slug: d.slug } })
     }
+    await sincronizarUmbralesFases(prisma)
     revalidatePath('/admin/caminos')
     revalidatePath('/coleccion')
     return { ok: true, error: null }
@@ -117,6 +119,7 @@ export async function guardarSecuencia(
         elementId: d.elementId,
       },
     })
+    await sincronizarUmbralesFases(prisma)
     revalidatePath('/admin/caminos')
     revalidatePath('/coleccion')
     return { ok: true, error: null }
@@ -134,6 +137,7 @@ export async function guardarSecuencia(
 export async function eliminarSecuencia(id: string): Promise<void> {
   await exigirAdminAccion()
   await prisma.sequence.delete({ where: { id } }).catch(() => null)
+  await sincronizarUmbralesFases(prisma)
   revalidatePath('/admin/caminos')
   revalidatePath('/coleccion')
 }

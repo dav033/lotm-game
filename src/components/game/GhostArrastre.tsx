@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { SPRING_UI } from './motion'
 import { parPreviamenteFallido } from './estadoHabilidades'
 import { IconoElemento } from './IconoElemento'
 import { useJuegoStore } from './store'
@@ -76,7 +77,7 @@ export function GhostArrastre() {
               initial={{ scale: 0.55, rotate: -8 }}
               animate={{ scale: 1, rotate: 0 }}
               exit={{ scale: 0.6, rotate: 4 }}
-              transition={{ type: 'spring', stiffness: 420, damping: 24 }}
+              transition={SPRING_UI}
               className={`flex flex-col items-center gap-1 rounded-lg mist-card brass-ring px-3 py-2 shadow-xl ${
                 previouslyFailed ? 'border-wine' : 'border-brass'
               }`}

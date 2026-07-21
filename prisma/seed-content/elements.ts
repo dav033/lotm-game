@@ -12,6 +12,10 @@ export type ElementSeed = {
   revealText?: string
   unlockedByType?: string
   unlockedBySequenceNumber?: number
+  // Desbloqueo espontáneo por cantidad: se satisface cuando el jugador tiene
+  // al menos esta cantidad de elementos activos descubiertos (>=).
+  unlockedAtDiscoveryCount?: number
+  isActive?: boolean
   categoryId: string
 }
 
@@ -58,7 +62,18 @@ export function getElementDefinitions({
       iconKey: 'user-round',
       type: 'MUNDANO',
       tier: 0,
+      isStarter: true,
+      isHiddenUntilDiscovered: false,
       categoryId: mundano,
+    },
+    {
+      slug: 'apuesta',
+      name: 'Apuesta',
+      description: 'Un humano y una moneda: el pacto más antiguo con el azar.',
+      iconKey: 'dices',
+      type: 'CONCEPTO',
+      tier: 1,
+      categoryId: conceptos,
     },
     {
       slug: 'vision',
@@ -138,10 +153,11 @@ export function getElementDefinitions({
       isStarter: false,
       isHiddenUntilDiscovered: true,
       isMajorDiscovery: true,
+      isActive: false,
       revealTitle: 'El Archivo percibe el cambio',
       revealText:
         'Nada permanece inmóvil. Incluso los conceptos dejan una huella al atravesar el tiempo.',
-      unlockedBySequenceNumber: 6,
+      // Contenido prohibido: no puede descubrirse ni usarse en combinaciones.
       categoryId: conceptos,
     },
     {
@@ -645,7 +661,7 @@ export function getElementDefinitions({
     },
     {
       slug: 'calamidad',
-      name: 'Calamidad',
+      name: 'Calamidad mística',
       description: 'Un peligro transformado en desastre de gran escala.',
       iconKey: 'triangle-alert',
       type: 'MISTICISMO',
@@ -791,6 +807,7 @@ export function getElementDefinitions({
       iconKey: 'hourglass',
       type: 'CONCEPTO',
       tier: 5,
+      isActive: false,
       categoryId: conceptos,
     },
     {
@@ -1858,8 +1875,9 @@ export function getElementDefinitions({
       iconKey: 'file-text',
       type: 'CONCEPTO',
       tier: 0,
-      isStarter: true,
-      isHiddenUntilDiscovered: false,
+      // Registro ya no es inicial: se fabrica con la receta
+      // observacion+diferenciacion, no mediante un
+      // umbral declarativo en el propio elemento.
       categoryId: conceptos,
     },
     { slug: 'bendicion', name: 'Bendición', description: 'Una existencia oculta responde favorablemente a una plegaria o sacrificio.', iconKey: 'award', type: 'MISTICISMO', tier: 5, categoryId: misticismo },

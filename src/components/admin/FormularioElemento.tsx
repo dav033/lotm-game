@@ -19,13 +19,13 @@ export type ElementoEditable = {
   imageUrl: string | null
   type: string
   tier: number
-  isStarter: boolean
   isHiddenUntilDiscovered: boolean
   isMajorDiscovery: boolean
   revealTitle: string | null
   revealText: string | null
   unlockedByType: string | null
   unlockedBySequenceNumber: number | null
+  unlockedAtDiscoveryCount: number | null
   triggerIds: string[]
   isActive: boolean
   categoriaIds: string[]
@@ -121,10 +121,6 @@ export default function FormularioElemento({
         <legend className="etiqueta px-1">Comportamiento</legend>
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="flex items-center gap-2 text-sm text-parchment">
-            <input type="checkbox" name="isStarter" defaultChecked={elemento?.isStarter ?? false} className="accent-[var(--color-brass)]" />
-            Elemento inicial (se entrega al empezar)
-          </label>
-          <label className="flex items-center gap-2 text-sm text-parchment">
             <input type="checkbox" name="isHiddenUntilDiscovered" defaultChecked={elemento?.isHiddenUntilDiscovered ?? true} className="accent-[var(--color-brass)]" />
             Oculto hasta descubrirlo
           </label>
@@ -136,6 +132,9 @@ export default function FormularioElemento({
             <input type="checkbox" name="isActive" defaultChecked={elemento?.isActive ?? true} className="accent-[var(--color-brass)]" />
             Activo
           </label>
+          <p className="text-xs leading-5 text-fog sm:col-span-2">
+            Los elementos iniciales se configuran en la pestaña Fases del árbol.
+          </p>
         </div>
       </fieldset>
 
@@ -174,6 +173,21 @@ export default function FormularioElemento({
             max={99}
             defaultValue={elemento?.unlockedBySequenceNumber ?? ''}
             placeholder="Ej. 7"
+            className="campo"
+          />
+        </div>
+        <div className="mt-3">
+          <label htmlFor="unlockedAtDiscoveryCount" className="etiqueta">
+            Al tener al menos… elementos activos descubiertos
+          </label>
+          <input
+            id="unlockedAtDiscoveryCount"
+            name="unlockedAtDiscoveryCount"
+            type="number"
+            min={0}
+            max={9999}
+            defaultValue={elemento?.unlockedAtDiscoveryCount ?? ''}
+            placeholder="Ej. 42"
             className="campo"
           />
         </div>

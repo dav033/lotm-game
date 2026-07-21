@@ -1,10 +1,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { isIntentionalRecipeAdvanceDualOutcome } from '@/shared/formulaOverlapPolicy'
 import { prisma } from '../db'
 import { exigirAdminAccion, NoAutorizadoError } from '../adminAuth'
 import { avanceSchema } from '../schemas'
 import { derivarInputKey, RecetaError } from '../services/recetas'
+import { sincronizarUmbralesFases } from '../services/fasesProgresion'
 import type { EstadoAccion } from './tipos'
 
 function ingredientesDe(a: string, b: string) {
@@ -41,6 +43,7 @@ export async function guardarAvance(
       derivarInputKey(prisma, ingredientes),
       prisma.sequence.findMany({
         where: { id: { in: [data.sourceSequenceId, data.targetSequenceId] } },
+        include: { element: { select: { slug: true } } },
       }),
     ])
     if (sequences.length !== 2) {
@@ -66,10 +69,20 @@ export async function guardarAvance(
     }
 
     const [recipe, equivalent] = await Promise.all([
-      prisma.recipe.findUnique({ where: { inputKey }, select: { id: true } }),
+      prisma.recipe.findUnique({
+        where: { inputKey },
+        select: { id: true, outputs: { select: { element: { select: { slug: true } } } } },
+      }),
       prisma.advance.findUnique({ where: { inputKey }, select: { id: true } }),
     ])
-    if (recipe) {
+    if (
+      recipe &&
+      !isIntentionalRecipeAdvanceDualOutcome({
+        inputKey,
+        recipeOutputSlugs: recipe.outputs.map((output) => output.element.slug),
+        advanceTargetSlug: targetSequence.element.slug,
+      })
+    ) {
       return { ok: false, error: 'Esa combinación ya pertenece a una receta normal.' }
     }
     if (equivalent && equivalent.id !== id) {
@@ -106,6 +119,7 @@ export async function guardarAvance(
       }
     })
 
+    await sincronizarUmbralesFases(prisma)
     revalidatePath('/admin')
     revalidatePath('/admin/avances')
     return { ok: true, error: null }
@@ -132,12 +146,14 @@ export async function alternarAvanceActivo(id: string): Promise<void> {
     if (directRecipe) return
   }
   await prisma.advance.update({ where: { id }, data: { isActive: !advance.isActive } })
+  await sincronizarUmbralesFases(prisma)
   revalidatePath('/admin/avances')
 }
 
 export async function eliminarAvance(id: string): Promise<void> {
   await exigirAdminAccion()
   await prisma.advance.delete({ where: { id } })
+  await sincronizarUmbralesFases(prisma)
   revalidatePath('/admin')
   revalidatePath('/admin/avances')
 }

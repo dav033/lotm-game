@@ -1,9 +1,17 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import type { PrismaClient } from '@/generated/prisma/client'
-import { combinarParaPerfil } from './combinar'
+import { combinarParaPerfil, CombinationError } from './combinar'
 
 const profileId = 'profile'
+const phase = {
+  id: 'phase-1',
+  slug: 'fase-1',
+  name: 'Fase 1',
+  sortOrder: 1,
+  unlockAtDiscoveryCount: 0,
+  isActive: true,
+}
 
 function publicElement(id: string, slug = id) {
   return {
@@ -17,10 +25,13 @@ function publicElement(id: string, slug = id) {
     tier: 1,
     isMajorDiscovery: false,
     isActive: true,
+    availableFromPhaseId: phase.id,
   }
 }
 
 function createFixture({
+  featureEnabled = true,
+  hasRitual = true,
   knowledge = true,
   prepared = false,
   targetDiscovered = false,
@@ -68,14 +79,14 @@ function createFixture({
           number: 5,
           name: 'Destino oculto',
         },
-        rituals: [
+        rituals: hasRitual ? [
           {
             id: 'ritual',
             isActive: true,
             players: ritualPrepared ? [{ profileId }] : [],
             failureOutputs: [{ elementId: consequence.id, element: consequence }],
           },
-        ],
+        ] : [],
       }),
     },
     element: {
@@ -95,6 +106,7 @@ function createFixture({
       },
     },
     playerDiscovery: {
+      count: async () => 0,
       findFirst: async () => (knowledge ? { elementId: 'knowledge' } : null),
       findUnique: async () => null,
       findMany: async () => [],
@@ -123,8 +135,18 @@ function createFixture({
     achievement: { findMany: async () => [] },
     playerAchievement: { findMany: async () => [], create: async () => ({}) },
     category: { findUnique: async () => null },
+    progressionPhase: { findMany: async () => [phase] },
+    featureGate: {
+      findMany: async () => [{
+        key: 'ADVANCEMENT_RITUALS',
+        minimumPhaseSortOrder: featureEnabled ? 1 : 2,
+      }],
+    },
   }
   const db = {
+    playerDiscovery: tx.playerDiscovery,
+    progressionPhase: tx.progressionPhase,
+    featureGate: tx.featureGate,
     $transaction: async <T>(callback: (client: typeof tx) => Promise<T>) => callback(tx),
   } as unknown as PrismaClient
 
@@ -147,6 +169,29 @@ async function apply(fixture: ReturnType<typeof createFixture>, confirmRitualRis
 }
 
 describe('aplicación de avances con ritual', () => {
+  it('bloquea un avance ritualizado antes de la fase configurada sin mutar progreso', async () => {
+    const fixture = createFixture({ featureEnabled: false, prepared: true })
+    await assert.rejects(
+      () => apply(fixture, true),
+      (error: unknown) =>
+        error instanceof CombinationError && /aún no están disponibles/.test(error.message),
+    )
+    assert.deepEqual(fixture.writes, {
+      profile: 0,
+      stats: 0,
+      advanceConsumed: 0,
+      discovered: [],
+    })
+  })
+
+  it('permite avances sin ritual antes de la fase configurada', async () => {
+    const fixture = createFixture({ featureEnabled: false, hasRitual: false })
+    const result = await apply(fixture)
+    assert.equal(result.kind, 'RESOLVED')
+    assert.equal(result.kind === 'RESOLVED' && result.success, true)
+    assert.equal(fixture.writes.advanceConsumed, 1)
+  })
+
   it('bloquea sin conocimiento incluso si se intenta forzar la confirmación', async () => {
     for (const confirmed of [false, true]) {
       const fixture = createFixture({ knowledge: false })

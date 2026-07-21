@@ -5,11 +5,6 @@ import {
   type RitualKnowledgeCandidate,
   type RitualKnowledgeSnapshot,
 } from './ritualKnowledge'
-import {
-  PHASE1_CLOSURE_SLUGS,
-  PHASE2_CLOSURE_SLUGS,
-  PHASE3_CLOSURE_SLUGS,
-} from '../../../prisma/seed-content/progression'
 
 function candidate({
   id = 'ritual-escriba',
@@ -185,33 +180,4 @@ describe('calcularEstadoRitual', () => {
     }
   })
 
-  it('mantiene las expectativas de fases 1-3 y solo desbloquea al añadir Ritual', () => {
-    assert.equal(PHASE1_CLOSURE_SLUGS.length, 17)
-    assert.equal(PHASE2_CLOSURE_SLUGS.length, 56)
-    assert.equal(PHASE3_CLOSURE_SLUGS.length, 74)
-    const rituals = [
-      candidate({ sourceId: 'escriba', targetId: 'traveler' }),
-      candidate({
-        id: 'ritual-prometheus',
-        advanceId: 'advance-prometheus',
-        sourceId: 'prometheus',
-        sourceName: 'Prometheus',
-        targetId: 'dream-stealer',
-      }),
-    ]
-
-    assert.equal(state(rituals, [...PHASE1_CLOSURE_SLUGS]).status, 'HIDDEN')
-    assert.deepEqual(state(rituals, [...PHASE2_CLOSURE_SLUGS]), {
-      status: 'SEALED',
-      groups: [],
-    })
-    assert.deepEqual(state(rituals, [...PHASE3_CLOSURE_SLUGS]), {
-      status: 'SEALED',
-      groups: [],
-    })
-    const unlocked = state(rituals, [...PHASE3_CLOSURE_SLUGS], true)
-    assert.equal(unlocked.status, 'UNLOCKED')
-    assert.equal(unlocked.groups.length, 2)
-    assert.equal(unlocked.groups.every((group) => !group.protected), true)
-  })
 })

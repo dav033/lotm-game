@@ -1,8 +1,7 @@
 export type RecipeSeed = {
   ings: [string, number][]
   outputs: string[]
-  // Por defecto true. Las recetas reservadas para una fase futura se
-  // declaran con `isActive: false` para no distorsionar el grafo publicado.
+  // Por defecto true. La ejecución depende de ingredientes y fase de las salidas.
   isActive?: boolean
 }
 
@@ -15,21 +14,37 @@ export function getRecipeDefinitions(): RecipeSeed[] {
     { ings: [['moneda', 2]], outputs: ['fortuna'] },
     { ings: [['fortuna', 1], ['moneda', 1]], outputs: ['adivinacion'] },
     { ings: [['adivinacion', 1], ['percepcion', 1]], outputs: ['seer'] },
-    { ings: [['mundo', 1], ['registro', 1]], outputs: ['historia'] },
+    // `mundo + registro -> historia` fue sustituida por `registro + era ->
+    // historia` (ver bloque de Era/Historia más abajo); su clave de
+    // ingredientes se retira en la reconciliación idempotente del seed.
     { ings: [['adivinacion', 1], ['dato', 1]], outputs: ['revelacion'] },
+    // Restaura la ruta temprana a Destino y Revelación (fase 1): Apuesta +
+    // Moneda produce Destino, y Adivinación + Destino produce Revelación.
+    // Ambas coexisten con las rutas históricas basadas en Tiempo/Dato, aunque
+    // Tiempo está prohibido y esas fórmulas no son ejecutables.
+    { ings: [['apuesta', 1], ['moneda', 1]], outputs: ['destino'] },
+    { ings: [['adivinacion', 1], ['destino', 1]], outputs: ['revelacion'] },
     // Camino del Suplicante de Secretos
-    { ings: [['humano', 2]], outputs: ['vinculo'] },
+    { ings: [['humano', 2]], outputs: ['familia', 'vinculo'] },
     { ings: [['secreto', 1], ['humano', 1]], outputs: ['secret-suplicant'] },
     // Camino del Monstruo
-    { ings: [['humano', 1], ['moneda', 1]], outputs: ['trabajo'] },
+    { ings: [['humano', 1], ['moneda', 1]], outputs: ['apuesta', 'trabajo'] },
     // Cadena del Ocultamiento
-    // TODO(PHASE_4): redesign and reactivate only when Phase 4 progression is implemented.
-    { ings: [['experiencia-2', 1], ['conocimiento', 1]], outputs: ['prudencia'], isActive: false },
+    {
+      ings: [['experiencia-2', 1], ['conocimiento', 1]],
+      outputs: ['prudencia'],
+    },
     { ings: [['prudencia', 1], ['informacion', 1]], outputs: ['reserva'] },
     { ings: [['reserva', 1], ['vision', 1]], outputs: ['ocultamiento'] },
     // Trabajo, peligro y control corporal
     { ings: [['trabajo', 1], ['tiempo', 1]], outputs: ['esfuerzo'] },
+    // Ruta alternativa a Esfuerzo que no depende de Tiempo.
+    { ings: [['trabajo', 1], ['continuidad', 1]], outputs: ['esfuerzo'] },
     { ings: [['humano', 1], ['esfuerzo', 1]], outputs: ['desgaste'] },
+    {
+      ings: [['esfuerzo', 1], ['desgaste', 1]],
+      outputs: ['fuerza'],
+    },
     { ings: [['muerte', 1], ['percepcion', 1]], outputs: ['peligro'] },
     { ings: [['peligro', 1], ['intuicion', 1]], outputs: ['danger-intuition'] },
     { ings: [['fuerza', 1], ['experiencia-2', 1]], outputs: ['control-corporal'] },
@@ -40,22 +55,24 @@ export function getRecipeDefinitions(): RecipeSeed[] {
     { ings: [['revelacion-prohibida', 1], ['humano', 1]], outputs: ['locura'] },
     // Escucha, magia, incertidumbre y suerte
     { ings: [['humano', 1], ['percepcion', 1]], outputs: ['escucha'] },
-    // TODO(PHASE_4): redesign and reactivate only when Phase 4 progression is implemented.
-    { ings: [['misticismo', 1], ['conocimiento', 1]], outputs: ['magia'], isActive: false },
+    { ings: [['misticismo', 1], ['conocimiento', 1]], outputs: ['magia'] },
     { ings: [['percepcion', 1], ['magia', 1]], outputs: ['ilusion'] },
     { ings: [['adivinacion', 1], ['tiempo', 1]], outputs: ['destino'] },
     { ings: [['informacion', 1], ['ocultamiento', 1]], outputs: ['incertidumbre', 'secreto'] },
     { ings: [['destino', 1], ['incertidumbre', 1]], outputs: ['suerte'] },
     // Cambio cualitativo, sombras y carne
     { ings: [['beyonder', 1], ['revelacion', 1]], outputs: ['avance'] },
-    { ings: [['avance', 1], ['fuerza', 1]], outputs: ['cambio-cualitativo'] },
+    // Reservada para Fase 4: Fuerza no debe abrir divinidad durante Fase 3.
+    { ings: [['avance', 1], ['fuerza', 1]], outputs: ['cambio-cualitativo'], isActive: false },
     {
       ings: [['secuencia-media', 1], ['cambio-cualitativo', 1]],
       outputs: ['divinidad', 'saint', 'demigod'],
     },
     { ings: [['cambio-cualitativo', 1], ['demigod', 1]], outputs: ['angel'] },
-    // TODO(PHASE_4): redesign and reactivate only when Phase 4 progression is implemented.
-    { ings: [['conocimiento', 1], ['percepcion', 1]], outputs: ['claridad'], isActive: false },
+    {
+      ings: [['conocimiento', 1], ['percepcion', 1]],
+      outputs: ['claridad'],
+    },
     { ings: [['claridad', 1], ['misticismo', 1]], outputs: ['luz'] },
     { ings: [['luz', 1], ['canto', 1]], outputs: ['bard'] },
     { ings: [['luz', 1], ['fuerza', 1]], outputs: ['fuego'] },
@@ -69,7 +86,10 @@ export function getRecipeDefinitions(): RecipeSeed[] {
     { ings: [['construccion', 1], ['misticismo', 1]], outputs: ['artefacto'] },
     { ings: [['divinidad', 1], ['luz', 1]], outputs: ['autoridad-solar'] },
     { ings: [['autoridad-solar', 1], ['artefacto', 1]], outputs: ['reliquia-solar'] },
-    { ings: [['experiencia-2', 1], ['registro', 1]], outputs: ['memoria'] },
+    {
+      ings: [['experiencia-2', 1], ['registro', 1]],
+      outputs: ['memoria'],
+    },
     { ings: [['vision', 1], ['ocultamiento', 1]], outputs: ['silueta'] },
     { ings: [['silueta', 1], ['luz', 1]], outputs: ['sombra'] },
     { ings: [['peligro', 1], ['cambio-cualitativo', 1]], outputs: ['calamidad'] },
@@ -90,7 +110,8 @@ export function getRecipeDefinitions(): RecipeSeed[] {
     { ings: [['extension', 1], ['separacion', 1]], outputs: ['limite'] },
     { ings: [['limite', 1], ['simbolismo', 1]], outputs: ['sello'] },
     { ings: [['autocontrol', 1], ['fuerza', 1]], outputs: ['resistencia'] },
-    { ings: [['muerte', 1], ['retorno', 1]], outputs: ['resurreccion'] },
+    // Reservada para Fase 4: Retorno no evita la mortalidad en Fase 3.
+    { ings: [['muerte', 1], ['retorno', 1]], outputs: ['resurreccion'], isActive: false },
     { ings: [['muerte', 1], ['ritual', 1]], outputs: ['funeral'] },
     { ings: [['orden', 1], ['dominacion', 1]], outputs: ['autoridad'] },
     {
@@ -106,27 +127,46 @@ export function getRecipeDefinitions(): RecipeSeed[] {
     { ings: [['informacion', 1], ['percepcion', 1]], outputs: ['influencia'] },
     // El peso del tiempo: edad, vejez y conocimiento acumulado
     { ings: [['humano', 1], ['tiempo', 1]], outputs: ['edad'] },
-    { ings: [['edad', 1], ['desgaste', 1]], outputs: ['vejez'] },
-    { ings: [['humano', 1], ['vejez', 1]], outputs: ['experiencia-2'] },
-    { ings: [['experiencia-2', 1], ['dato', 1]], outputs: ['conocimiento'] },
-    // TODO(PHASE_4): redesign and reactivate only when Phase 4 progression is implemented.
+    {
+      ings: [['humano', 1], ['continuidad', 1]],
+      outputs: ['edad'],
+    },
+    {
+      ings: [['edad', 1], ['desgaste', 1]],
+      outputs: ['muerte'],
+    },
+    {
+      ings: [['humano', 1], ['edad', 1]],
+      outputs: ['experiencia-2'],
+    },
+    {
+      ings: [['experiencia-2', 1], ['dato', 1]],
+      outputs: ['conocimiento'],
+    },
+    // Reservada para Fase 4 junto con todas las ramas que dependen de Información.
     { ings: [['conocimiento', 1], ['dato', 1]], outputs: ['informacion'], isActive: false },
     // Cadena del Mar y la Sirena
     { ings: [['moneda', 1], ['tiempo', 1]], outputs: ['acumulacion'] },
+    // Ruta alternativa a Acumulación que no depende de Tiempo.
+    { ings: [['moneda', 1], ['trabajo', 1]], outputs: ['acumulacion'] },
     { ings: [['agua', 1], ['acumulacion', 1]], outputs: ['mar'] },
     { ings: [['carne', 1], ['alma', 1]], outputs: ['criatura'] },
     { ings: [['criatura', 1], ['beyonder', 1]], outputs: ['criatura-beyonder'] },
     { ings: [['escucha', 1], ['tiempo', 1]], outputs: ['ritmo'] },
+    // Ruta alternativa a Ritmo que no depende de Tiempo.
+    { ings: [['escucha', 1], ['continuidad', 1]], outputs: ['ritmo'] },
     { ings: [['ritmo', 1], ['humano', 1]], outputs: ['canto'] },
     { ings: [['criatura-beyonder', 1], ['mar', 1]], outputs: ['criatura-beyonder-acuatica'] },
     { ings: [['criatura-beyonder-acuatica', 1], ['canto', 1]], outputs: ['sirena'] },
     // Cadena del Cuerpo Espiritual y la Marioneta
-    { ings: [['humano', 1], ['misticismo', 1]], outputs: ['espiritualidad'] },
+    { ings: [['humano', 1], ['misticismo', 1]], outputs: ['cuerpo-espiritual', 'espiritualidad'] },
     { ings: [['misticismo', 1], ['percepcion', 1]], outputs: ['percepcion-espiritual'] },
     { ings: [['espiritualidad', 1], ['percepcion', 1]], outputs: ['intuicion'] },
     { ings: [['intuicion', 1], ['percepcion-espiritual', 1]], outputs: ['monster'] },
     { ings: [['misticismo', 1], ['vision', 1]], outputs: ['vision-espiritual'] },
     { ings: [['tiempo', 2]], outputs: ['continuidad'] },
+    // Ruta alternativa a Continuidad que no depende de Tiempo.
+    { ings: [['vinculo', 2]], outputs: ['continuidad'] },
     { ings: [['silueta', 1], ['avance', 1]], outputs: ['proyeccion'] },
     { ings: [['proyeccion', 1], ['continuidad', 1]], outputs: ['extension'] },
     { ings: [['cuerpo-espiritual', 1], ['extension', 1]], outputs: ['hilos-del-cuerpo-espiritual'] },
@@ -141,6 +181,12 @@ export function getRecipeDefinitions(): RecipeSeed[] {
     // Vínculos, separación y milagros
     { ings: [['vinculo', 1], ['fuerza', 1]], outputs: ['ruptura'] },
     { ings: [['continuidad', 1], ['tiempo', 1]], outputs: ['era'] },
+    // Ruta alternativa a Era que no depende de Tiempo.
+    { ings: [['continuidad', 1], ['mundo', 1]], outputs: ['era'] },
+    // Sustituye a `mundo + registro -> historia` (retirada, ver más arriba):
+    // ahora Historia se produce a partir de Registro y Era, para que nunca
+    // aparezca antes que Era.
+    { ings: [['registro', 1], ['era', 1]], outputs: ['historia'] },
     { ings: [['vinculo', 1], ['separacion', 1]], outputs: ['ausencia'] },
     { ings: [['ausencia', 1], ['percepcion', 1]], outputs: ['deseo'] },
     { ings: [['deseo', 1], ['cambio-cualitativo', 1]], outputs: ['milagro'] },
@@ -154,6 +200,8 @@ export function getRecipeDefinitions(): RecipeSeed[] {
     // Destino, ley y los planos superiores
     { ings: [['destino', 1], ['continuidad', 1]], outputs: ['ciclo'] },
     { ings: [['ciclo', 1], ['tiempo', 1]], outputs: ['retorno'] },
+    // Ruta alternativa a Retorno que no depende de Tiempo.
+    { ings: [['ciclo', 1], ['revelacion', 1]], outputs: ['retorno'] },
     { ings: [['influencia', 1], ['tiempo', 1]], outputs: ['consecuencia'] },
     { ings: [['consecuencia', 1], ['destino', 1]], outputs: ['inevitabilidad'] },
     { ings: [['ciudad', 2]], outputs: ['nacion'] },
@@ -186,6 +234,11 @@ export function getRecipeDefinitions(): RecipeSeed[] {
     { ings: [['revelacion', 1], ['registro', 1]], outputs: ['profecia'] },
     // Trinidad, profanación y dominio de sombras
     { ings: [['percepcion', 1], ['separacion', 1]], outputs: ['diferenciacion'] },
+    // Registro deja de ser inicial y se obtiene por sus ingredientes.
+    {
+      ings: [['observacion', 1], ['diferenciacion', 1]],
+      outputs: ['registro'],
+    },
     { ings: [['diferenciacion', 1], ['divinidad', 1]], outputs: ['trinidad'] },
     { ings: [['claridad', 1], ['prudencia', 1]], outputs: ['autocontrol'] },
     { ings: [['informacion', 1], ['procedimiento', 1]], outputs: ['lenguaje'] },

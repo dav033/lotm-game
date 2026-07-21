@@ -23,6 +23,7 @@ function el(
     isActive: true,
     unlockedByType: null,
     unlockedBySequenceNumber: null,
+    unlockedAtDiscoveryCount: null,
     requiredElementIds: [],
     ...overrides,
   }
@@ -32,6 +33,7 @@ function receta(
   id: string,
   ingredients: { elementId: string; quantity: number }[],
   outputElementIds: string[],
+  overrides: Partial<DiagRecipe> = {},
 ): DiagRecipe {
   return {
     id,
@@ -39,6 +41,7 @@ function receta(
     isActive: true,
     ingredients,
     outputElementIds,
+    ...overrides,
   }
 }
 
@@ -128,6 +131,22 @@ describe('analizarProgresion', () => {
     assert.equal(dres.cost, 0)
     assert.equal(dres.bestRoute.kind, 'spontaneous')
     assert.ok(dres.bestRoute.label.includes('secuencia 1'))
+  })
+
+  it('trata una secuencia de pathway inactivo como contenido inalcanzable', () => {
+    const inactiveSequenceElement = el('SecInactiva', { isStarter: true })
+    const inactiveSequence = secuencia('seq-inactiva', inactiveSequenceElement.id, 9, {
+      isActive: false,
+    })
+    const result = analizarProgresion(
+      [inactiveSequenceElement],
+      [],
+      [inactiveSequence],
+      [],
+      [],
+    )
+
+    assert.equal(result.get(inactiveSequenceElement.id)?.reachable, false)
   })
 
   it('permite ascender sin ritual', () => {

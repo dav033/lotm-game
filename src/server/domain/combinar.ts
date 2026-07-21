@@ -3,6 +3,11 @@ import type { Db } from '../db'
 import { desbloquearEspontaneos } from './descubrimientos'
 import { buildRecipeInputKey } from './inputKey'
 import { concederLogrosPorElementos } from './logros'
+import {
+  elementoDisponiblePorPhaseId,
+  faseActualParaPerfil,
+  filtroElementoDisponiblePorPhaseIds,
+} from './fases'
 import { advanceIdFromToken, sequenceLabelOf, toPublicAdvance, toPublicElement } from './publicos'
 import {
   aplicacionAvanceTieneContenidoActivo,
@@ -17,6 +22,7 @@ import {
   type RecipeOutputData,
 } from './tipos'
 import { RITUAL_KNOWLEDGE_ELEMENT_SLUG } from './ritualKnowledge'
+import { featuresParaFase } from './featureGates'
 
 // Error de reglas del juego: su mensaje sí es apto para mostrarse al jugador.
 export class CombinationError extends Error {}
@@ -44,6 +50,8 @@ async function combinarAvanceConSecuencia(
   slugs: [string, string],
   advanceIndex: number,
   confirmRitualRisk: boolean,
+  availablePhaseIds: ReadonlySet<string>,
+  advancementRitualsEnabled: boolean,
 ): Promise<CombineResult> {
   const advanceToken = slugs[advanceIndex]
   const advanceId = advanceIdFromToken(advanceToken)
@@ -75,7 +83,11 @@ async function combinarAvanceConSecuencia(
         rituals: {
           include: {
             players: { where: { profileId }, select: { profileId: true } },
-            failureOutputs: { include: { element: true } },
+            failureOutputs: {
+              include: {
+                element: { include: { sequence: { include: { pathway: true } } } },
+              },
+            },
           },
           orderBy: { id: 'asc' },
         },
@@ -93,7 +105,10 @@ async function combinarAvanceConSecuencia(
     tx.playerDiscovery.findFirst({
       where: {
         profileId,
-        element: { slug: RITUAL_KNOWLEDGE_ELEMENT_SLUG, isActive: true },
+        element: {
+          slug: RITUAL_KNOWLEDGE_ELEMENT_SLUG,
+          ...filtroElementoDisponiblePorPhaseIds(availablePhaseIds),
+        },
       },
       select: { elementId: true },
     }),
@@ -102,7 +117,7 @@ async function combinarAvanceConSecuencia(
   if (!advance || !advance.isActive || !owned || owned.quantity < 1) {
     throw new CombinationError('No posees ese avance o ya no está disponible.')
   }
-  if (!sequenceElement?.isActive) {
+  if (!sequenceElement || !elementoDisponiblePorPhaseId(sequenceElement, availablePhaseIds)) {
     throw new CombinationError('La secuencia seleccionada no está disponible.')
   }
 
@@ -116,8 +131,13 @@ async function combinarAvanceConSecuencia(
   ])
   const isValid =
     aplicacionAvanceTieneContenidoActivo(advance, sequenceElement.id) &&
+    elementoDisponiblePorPhaseId(advance.sourceSequence.element, availablePhaseIds) &&
+    elementoDisponiblePorPhaseId(advance.targetSequence.element, availablePhaseIds) &&
     advance.targetSequence.element.discoveries.length === 0
   const activeRituals = advance.rituals.filter((ritual) => ritual.isActive)
+  if (isValid && activeRituals.length > 0 && !advancementRitualsEnabled) {
+    throw new CombinationError('Los rituales de avance aún no están disponibles.')
+  }
   const ritualDecision = isValid
     ? decidirAplicacionRitual(
         advance.rituals.map((ritual) => ({
@@ -197,6 +217,11 @@ async function combinarAvanceConSecuencia(
       const consequences = new Map(
         activeRituals
           .flatMap((ritual) => ritual.failureOutputs)
+          .filter(
+            (consequence) =>
+              elementoDisponiblePorPhaseId(consequence.element, availablePhaseIds) &&
+              (!consequence.element.sequence || consequence.element.sequence.pathway.isActive),
+          )
           .map((consequence) => [consequence.elementId, consequence]),
       )
       for (const consequence of consequences.values()) {
@@ -220,6 +245,16 @@ async function combinarAvanceConSecuencia(
           quantity: 1,
           isNewDiscovery: !previous,
         })
+        const sequence = consequence.element.sequence
+        if (sequence) {
+          await tx.playerPathwayUnlock.upsert({
+            where: {
+              profileId_pathwayId: { profileId, pathwayId: sequence.pathwayId },
+            },
+            create: { profileId, pathwayId: sequence.pathwayId, unlockedAt: now },
+            update: {},
+          })
+        }
       }
       const spontaneous = await desbloquearEspontaneos(
         tx,
@@ -356,6 +391,8 @@ export async function combinarParaPerfil(
   if (slugs.length !== 2) {
     throw new CombinationError('Debes colocar exactamente dos elementos.')
   }
+  const phaseState = await faseActualParaPerfil(db, profileId)
+  const { availablePhaseIds } = phaseState
 
   const advanceIndexes = slugs
     .map((slug, index) => (advanceIdFromToken(slug) ? index : -1))
@@ -364,12 +401,15 @@ export async function combinarParaPerfil(
     if (advanceIndexes.length !== 1) {
       throw new CombinationError('Solo puedes combinar un avance con una secuencia.')
     }
+    const features = await featuresParaFase(db, phaseState.sortOrder)
     return combinarAvanceConSecuencia(
       db,
       profileId,
       slugs,
       advanceIndexes[0],
       options.confirmRitualRisk ?? false,
+      availablePhaseIds,
+      features.ADVANCEMENT_RITUALS,
     )
   }
 
@@ -384,7 +424,7 @@ export async function combinarParaPerfil(
   if (elements.length !== uniqueSlugs.length) {
     throw new CombinationError('Alguno de los elementos no existe en el archivo.')
   }
-  if (elements.some((e) => !e.isActive)) {
+  if (elements.some((element) => !elementoDisponiblePorPhaseId(element, availablePhaseIds))) {
     throw new CombinationError('Alguno de los elementos no está disponible.')
   }
 
@@ -407,7 +447,17 @@ export async function combinarParaPerfil(
                 sequence: {
                   include: {
                     pathway: true,
-                    advancesTo: { where: { isActive: true }, select: { id: true } },
+                    advancesTo: {
+                      where: { isActive: true },
+                      select: {
+                        sourceSequence: {
+                          select: {
+                            element: { select: { isActive: true } },
+                            pathway: { select: { isActive: true } },
+                          },
+                        },
+                      },
+                    },
                   },
                 },
               },
@@ -421,20 +471,39 @@ export async function combinarParaPerfil(
       where: { inputKey },
       include: {
         ingredients: {
-          include: { element: { select: { name: true } } },
+          include: { element: { select: { name: true, isActive: true, availableFromPhaseId: true } } },
           orderBy: { id: 'asc' },
         },
-        sourceSequence: { include: { pathway: true } },
-        targetSequence: { include: { pathway: true } },
+        sourceSequence: {
+          include: { pathway: true, element: { select: { isActive: true, availableFromPhaseId: true } } },
+        },
+        targetSequence: {
+          include: { pathway: true, element: { select: { isActive: true, availableFromPhaseId: true } } },
+        },
       },
     }),
   ])
 
-  const advance = avanceCreableAhora(foundAdvance) ? foundAdvance : null
+  const advance =
+    foundAdvance &&
+    avanceCreableAhora(foundAdvance) &&
+    foundAdvance.ingredients.every((ingredient) =>
+      elementoDisponiblePorPhaseId(ingredient.element, availablePhaseIds),
+    ) &&
+    elementoDisponiblePorPhaseId(foundAdvance.sourceSequence.element, availablePhaseIds) &&
+    elementoDisponiblePorPhaseId(foundAdvance.targetSequence.element, availablePhaseIds)
+      ? foundAdvance
+      : null
 
-  // Una receta cuyos todos los resultados están desactivados se comporta como inexistente.
-  const recipeOutputs =
-    found?.outputs.filter(salidaRecetaEjecutable) ?? []
+  // Una receta sin resultados activos y disponibles en la fase actual se
+  // comporta como inexistente.
+  const recipeOutputs = found
+    ? found.outputs.filter(
+        (output) =>
+          elementoDisponiblePorPhaseId(output.element, availablePhaseIds) &&
+          salidaRecetaEjecutable(output),
+      )
+    : []
   const recipe = recipeOutputs.length > 0 ? found : null
   const now = new Date()
 
@@ -553,7 +622,7 @@ export async function combinarParaPerfil(
 
       // ¿El resultado representa una secuencia de un camino aún sellado?
       const seq = output.sequence
-      if (seq && seq.pathway.isActive && !isNewPathwayUnlock) {
+      if (seq && seq.pathway.isActive) {
         const existingUnlock = await tx.playerPathwayUnlock.findUnique({
           where: { profileId_pathwayId: { profileId, pathwayId: seq.pathwayId } },
         })
@@ -562,13 +631,15 @@ export async function combinarParaPerfil(
             data: { profileId, pathwayId: seq.pathwayId, unlockedAt: now },
           })
           isNewPathwayUnlock = true
-          pathwayReveal = {
-            categoryPath: await categoryPathOf(tx, seq.pathway.categoryId),
-            pathwayName: seq.pathway.name,
-            sequenceNumber: seq.number,
-            sequenceName: seq.name,
-            title: output.revealTitle ?? 'Un velo se descorre',
-            text: output.revealText ?? 'Has traspasado la frontera de lo mundano.',
+          if (!pathwayReveal) {
+            pathwayReveal = {
+              categoryPath: await categoryPathOf(tx, seq.pathway.categoryId),
+              pathwayName: seq.pathway.name,
+              sequenceNumber: seq.number,
+              sequenceName: seq.name,
+              title: output.revealTitle ?? 'Un velo se descorre',
+              text: output.revealText ?? 'Has traspasado la frontera de lo mundano.',
+            }
           }
         }
       }

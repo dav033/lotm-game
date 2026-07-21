@@ -16,7 +16,20 @@ describe('reglas compartidas de combinación', () => {
     )
     assert.equal(
       salidaRecetaEjecutable({
-        element: { isActive: true, sequence: { advancesTo: [{ id: 'advance' }] } },
+        element: {
+          isActive: true,
+          sequence: {
+            pathway: { isActive: true },
+            advancesTo: [
+              {
+                sourceSequence: {
+                  element: { isActive: true },
+                  pathway: { isActive: true },
+                },
+              },
+            ],
+          },
+        },
       }),
       false,
     )
@@ -25,8 +38,8 @@ describe('reglas compartidas de combinación', () => {
   it('la creación de avance exige avance y ambos caminos activos', () => {
     const base = {
       isActive: true,
-      sourceSequence: { pathway: { isActive: true } },
-      targetSequence: { pathway: { isActive: true } },
+      sourceSequence: { element: { isActive: true }, pathway: { isActive: true } },
+      targetSequence: { element: { isActive: true }, pathway: { isActive: true } },
     }
     assert.equal(avanceCreableAhora(base), true)
     assert.equal(avanceCreableAhora({ ...base, isActive: false }), false)
@@ -35,7 +48,11 @@ describe('reglas compartidas de combinación', () => {
   it('la aplicación exige la secuencia origen exacta y contenido activo', () => {
     const base = {
       isActive: true,
-      sourceSequence: { elementId: 'source', pathway: { isActive: true } },
+      sourceSequence: {
+        elementId: 'source',
+        element: { isActive: true },
+        pathway: { isActive: true },
+      },
       targetSequence: {
         element: { isActive: true },
         pathway: { isActive: true },

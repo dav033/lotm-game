@@ -10,8 +10,10 @@ import {
   buscarRecetaEquivalente,
   crearReceta,
   derivarInputKey,
+  eliminarRecetasCompletamente,
   RecetaError,
 } from '../services/recetas'
+import { sincronizarUmbralesFases } from '../services/fasesProgresion'
 import type { EstadoAccion } from './tipos'
 
 export type RecetaOutputFormData = {
@@ -191,6 +193,7 @@ export async function guardarReceta(
 
     // La receta funciona en el juego inmediatamente: el juego consulta la base
     // en cada combinación, así que no hay nada que reconstruir.
+    await sincronizarUmbralesFases(prisma)
     revalidatePath('/admin/recetas')
     revalidatePath('/admin/combinaciones-fallidas')
     return { ok: true, error: null, recetaId: receta.id }
@@ -287,17 +290,24 @@ export async function alternarRecetaActiva(id: string): Promise<void> {
     if (protectedTarget) return
   }
   await prisma.recipe.update({ where: { id }, data: { isActive: !r.isActive } })
+  await sincronizarUmbralesFases(prisma)
   revalidatePath('/admin/recetas')
 }
 
 export async function eliminarReceta(id: string): Promise<EstadoAccion> {
   try {
     await exigirAdminAccion()
-    const r = await prisma.recipe.findUnique({ where: { id } })
+    const r = await prisma.recipe.findUnique({ where: { id }, select: { id: true, inputKey: true } })
     if (!r) return { ok: false, error: 'La receta no existe.' }
 
-    await prisma.recipe.delete({ where: { id } })
+    await prisma.$transaction(async (tx) => {
+      await eliminarRecetasCompletamente(tx, [r])
+      await sincronizarUmbralesFases(tx)
+    })
     revalidatePath('/admin/recetas')
+    revalidatePath('/admin/arbol')
+    revalidatePath('/admin/diagnostico')
+    revalidatePath('/admin/combinaciones-fallidas')
     revalidatePath('/coleccion')
     return { ok: true, error: null }
   } catch (err) {

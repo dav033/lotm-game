@@ -9,6 +9,7 @@ import {
   validarDocumento,
   type ResumenImportacion,
 } from '../services/datos'
+import { sincronizarUmbralesFases } from '../services/fasesProgresion'
 
 const MAX_JSON = 5 * 1024 * 1024 // 5 MB
 
@@ -48,6 +49,7 @@ export async function ejecutarImportacion(
       return { ok: false, resumen: null, error: 'Modo de importación desconocido.' }
     }
     const resumen = await importarContenido(prisma, parsear(jsonTexto), modo)
+    await sincronizarUmbralesFases(prisma)
     revalidatePath('/admin')
     revalidatePath('/coleccion')
     return { ok: true, resumen, error: null }

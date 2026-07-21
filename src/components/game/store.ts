@@ -30,6 +30,7 @@ import type {
   InstanciaBandeja,
   PayloadArrastre,
   RecetaPendiente,
+  TransicionFase,
 } from './tipos'
 
 // Marca local de "ya vio el tutorial del primer avance"; por navegador.
@@ -51,9 +52,11 @@ type JuegoState = {
   fallo: number // contador: reinicia la animación de sacudida
   /** Contador de resoluciones: re-monta tarjeta y partículas aunque se repita receta. */
   sello: number
-  reveal: ResolvedCombineResult | null
   avisos: Aviso[]
   reiniciando: boolean
+  faseAvanzando: boolean
+  transicionFase: TransicionFase | null
+  aperturasFase: string[]
   pendientes: RecetaPendiente[]
   logrosPendientes: AchievementPublicData[]
   tutorialAvance: boolean
@@ -96,10 +99,11 @@ type JuegoState = {
   ) => Promise<void>
   combinarDirecto: (slugA: string, slugB: string) => void
   reiniciar: () => Promise<void>
+  avanzarFase: () => Promise<void>
+  cerrarTransicionFase: () => void
   realizarRitual: (ritualId: string) => Promise<void>
   cancelarRiesgoRitual: () => void
   confirmarRiesgoRitual: () => Promise<void>
-  cerrarReveal: () => void
   cerrarLogro: () => void
   cerrarTutorialAvance: () => void
   setArrastre: (a: { payload: PayloadArrastre } | null) => void
@@ -197,6 +201,27 @@ function crearInstanciaBandeja(
     x: limitarPosicion(x, 0.02, 0.98),
     y: limitarPosicion(y, 0.02, 0.98),
   }
+}
+
+export function agregarAperturasBandeja(
+  bandeja: InstanciaBandeja[],
+  aperturas: ElementoDescubierto[],
+): InstanciaBandeja[] {
+  const presentes = new Set(bandeja.map((instancia) => instancia.elemento.slug))
+  const nuevas = aperturas.filter((elemento) => !presentes.has(elemento.slug))
+  return [
+    ...bandeja,
+    ...nuevas.map((elemento, index) => {
+      const columns = Math.min(4, Math.max(1, nuevas.length))
+      const column = index % columns
+      const row = Math.floor(index / columns)
+      return crearInstanciaBandeja(
+        elemento,
+        (column + 1) / (columns + 1),
+        0.18 + row * 0.2,
+      )
+    }),
+  ]
 }
 
 export const useJuegoStore = create<JuegoState>()((set, get) => {
@@ -308,9 +333,11 @@ export const useJuegoStore = create<JuegoState>()((set, get) => {
     resultado: null,
     fallo: 0,
     sello: 0,
-    reveal: null,
     avisos: [],
     reiniciando: false,
+    faseAvanzando: false,
+    transicionFase: null,
+    aperturasFase: [],
     pendientes: [],
     logrosPendientes: [],
     tutorialAvance: false,
@@ -573,7 +600,6 @@ export const useJuegoStore = create<JuegoState>()((set, get) => {
             })
           }
           programarCargaPendientes()
-          if (r.pathwayReveal) set({ reveal: r })
         } else if (opts.origen === 'mesa') {
           // En modo rápido basta tocar otro elemento para el siguiente intento.
           set((prev) => ({
@@ -622,9 +648,10 @@ export const useJuegoStore = create<JuegoState>()((set, get) => {
         set({
           slots: [null, null],
           resultado: null,
-          reveal: null,
           logrosPendientes: [],
           recientes: [],
+          aperturasFase: [],
+          transicionFase: null,
           bandeja: [],
           ritualState: { status: 'HIDDEN', groups: [] },
           pendingRitualRisk: null,
@@ -643,6 +670,54 @@ export const useJuegoStore = create<JuegoState>()((set, get) => {
         set({ reiniciando: false })
       }
     },
+
+    avanzarFase: async () => {
+      const { estado, faseAvanzando, combinando, reiniciando } = get()
+      if (!estado?.phase || !estado.nextPhase || faseAvanzando || combinando || reiniciando) return
+      set({ faseAvanzando: true })
+      try {
+        const response = await fetch('/api/fases/avanzar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ expectedPhaseSlug: estado.phase.slug }),
+        })
+        const data = await response.json()
+        if (!response.ok) {
+          get().mostrarAviso(data?.error ?? 'No se pudo avanzar de fase.', 'peligro')
+          if (response.status === 409) await get().cargarEstado()
+          return
+        }
+
+        await get().cargarEstado()
+        const openingElementSlugs = Array.isArray(data.openingElementSlugs)
+          ? data.openingElementSlugs.filter((slug: unknown): slug is string => typeof slug === 'string')
+          : []
+        const openingSet = new Set(openingElementSlugs)
+        const openings = get().estado?.elementos.filter(
+          (elemento) => elemento.kind === 'ELEMENT' && openingSet.has(elemento.slug),
+        ) ?? []
+        set((prev) => ({
+          bandeja: agregarAperturasBandeja(prev.bandeja, openings),
+          aperturasFase: openingElementSlugs,
+          recientes: [...new Set([...prev.recientes, ...openingElementSlugs])].slice(-40),
+          transicionFase: {
+            phase: data.phase,
+            celebrationMessage:
+              typeof data.celebrationMessage === 'string' ? data.celebrationMessage : '',
+            openingElementSlugs,
+          },
+        }))
+        feedbackTactil([18, 35, 24, 35, 36])
+        programarCargaPendientes()
+        void get().refrescarPotencial()
+      } catch {
+        get().mostrarAviso('No se pudo avanzar de fase. Inténtalo de nuevo.', 'peligro')
+      } finally {
+        set({ faseAvanzando: false })
+      }
+    },
+
+    cerrarTransicionFase: () => set({ transicionFase: null }),
 
     realizarRitual: async (ritualId) => {
       if (get().ritualActionLoading) return
@@ -686,8 +761,6 @@ export const useJuegoStore = create<JuegoState>()((set, get) => {
       })
     },
 
-    cerrarReveal: () => set({ reveal: null }),
-
     cerrarLogro: () => {
       const current = get().logrosPendientes[0]
       if (!current) return
@@ -711,8 +784,11 @@ export const useJuegoStore = create<JuegoState>()((set, get) => {
     },
 
     marcarVisto: (slug) => {
-      if (!get().recientes.includes(slug)) return
-      set((prev) => ({ recientes: prev.recientes.filter((s) => s !== slug) }))
+      if (!get().recientes.includes(slug) && !get().aperturasFase.includes(slug)) return
+      set((prev) => ({
+        recientes: prev.recientes.filter((s) => s !== slug),
+        aperturasFase: prev.aperturasFase.filter((s) => s !== slug),
+      }))
     },
 
     activarModoVidente: () => {

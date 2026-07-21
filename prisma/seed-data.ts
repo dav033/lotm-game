@@ -3,16 +3,13 @@
 
 import type { PrismaClient } from '../src/generated/prisma/client'
 import { buildRecipeInputKey } from '../src/server/domain/inputKey'
+import { sincronizarUmbralesFases } from '../src/server/services/fasesProgresion'
 import { getAdvanceDefinitions } from './seed-content/advances'
 import { getElementDefinitions } from './seed-content/elements'
-import {
-  PHASE1_TRANSITION_REQUIREMENT_SLUGS,
-  PHASE1_TRANSITION_TARGET_SLUGS,
-  TIME_SLUG,
-  TIME_UNLOCK_REQUIREMENT_SLUGS,
-} from './seed-content/progression'
+import { openingPhaseSlugForElement, PROGRESSION_PHASES } from './seed-content/phases'
+import { buildDefaultAndRequirements, buildDefaultTriggers } from './seed-content/progression'
 import { getRecipeDefinitions } from './seed-content/recipes'
-import { getRitualDefinitions } from './seed-content/rituals'
+import { DEFAULT_RITUAL_FAILURE_OUTPUTS, getRitualDefinitions } from './seed-content/rituals'
 import { getSequenceDefinitions } from './seed-content/sequences'
 
 export async function seedGameData(prisma: PrismaClient) {
@@ -248,6 +245,36 @@ export async function seedGameData(prisma: PrismaClient) {
     },
   })
 
+  // ---------- Fases de progresión ----------
+  const phaseIdBySlug = new Map<string, string>()
+  for (const phase of PROGRESSION_PHASES) {
+    const saved = await prisma.progressionPhase.upsert({
+      where: { slug: phase.slug },
+      update: {
+        name: phase.name,
+        description: phase.description,
+        sortOrder: phase.sortOrder,
+      },
+      create: {
+        slug: phase.slug,
+        name: phase.name,
+        description: phase.description,
+        sortOrder: phase.sortOrder,
+        unlockAtDiscoveryCount: phase.unlockAtDiscoveryCount,
+        advancementRuleJson: JSON.stringify(phase.advancementRule),
+        celebrationMessage: phase.celebrationMessage,
+        isActive: phase.isActive,
+      },
+    })
+    phaseIdBySlug.set(phase.slug, saved.id)
+  }
+
+  await prisma.featureGate.upsert({
+    where: { key: 'ADVANCEMENT_RITUALS' },
+    update: {},
+    create: { key: 'ADVANCEMENT_RITUALS', minimumPhaseSortOrder: 6 },
+  })
+
   // ---------- Elementos ----------
   const defs = getElementDefinitions({
     mundano: mundano.id,
@@ -259,13 +286,17 @@ export async function seedGameData(prisma: PrismaClient) {
   const bySlug = new Map<string, { id: string }>()
   for (const def of defs) {
     const { categoryId, ...data } = def
+    const phaseSlug = openingPhaseSlugForElement(def.slug)
     const normalized = {
       ...data,
       isStarter: data.isStarter ?? false,
       isHiddenUntilDiscovered: data.isHiddenUntilDiscovered ?? true,
       isMajorDiscovery: data.isMajorDiscovery ?? false,
+      isActive: data.isActive ?? true,
       unlockedByType: data.unlockedByType ?? null,
       unlockedBySequenceNumber: data.unlockedBySequenceNumber ?? null,
+      unlockedAtDiscoveryCount: data.unlockedAtDiscoveryCount ?? null,
+      availableFromPhaseId: phaseSlug ? (phaseIdBySlug.get(phaseSlug) ?? null) : null,
     }
     const element = await prisma.element.upsert({
       where: { slug: def.slug },
@@ -287,11 +318,9 @@ export async function seedGameData(prisma: PrismaClient) {
   }
 
   // ---------- Reconciliación de contenido heredado ----------
-  // Apuesta se retiró del catálogo (fase 2). Sus recetas obsoletas ya se
-  // borraron arriba por clave de ingredientes; aquí se retira cualquier fila
-  // del elemento que aún exista en una base ya viva. Operación idempotente:
-  // en una base nueva simplemente no encuentra nada que borrar.
-  await prisma.element.deleteMany({ where: { slug: 'apuesta' } })
+  // Apuesta forma parte del catálogo de nuevo (fase 1 restaurada): ya no se
+  // borra. Se sigue sembrando como cualquier otro elemento en el loop de
+  // arriba, de forma idempotente.
 
   // «Persepcion espiritual» es un duplicado con errata que solo puede existir
   // en una base ya viva (este seed nunca lo crea). Se fusiona de forma
@@ -299,90 +328,54 @@ export async function seedGameData(prisma: PrismaClient) {
   // eliminarlo, preservando el progreso de los jugadores.
   await fusionarPercepcionEspiritualTypo(prisma, id('percepcion-espiritual'))
 
-  // Transición Fase 1 → Fase 2: los cuatro conceptos raíz (Espacio,
-  // Misticismo, Beyonder, Humano) comparten el mismo requisito AND y se
-  // desbloquean juntos en cuanto el jugador reúne Mundo, Historia, Profecía
-  // y Seer. El antiguo desencadenante directo Seer → Espacio queda retirado:
-  // ahora Espacio depende únicamente del requisito conjunto, igual que sus
-  // hermanos.
-  await prisma.elementUnlockTrigger.deleteMany({
-    where: { elementId: id('espacio'), triggerId: id('seer') },
+  // El diseño anterior desbloqueaba Espacio/Misticismo/Beyonder/Humano con un
+  // requisito AND conjunto (Mundo+Historia+Profecía+Seer), y Tiempo con un
+  // requisito AND (Monster) compuesto con Secuencia 6. Ambos quedan
+  // retirados: Humano ahora es inicial, Misticismo/Beyonder/Agua se desbloquean
+  // por fase, y Espacio/Tiempo permanecen sin ruta. Se retira explícitamente
+  // cualquier requisito AND heredado de una base que ya hubiera ejecutado el
+  // seed anterior.
+  const managedElementIds = [...bySlug.values()].map((element) => element.id)
+  await prisma.elementUnlockRequirement.deleteMany({
+    where: { elementId: { in: managedElementIds } },
   })
-  for (const targetSlug of PHASE1_TRANSITION_TARGET_SLUGS) {
+
+  // Requisitos AND declarativos vigentes (ninguno en esta entrega, ver
+  // buildDefaultAndRequirements). Sincronizados de forma genérica: se
+  // reemplazan por completo los requisitos de todos los elementos gestionados.
+  const andRequirements = buildDefaultAndRequirements()
+  for (const [targetSlug, requiredSlugs] of Object.entries(andRequirements)) {
     const targetId = id(targetSlug)
-    await prisma.elementUnlockRequirement.deleteMany({
-      where: { elementId: targetId },
-    })
     await prisma.elementUnlockRequirement.createMany({
-      data: PHASE1_TRANSITION_REQUIREMENT_SLUGS.map((requiredSlug) => ({
+      data: requiredSlugs.map((requiredSlug) => ({
         elementId: targetId,
         requiredElementId: id(requiredSlug),
       })),
     })
   }
 
-  // Tiempo: descubrimiento compuesto de Fase 3. Exige Monster (requisito AND)
-  // Y una Secuencia 6 activa (unlockedBySequenceNumber), nunca uno solo de
-  // los dos. Sin desencadenante directo.
-  await prisma.elementUnlockRequirement.deleteMany({ where: { elementId: id(TIME_SLUG) } })
-  await prisma.elementUnlockRequirement.createMany({
-    data: TIME_UNLOCK_REQUIREMENT_SLUGS.map((requiredSlug) => ({
-      elementId: id(TIME_SLUG),
-      requiredElementId: id(requiredSlug),
-    })),
+  // Desencadenantes directos declarativos (OR), como Mundo espiritual ←
+  // Proyección astral y Magia ← Trickmaster.
+  const directTriggers = buildDefaultTriggers()
+  await prisma.elementUnlockTrigger.deleteMany({
+    where: { elementId: { in: managedElementIds } },
   })
-
-  await prisma.elementUnlockTrigger.upsert({
-    where: {
-      elementId_triggerId: {
-        elementId: id('mundo-espiritual'),
-        triggerId: id('proyeccion-astral'),
-      },
-    },
-    update: {},
-    create: {
-      elementId: id('mundo-espiritual'),
-      triggerId: id('proyeccion-astral'),
-    },
-  })
-  await prisma.elementUnlockTrigger.upsert({
-    where: {
-      elementId_triggerId: {
-        elementId: id('magia'),
-        triggerId: id('trickmaster'),
-      },
-    },
-    update: {},
-    create: {
-      elementId: id('magia'),
-      triggerId: id('trickmaster'),
-    },
-  })
-  const elementUnlocks = [
-    ['sailor', 'iglesia-del-senor-de-las-tormentas'],
-    ['sleepless', 'iglesia-de-la-noche-eterna'],
-    ['corpse-collector', 'iglesia-de-la-noche-eterna'],
-    ['savant', 'iglesia-del-dios-del-vapor-y-la-maquinaria'],
-    ['mystery-pryer', 'iglesia-del-dios-del-vapor-y-la-maquinaria'],
-    ['ave', 'unshadowed'],
-    ['pluma', 'undying'],
-    ['pilar', 'imperative-mage'],
-    ['lobo', 'nightwatcher'],
-  ] as const
-  for (const [elementSlug, triggerSlug] of elementUnlocks) {
-    await prisma.elementUnlockTrigger.upsert({
-      where: {
-        elementId_triggerId: {
-          elementId: id(elementSlug),
+  for (const [targetSlug, triggerSlugs] of Object.entries(directTriggers)) {
+    for (const triggerSlug of triggerSlugs) {
+      await prisma.elementUnlockTrigger.upsert({
+        where: {
+          elementId_triggerId: {
+            elementId: id(targetSlug),
+            triggerId: id(triggerSlug),
+          },
+        },
+        update: {},
+        create: {
+          elementId: id(targetSlug),
           triggerId: id(triggerSlug),
         },
-      },
-      update: {},
-      create: {
-        elementId: id(elementSlug),
-        triggerId: id(triggerSlug),
-      },
-    })
+      })
+    }
   }
   const caminoVisionario = await prisma.pathway.upsert({
     where: { slug: 'camino-del-visionario' },
@@ -430,7 +423,12 @@ export async function seedGameData(prisma: PrismaClient) {
   for (const s of secuencias) {
     const sequence = await prisma.sequence.upsert({
       where: { elementId: id(s.slug) },
-      update: {},
+      update: {
+        pathwayId: s.camino.id,
+        number: s.number,
+        name: s.name,
+        description: null,
+      },
       create: {
         pathwayId: s.camino.id,
         number: s.number,
@@ -448,10 +446,7 @@ export async function seedGameData(prisma: PrismaClient) {
   // basta con resincronizar salidas). El borrado explícito mantiene
   // idempotente una base que ya hubiera ejecutado una versión anterior del
   // seed.
-  await prisma.recipe.deleteMany({
-    where: {
-      inputKey: {
-        in: [
+  const obsoleteRecipeInputKeys = [
           buildRecipeInputKey([{ slug: 'nacion', quantity: 2 }]),
           buildRecipeInputKey([
             { slug: 'fuego', quantity: 1 },
@@ -496,37 +491,67 @@ export async function seedGameData(prisma: PrismaClient) {
           buildRecipeInputKey([{ slug: 'vision', quantity: 1 }, { slug: 'tiempo', quantity: 1 }]),
           buildRecipeInputKey([{ slug: 'observacion', quantity: 1 }, { slug: 'tiempo', quantity: 1 }]),
           buildRecipeInputKey([{ slug: 'registro', quantity: 1 }, { slug: 'tiempo', quantity: 1 }]),
-          buildRecipeInputKey([{ slug: 'adivinacion', quantity: 1 }, { slug: 'destino', quantity: 1 }]),
-          buildRecipeInputKey([{ slug: 'apuesta', quantity: 1 }, { slug: 'moneda', quantity: 1 }]),
           buildRecipeInputKey([{ slug: 'experiencia-2', quantity: 1 }, { slug: 'percepcion', quantity: 1 }]),
           buildRecipeInputKey([{ slug: 'beyonder', quantity: 1 }, { slug: 'tiempo', quantity: 1 }]),
           buildRecipeInputKey([{ slug: 'ruptura', quantity: 1 }, { slug: 'tiempo', quantity: 1 }]),
           // Defensivo: clave heredada de una base ya viva (nunca existió en
           // este seed) donde Conocimiento se fabricaba con Humano.
           buildRecipeInputKey([{ slug: 'experiencia-2', quantity: 1 }, { slug: 'humano', quantity: 1 }]),
-        ],
-      },
+          // Rediseño de progresión temprana (esta entrega): Historia ahora se
+          // produce con Registro + Era, no con Mundo + Registro, para que
+          // nunca aparezca antes que Era.
+          buildRecipeInputKey([{ slug: 'mundo', quantity: 1 }, { slug: 'registro', quantity: 1 }]),
+          buildRecipeInputKey([{ slug: 'humano', quantity: 1 }, { slug: 'vejez', quantity: 1 }]),
+          buildRecipeInputKey([{ slug: 'intuicion', quantity: 1 }, { slug: 'persepcion-espiritual', quantity: 1 }]),
+          buildRecipeInputKey([{ slug: 'persepcion-espiritual', quantity: 1 }, { slug: 'secreto', quantity: 1 }]),
+  ]
+  await prisma.$transaction([
+    // El historial sin un avance vigente pertenece a la fórmula retirada y no
+    // debe reaparecer como una combinación fallida.
+    prisma.playerCombinationStat.deleteMany({
+      where: { inputKey: { in: obsoleteRecipeInputKeys }, advanceId: null },
+    }),
+    prisma.recipe.deleteMany({
+      where: { inputKey: { in: obsoleteRecipeInputKeys } },
+    }),
+  ])
+  // Susurro dejó de formar parte del catálogo, pero una fila histórica se
+  // conserva como lápida inactiva para no borrar descubrimientos de jugadores.
+  await prisma.element.updateMany({
+    where: { slug: 'susurro' },
+    data: {
+      isActive: false,
+      isStarter: false,
+      isHiddenUntilDiscovered: true,
+      unlockedByType: null,
+      unlockedBySequenceNumber: null,
+      unlockedAtDiscoveryCount: null,
     },
   })
-  // Susurro dejó de formar parte del catálogo. El borrado en cascada retira
-  // su salida histórica de Humano ×2 y cualquier progreso asociado.
-  await prisma.element.deleteMany({ where: { slug: 'susurro' } })
 
   // Sincronización determinista de recetas gestionadas: ingredientes, salidas
   // e isActive terminan coincidiendo EXACTAMENTE con la definición, incluso
   // en una base que ya hubiera corrido una versión anterior del seed (se
   // borran filas obsoletas, no solo se añaden las que faltan).
+  const suppressedRecipeInputKeys = new Set(
+    (await prisma.recipeSeedSuppression.findMany({ select: { inputKey: true } })).map(
+      (suppression) => suppression.inputKey,
+    ),
+  )
   for (const r of recetas) {
     const inputKey = buildRecipeInputKey(
       r.ings.map(([slug, quantity]) => ({ slug, quantity })),
     )
+    if (suppressedRecipeInputKeys.has(inputKey)) continue
+
     const isActive = r.isActive ?? true
     const recipe = await prisma.recipe.upsert({
       where: { inputKey },
-      update: { isActive },
+      update: { isActive, minimumDiscoveries: 0 },
       create: {
         inputKey,
         isActive,
+        minimumDiscoveries: 0,
         ingredients: {
           create: r.ings.map(([slug, quantity]) => ({
             elementId: id(slug),
@@ -573,6 +598,10 @@ export async function seedGameData(prisma: PrismaClient) {
     await prisma.recipeOutput.deleteMany({
       where: { recipeId: recipe.id, elementId: { notIn: [...outputElementIds] } },
     })
+    await prisma.playerCombinationStat.updateMany({
+      where: { inputKey, recipeId: null },
+      data: { recipeId: recipe.id },
+    })
   }
 
   // Una versión anterior entregaba Folk of Rage junto con Furia. Se conserva
@@ -603,16 +632,33 @@ export async function seedGameData(prisma: PrismaClient) {
     )
     const savedAdvance = await prisma.advance.upsert({
       where: { inputKey },
-      update: {},
+      update: {
+        internalName: advance.internalName,
+        sourceSequenceId: sourceSequence.id,
+        targetSequenceId: targetSequence.id,
+        isActive: advance.isActive ?? true,
+      },
       create: {
         internalName: advance.internalName,
         inputKey,
         sourceSequenceId: sourceSequence.id,
         targetSequenceId: targetSequence.id,
+        isActive: advance.isActive ?? true,
         ingredients: {
           create: advance.ingredients.map((slug) => ({ elementId: id(slug), quantity: 1 })),
         },
       },
+    })
+    const ingredientIds = advance.ingredients.map(id)
+    for (const slug of advance.ingredients) {
+      await prisma.advanceIngredient.upsert({
+        where: { advanceId_elementId: { advanceId: savedAdvance.id, elementId: id(slug) } },
+        update: { quantity: 1 },
+        create: { advanceId: savedAdvance.id, elementId: id(slug), quantity: 1 },
+      })
+    }
+    await prisma.advanceIngredient.deleteMany({
+      where: { advanceId: savedAdvance.id, elementId: { notIn: ingredientIds } },
     })
     advanceByName.set(advance.internalName, savedAdvance)
   }
@@ -775,25 +821,52 @@ export async function seedGameData(prisma: PrismaClient) {
     const inputKey = buildRecipeInputKey(
       ritual.ingredients.map((slug) => ({ slug, quantity: 1 })),
     )
-    await prisma.ritual.upsert({
+    const isActive = ritual.isActive ?? true
+    const failureOutputs = ritual.failureOutputs ?? [...DEFAULT_RITUAL_FAILURE_OUTPUTS]
+    const savedRitual = await prisma.ritual.upsert({
       where: { inputKey },
-      update: {},
+      update: {
+        name: ritual.name,
+        advanceId: advance.id,
+        requiredSequenceNumber: ritual.requiredSequenceNumber,
+        isActive,
+      },
       create: {
         name: ritual.name,
         inputKey,
         advanceId: advance.id,
         requiredSequenceNumber: ritual.requiredSequenceNumber,
+        isActive,
         ingredients: {
           create: ritual.ingredients.map((slug) => ({ elementId: id(slug), quantity: 1 })),
         },
         failureOutputs: {
-          create: [
-            { elementId: id('perdida-de-control') },
-            { elementId: id('monstruo-descontrol') },
-            { elementId: id('corrupcion-de-alborotador') },
-          ],
+          create: failureOutputs.map((slug) => ({ elementId: id(slug) })),
         },
       },
+    })
+    const ingredientIds = ritual.ingredients.map(id)
+    for (const slug of ritual.ingredients) {
+      await prisma.ritualIngredient.upsert({
+        where: { ritualId_elementId: { ritualId: savedRitual.id, elementId: id(slug) } },
+        update: { quantity: 1 },
+        create: { ritualId: savedRitual.id, elementId: id(slug), quantity: 1 },
+      })
+    }
+    await prisma.ritualIngredient.deleteMany({
+      where: { ritualId: savedRitual.id, elementId: { notIn: ingredientIds } },
+    })
+
+    const failureOutputIds = failureOutputs.map(id)
+    for (const slug of failureOutputs) {
+      await prisma.ritualFailureOutput.upsert({
+        where: { ritualId_elementId: { ritualId: savedRitual.id, elementId: id(slug) } },
+        update: {},
+        create: { ritualId: savedRitual.id, elementId: id(slug) },
+      })
+    }
+    await prisma.ritualFailureOutput.deleteMany({
+      where: { ritualId: savedRitual.id, elementId: { notIn: failureOutputIds } },
     })
   }
 }
@@ -803,69 +876,191 @@ export async function seedGameData(prisma: PrismaClient) {
 // Este seed nunca crea el typo: la función solo actúa sobre bases ya vivas
 // que lo hayan arrastrado, y es segura de ejecutar más de una vez.
 async function fusionarPercepcionEspiritualTypo(prisma: PrismaClient, canonicalId: string) {
-  const typo = await prisma.element.findFirst({
-    where: { name: 'Persepcion espiritual' },
+  const typos = await prisma.element.findMany({
+    where: {
+      id: { not: canonicalId },
+      OR: [{ name: 'Persepcion espiritual' }, { slug: 'persepcion-espiritual' }],
+    },
   })
-  if (!typo) return
 
-  await prisma.$transaction(async (tx) => {
-    const ingredientRows = await tx.recipeIngredient.findMany({ where: { elementId: typo.id } })
-    for (const row of ingredientRows) {
-      const exists = await tx.recipeIngredient.findUnique({
-        where: { recipeId_elementId: { recipeId: row.recipeId, elementId: canonicalId } },
-      })
-      if (!exists) {
-        await tx.recipeIngredient.update({ where: { id: row.id }, data: { elementId: canonicalId } })
+  for (const typo of typos) {
+    await prisma.$transaction(async (tx) => {
+      const recipeIds = new Set<string>()
+      for (const row of await tx.recipeIngredient.findMany({ where: { elementId: typo.id } })) {
+        recipeIds.add(row.recipeId)
+        const exists = await tx.recipeIngredient.findUnique({
+          where: { recipeId_elementId: { recipeId: row.recipeId, elementId: canonicalId } },
+        })
+        if (exists) await tx.recipeIngredient.delete({ where: { id: row.id } })
+        else await tx.recipeIngredient.update({ where: { id: row.id }, data: { elementId: canonicalId } })
       }
-    }
 
-    const outputRows = await tx.recipeOutput.findMany({ where: { elementId: typo.id } })
-    for (const row of outputRows) {
-      const exists = await tx.recipeOutput.findUnique({
-        where: { recipeId_elementId: { recipeId: row.recipeId, elementId: canonicalId } },
-      })
-      if (!exists) {
-        await tx.recipeOutput.update({ where: { id: row.id }, data: { elementId: canonicalId } })
+      for (const recipeId of recipeIds) {
+        const ingredients = await tx.recipeIngredient.findMany({
+          where: { recipeId },
+          include: { element: { select: { slug: true } } },
+        })
+        const inputKey = buildRecipeInputKey(
+          ingredients.map((row) => ({ slug: row.element.slug, quantity: row.quantity })),
+        )
+        const conflict = await tx.recipe.findUnique({ where: { inputKey } })
+        if (conflict && conflict.id !== recipeId) {
+          const outputs = await tx.recipeOutput.findMany({ where: { recipeId } })
+          for (const output of outputs) {
+            await tx.recipeOutput.upsert({
+              where: {
+                recipeId_elementId: { recipeId: conflict.id, elementId: output.elementId },
+              },
+              update: {},
+              create: {
+                recipeId: conflict.id,
+                elementId: output.elementId,
+                quantity: output.quantity,
+                chance: output.chance,
+                sortOrder: output.sortOrder,
+              },
+            })
+          }
+          await tx.playerCombinationStat.updateMany({
+            where: { recipeId },
+            data: { recipeId: conflict.id },
+          })
+          await tx.recipe.delete({ where: { id: recipeId } })
+        } else {
+          await tx.recipe.update({ where: { id: recipeId }, data: { inputKey } })
+        }
       }
-    }
 
-    // Descubrimientos de jugadores: se fusionan preservando el primer
-    // descubrimiento, el último `lastCreatedAt` y sumando `timesCreated`
-    // sin violar la clave compuesta (profileId, elementId).
-    const typoDiscoveries = await tx.playerDiscovery.findMany({ where: { elementId: typo.id } })
-    for (const disc of typoDiscoveries) {
-      const canonical = await tx.playerDiscovery.findUnique({
-        where: { profileId_elementId: { profileId: disc.profileId, elementId: canonicalId } },
+      for (const row of await tx.recipeOutput.findMany({ where: { elementId: typo.id } })) {
+        const exists = await tx.recipeOutput.findUnique({
+          where: { recipeId_elementId: { recipeId: row.recipeId, elementId: canonicalId } },
+        })
+        if (exists) await tx.recipeOutput.delete({ where: { id: row.id } })
+        else await tx.recipeOutput.update({ where: { id: row.id }, data: { elementId: canonicalId } })
+      }
+
+      const advanceIds = new Set<string>()
+      for (const row of await tx.advanceIngredient.findMany({ where: { elementId: typo.id } })) {
+        advanceIds.add(row.advanceId)
+        const exists = await tx.advanceIngredient.findUnique({
+          where: { advanceId_elementId: { advanceId: row.advanceId, elementId: canonicalId } },
+        })
+        if (exists) await tx.advanceIngredient.delete({ where: { id: row.id } })
+        else await tx.advanceIngredient.update({ where: { id: row.id }, data: { elementId: canonicalId } })
+      }
+      for (const advanceId of advanceIds) {
+        const ingredients = await tx.advanceIngredient.findMany({
+          where: { advanceId },
+          include: { element: { select: { slug: true } } },
+        })
+        const inputKey = buildRecipeInputKey(
+          ingredients.map((row) => ({ slug: row.element.slug, quantity: row.quantity })),
+        )
+        const conflict = await tx.advance.findUnique({ where: { inputKey } })
+        if (conflict && conflict.id !== advanceId) {
+          throw new Error(`No se puede fusionar el avance legacy duplicado ${inputKey} sin revisar su progreso`)
+        }
+        await tx.advance.update({ where: { id: advanceId }, data: { inputKey } })
+      }
+
+      const ritualIds = new Set<string>()
+      for (const row of await tx.ritualIngredient.findMany({ where: { elementId: typo.id } })) {
+        ritualIds.add(row.ritualId)
+        const exists = await tx.ritualIngredient.findUnique({
+          where: { ritualId_elementId: { ritualId: row.ritualId, elementId: canonicalId } },
+        })
+        if (exists) await tx.ritualIngredient.delete({ where: { id: row.id } })
+        else await tx.ritualIngredient.update({ where: { id: row.id }, data: { elementId: canonicalId } })
+      }
+      for (const ritualId of ritualIds) {
+        const ingredients = await tx.ritualIngredient.findMany({
+          where: { ritualId },
+          include: { element: { select: { slug: true } } },
+        })
+        const inputKey = buildRecipeInputKey(
+          ingredients.map((row) => ({ slug: row.element.slug, quantity: row.quantity })),
+        )
+        const conflict = await tx.ritual.findUnique({ where: { inputKey } })
+        if (conflict && conflict.id !== ritualId) {
+          throw new Error(`No se puede fusionar el ritual legacy duplicado ${inputKey} sin revisar su progreso`)
+        }
+        await tx.ritual.update({ where: { id: ritualId }, data: { inputKey } })
+      }
+
+      for (const row of await tx.ritualFailureOutput.findMany({ where: { elementId: typo.id } })) {
+        const exists = await tx.ritualFailureOutput.findUnique({
+          where: { ritualId_elementId: { ritualId: row.ritualId, elementId: canonicalId } },
+        })
+        if (exists) {
+          await tx.ritualFailureOutput.delete({
+            where: { ritualId_elementId: { ritualId: row.ritualId, elementId: typo.id } },
+          })
+        } else {
+          await tx.ritualFailureOutput.update({
+            where: { ritualId_elementId: { ritualId: row.ritualId, elementId: typo.id } },
+            data: { elementId: canonicalId },
+          })
+        }
+      }
+
+      const typoSequence = await tx.sequence.findUnique({ where: { elementId: typo.id } })
+      if (typoSequence) {
+        const canonicalSequence = await tx.sequence.findUnique({ where: { elementId: canonicalId } })
+        if (canonicalSequence) {
+          throw new Error('El typo de Percepción espiritual no puede fusionar dos secuencias distintas')
+        }
+        await tx.sequence.update({ where: { id: typoSequence.id }, data: { elementId: canonicalId } })
+      }
+
+      await tx.achievement.updateMany({
+        where: { triggerElementId: typo.id },
+        data: { triggerElementId: canonicalId },
       })
-      if (!canonical) {
-        await tx.playerDiscovery.create({
-          data: {
-            profileId: disc.profileId,
+
+      for (const category of await tx.elementCategory.findMany({ where: { elementId: typo.id } })) {
+        await tx.elementCategory.upsert({
+          where: {
+            elementId_categoryId: { elementId: canonicalId, categoryId: category.categoryId },
+          },
+          update: { isPrimary: category.isPrimary },
+          create: {
             elementId: canonicalId,
-            firstDiscoveredAt: disc.firstDiscoveredAt,
-            lastCreatedAt: disc.lastCreatedAt,
-            timesCreated: disc.timesCreated,
-          },
-        })
-      } else {
-        await tx.playerDiscovery.update({
-          where: { profileId_elementId: { profileId: disc.profileId, elementId: canonicalId } },
-          data: {
-            firstDiscoveredAt:
-              disc.firstDiscoveredAt < canonical.firstDiscoveredAt
-                ? disc.firstDiscoveredAt
-                : canonical.firstDiscoveredAt,
-            lastCreatedAt:
-              disc.lastCreatedAt > canonical.lastCreatedAt ? disc.lastCreatedAt : canonical.lastCreatedAt,
-            timesCreated: canonical.timesCreated + disc.timesCreated,
+            categoryId: category.categoryId,
+            isPrimary: category.isPrimary,
           },
         })
       }
-    }
 
-    // El borrado en cascada retira cualquier fila restante (ingrediente,
-    // salida o descubrimiento sin canónico, requisito, desencadenante) que
-    // todavía referencie el duplicado.
-    await tx.element.delete({ where: { id: typo.id } })
-  })
+      // Descubrimientos de jugadores: se fusionan preservando el primero, el
+      // último `lastCreatedAt` y la suma de creaciones.
+      const typoDiscoveries = await tx.playerDiscovery.findMany({ where: { elementId: typo.id } })
+      for (const disc of typoDiscoveries) {
+        const canonical = await tx.playerDiscovery.findUnique({
+          where: { profileId_elementId: { profileId: disc.profileId, elementId: canonicalId } },
+        })
+        if (!canonical) {
+          await tx.playerDiscovery.create({ data: { ...disc, elementId: canonicalId } })
+        } else {
+          await tx.playerDiscovery.update({
+            where: { profileId_elementId: { profileId: disc.profileId, elementId: canonicalId } },
+            data: {
+              firstDiscoveredAt:
+                disc.firstDiscoveredAt < canonical.firstDiscoveredAt
+                  ? disc.firstDiscoveredAt
+                  : canonical.firstDiscoveredAt,
+              lastCreatedAt:
+                disc.lastCreatedAt > canonical.lastCreatedAt ? disc.lastCreatedAt : canonical.lastCreatedAt,
+              timesCreated: canonical.timesCreated + disc.timesCreated,
+            },
+          })
+        }
+      }
+
+      await tx.element.delete({ where: { id: typo.id } })
+    })
+  }
+
+  // La regla administrada se conserva; solo se recalcula la métrica usada
+  // como denominador por las condiciones porcentuales.
+  await sincronizarUmbralesFases(prisma)
 }

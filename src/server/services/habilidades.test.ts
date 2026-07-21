@@ -4,13 +4,23 @@ import type { PrismaClient } from '@/generated/prisma/client'
 import { resolverFacultades } from './habilidades'
 
 function dbConDescubrimientos(slugs: string[]) {
+  const phase = {
+    id: 'phase-1',
+    slug: 'fase-1',
+    name: 'Fase 1',
+    sortOrder: 1,
+    unlockAtDiscoveryCount: 0,
+    isActive: true,
+  }
   return {
     playerDiscovery: {
       // El filtro `element: { isActive: true, slug: { in } }` vive en la
       // consulta real; aquí el mock ya representa el resultado tras ese
       // filtro, así que un slug "inactivo" nunca aparece en la lista.
       findMany: async () => slugs.map((slug) => ({ element: { slug } })),
+      count: async () => slugs.length,
     },
+    progressionPhase: { findMany: async () => [phase] },
   } as unknown as PrismaClient
 }
 

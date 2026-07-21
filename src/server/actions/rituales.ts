@@ -5,6 +5,7 @@ import { prisma } from '../db'
 import { exigirAdminAccion, NoAutorizadoError } from '../adminAuth'
 import { ritualSchema } from '../schemas'
 import { derivarInputKey, RecetaError } from '../services/recetas'
+import { sincronizarUmbralesFases } from '../services/fasesProgresion'
 import type { EstadoAccion } from './tipos'
 
 function ingredientesDe(a: string, b: string) {
@@ -63,7 +64,9 @@ export async function guardarRitual(
         })
       }
     })
+    await sincronizarUmbralesFases(prisma)
     revalidatePath('/admin/rituales')
+    revalidatePath('/admin/arbol')
     return { ok: true, error: null }
   } catch (error) {
     if (error instanceof NoAutorizadoError) return { ok: false, error: 'No autorizado.' }
@@ -73,8 +76,27 @@ export async function guardarRitual(
   }
 }
 
+export async function alternarRitualActivo(id: string): Promise<EstadoAccion> {
+  try {
+    await exigirAdminAccion()
+    const ritual = await prisma.ritual.findUnique({ where: { id }, select: { isActive: true } })
+    if (!ritual) return { ok: false, error: 'El ritual no existe.' }
+    await prisma.ritual.update({ where: { id }, data: { isActive: !ritual.isActive } })
+    await sincronizarUmbralesFases(prisma)
+    revalidatePath('/admin/rituales')
+    revalidatePath('/admin/arbol')
+    return { ok: true, error: null }
+  } catch (error) {
+    if (error instanceof NoAutorizadoError) return { ok: false, error: 'No autorizado.' }
+    console.error('[alternarRitualActivo]', error)
+    return { ok: false, error: 'No se pudo cambiar el estado del ritual.' }
+  }
+}
+
 export async function eliminarRitual(id: string): Promise<void> {
   await exigirAdminAccion()
   await prisma.ritual.delete({ where: { id } })
+  await sincronizarUmbralesFases(prisma)
   revalidatePath('/admin/rituales')
+  revalidatePath('/admin/arbol')
 }
