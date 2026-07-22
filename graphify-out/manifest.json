@@ -1,0 +1,1242 @@
+{
+  "eslint.config.mjs": {
+    "mtime": 1784685507.6909177,
+    "ast_hash": "7ec7398156d9fad631665cd4eaa5057d",
+    "semantic_hash": "7ec7398156d9fad631665cd4eaa5057d"
+  },
+  "mcp/cards-http.ts": {
+    "mtime": 1784570807.2339804,
+    "ast_hash": "9d224f5fe42ab944b5b14bf50988b5f0",
+    "semantic_hash": "9d224f5fe42ab944b5b14bf50988b5f0"
+  },
+  "mcp/cards-stdio.ts": {
+    "mtime": 1784570807.2319858,
+    "ast_hash": "487baae4d31b9322074a00ecc26c11df",
+    "semantic_hash": "487baae4d31b9322074a00ecc26c11df"
+  },
+  "next.config.ts": {
+    "mtime": 1784168073.2269301,
+    "ast_hash": "abfd1604bea23715ba125a4ae539704b",
+    "semantic_hash": "abfd1604bea23715ba125a4ae539704b"
+  },
+  "opencode.json": {
+    "mtime": 1784568862.0037825,
+    "ast_hash": "be0fd43c9be9d3cdb582c90dfd373e25",
+    "semantic_hash": "be0fd43c9be9d3cdb582c90dfd373e25"
+  },
+  "package.json": {
+    "mtime": 1784570482.9661334,
+    "ast_hash": "d755701e7d0208a447a19c5a085df990",
+    "semantic_hash": "d755701e7d0208a447a19c5a085df990"
+  },
+  "postcss.config.mjs": {
+    "mtime": 1783971360.419649,
+    "ast_hash": "cb2ccb27c4cc2a6f427821fed28e927e",
+    "semantic_hash": "cb2ccb27c4cc2a6f427821fed28e927e"
+  },
+  "prisma.config.ts": {
+    "mtime": 1783971609.0324614,
+    "ast_hash": "ceca8adc7d8d55696fd4ee47dcf1834b",
+    "semantic_hash": "ceca8adc7d8d55696fd4ee47dcf1834b"
+  },
+  "prisma/migrations/20260713194020_init/migration.sql": {
+    "mtime": 1783971620.5149918,
+    "ast_hash": "05b3d5224c8cd473669a55cfe6ac90ba",
+    "semantic_hash": "05b3d5224c8cd473669a55cfe6ac90ba"
+  },
+  "prisma/migrations/20260713220000_recipe_outputs_and_cascade/migration.sql": {
+    "mtime": 1784000523.4238684,
+    "ast_hash": "6e1ff890acb7976bb617b0a80e2f0e0b",
+    "semantic_hash": "6e1ff890acb7976bb617b0a80e2f0e0b"
+  },
+  "prisma/migrations/20260713235955_desbloqueo_automatico_por_tipo/migration.sql": {
+    "mtime": 1783987195.8527098,
+    "ast_hash": "09e84ba5da1e93ee9286a0d2f086c07a",
+    "semantic_hash": "09e84ba5da1e93ee9286a0d2f086c07a"
+  },
+  "prisma/migrations/20260714001237_desencadenantes_por_elemento/migration.sql": {
+    "mtime": 1783987957.073942,
+    "ast_hash": "55eb55028b03b0023af9794b9fec7ee3",
+    "semantic_hash": "55eb55028b03b0023af9794b9fec7ee3"
+  },
+  "prisma/migrations/20260714010000_avances/migration.sql": {
+    "mtime": 1783993666.0196874,
+    "ast_hash": "7271c6aa033661a8520b614ae7619afc",
+    "semantic_hash": "7271c6aa033661a8520b614ae7619afc"
+  },
+  "prisma/migrations/20260714020000_logros/migration.sql": {
+    "mtime": 1783997359.6396236,
+    "ast_hash": "9048b276ee627aac348fbfb745d5c30b",
+    "semantic_hash": "9048b276ee627aac348fbfb745d5c30b"
+  },
+  "prisma/migrations/20260714030000_desbloqueo_por_numero_secuencia/migration.sql": {
+    "mtime": 1783998639.5939965,
+    "ast_hash": "75bf9854df32c0b139f36e0ef4490ecd",
+    "semantic_hash": "75bf9854df32c0b139f36e0ef4490ecd"
+  },
+  "prisma/migrations/20260714040000_rituales/migration.sql": {
+    "mtime": 1783999585.5051243,
+    "ast_hash": "504641b8592e99a7c4de863aa0b709f1",
+    "semantic_hash": "504641b8592e99a7c4de863aa0b709f1"
+  },
+  "prisma/migrations/20260715010000_multiple_rituals_per_advance/migration.sql": {
+    "mtime": 1784170077.1471145,
+    "ast_hash": "8c55b5bab061bbc3df150acca91c0894",
+    "semantic_hash": "8c55b5bab061bbc3df150acca91c0894"
+  },
+  "prisma/migrations/20260716010000_element_unlock_requirements/migration.sql": {
+    "mtime": 1784244954.43794,
+    "ast_hash": "1447e5eb9f5d2fbe1e58ffd83c3bf37d",
+    "semantic_hash": "1447e5eb9f5d2fbe1e58ffd83c3bf37d"
+  },
+  "prisma/migrations/20260718000000_declarative_unlock_thresholds/migration.sql": {
+    "mtime": 1784413916.7330582,
+    "ast_hash": "f7b5060de6cf389ef8849135fead9376",
+    "semantic_hash": "f7b5060de6cf389ef8849135fead9376"
+  },
+  "prisma/migrations/20260719000000_progression_phases/migration.sql": {
+    "mtime": 1784486672.119539,
+    "ast_hash": "3115ec955e439cec0088e33c7463027d",
+    "semantic_hash": "3115ec955e439cec0088e33c7463027d"
+  },
+  "prisma/migrations/20260719010000_global_element_pool/migration.sql": {
+    "mtime": 1784502504.501795,
+    "ast_hash": "b4eeb62dd3f2a06891efc47abccd14e0",
+    "semantic_hash": "b4eeb62dd3f2a06891efc47abccd14e0"
+  },
+  "prisma/migrations/20260720000000_phase_advancement_rules/migration.sql": {
+    "mtime": 1784571090.0175226,
+    "ast_hash": "0bedbdf06e9c2122f88e85b4453f6d7c",
+    "semantic_hash": "0bedbdf06e9c2122f88e85b4453f6d7c"
+  },
+  "prisma/migrations/20260720010000_recipe_delete_integrity/migration.sql": {
+    "mtime": 1784574847.0933487,
+    "ast_hash": "187708490e3a2b220dfe461445f1a919",
+    "semantic_hash": "187708490e3a2b220dfe461445f1a919"
+  },
+  "prisma/migrations/20260720020000_recipe_seed_suppressions/migration.sql": {
+    "mtime": 1784575701.3541627,
+    "ast_hash": "80c0173564f5c07be0debd48a29bc124",
+    "semantic_hash": "80c0173564f5c07be0debd48a29bc124"
+  },
+  "prisma/migrations/20260720030000_feature_gates/migration.sql": {
+    "mtime": 1784584419.8334498,
+    "ast_hash": "e620374318b6296365fc2b598b30e6eb",
+    "semantic_hash": "e620374318b6296365fc2b598b30e6eb"
+  },
+  "prisma/migrations/20260720040000_phase_celebrations/migration.sql": {
+    "mtime": 1784596196.1282873,
+    "ast_hash": "befbd066334d5c072aca0bccdf934515",
+    "semantic_hash": "befbd066334d5c072aca0bccdf934515"
+  },
+  "prisma/seed-content/advances.ts": {
+    "mtime": 1784434435.4653828,
+    "ast_hash": "c4b6ce94f167dc07dca797d6e79aac2e",
+    "semantic_hash": "c4b6ce94f167dc07dca797d6e79aac2e"
+  },
+  "prisma/seed-content/catalogs.test.ts": {
+    "mtime": 1784502529.588823,
+    "ast_hash": "c8f08f6992eb49db940b7e56a6d0672c",
+    "semantic_hash": "c8f08f6992eb49db940b7e56a6d0672c"
+  },
+  "prisma/seed-content/db-closure.test.ts": {
+    "mtime": 1784596522.8140872,
+    "ast_hash": "8450023bc72a78efdec714d2f2a511ad",
+    "semantic_hash": "8450023bc72a78efdec714d2f2a511ad"
+  },
+  "prisma/seed-content/elements.ts": {
+    "mtime": 1784502504.4957705,
+    "ast_hash": "bda35a277f6d12b1cf9937110a7a2ef2",
+    "semantic_hash": "bda35a277f6d12b1cf9937110a7a2ef2"
+  },
+  "prisma/seed-content/phases.test.ts": {
+    "mtime": 1784577020.3136473,
+    "ast_hash": "16ed6feff05488fd49ce46e7218d282f",
+    "semantic_hash": "16ed6feff05488fd49ce46e7218d282f"
+  },
+  "prisma/seed-content/phases.ts": {
+    "mtime": 1784596196.1373198,
+    "ast_hash": "1768d4466096fc55cac5c97d652fbbcd",
+    "semantic_hash": "1768d4466096fc55cac5c97d652fbbcd"
+  },
+  "prisma/seed-content/progression-input.ts": {
+    "mtime": 1784584672.8855896,
+    "ast_hash": "24a48d2b12360783be774cb4a04e42b4",
+    "semantic_hash": "24a48d2b12360783be774cb4a04e42b4"
+  },
+  "prisma/seed-content/progression-simulator.test.ts": {
+    "mtime": 1784584672.8882418,
+    "ast_hash": "480aff35b23dfb3d1aa0e4e908dd4081",
+    "semantic_hash": "480aff35b23dfb3d1aa0e4e908dd4081"
+  },
+  "prisma/seed-content/progression-simulator.ts": {
+    "mtime": 1784584672.883587,
+    "ast_hash": "2069adf538bc1da6fd964e9710ae3328",
+    "semantic_hash": "2069adf538bc1da6fd964e9710ae3328"
+  },
+  "prisma/seed-content/progression.test.ts": {
+    "mtime": 1784577020.3321662,
+    "ast_hash": "3eec0ea748d88717bf94ffc255325b85",
+    "semantic_hash": "3eec0ea748d88717bf94ffc255325b85"
+  },
+  "prisma/seed-content/progression.ts": {
+    "mtime": 1784577020.2833865,
+    "ast_hash": "759366392cbd25a09ab77a0e11887774",
+    "semantic_hash": "759366392cbd25a09ab77a0e11887774"
+  },
+  "prisma/seed-content/recipes.ts": {
+    "mtime": 1784488357.8900778,
+    "ast_hash": "19c9f833739b56c3f59363833824e266",
+    "semantic_hash": "19c9f833739b56c3f59363833824e266"
+  },
+  "prisma/seed-content/rituals.ts": {
+    "mtime": 1784419025.1840487,
+    "ast_hash": "7fb22412389b60597821be960370e206",
+    "semantic_hash": "7fb22412389b60597821be960370e206"
+  },
+  "prisma/seed-content/runtime-progression-replay.ts": {
+    "mtime": 1784437476.830593,
+    "ast_hash": "9c3e19596b5ce2035ab9f67fd69f0164",
+    "semantic_hash": "9c3e19596b5ce2035ab9f67fd69f0164"
+  },
+  "prisma/seed-content/sequences.ts": {
+    "mtime": 1784345096.6524968,
+    "ast_hash": "9207af190e0a971950aeb895e0f6ba1f",
+    "semantic_hash": "9207af190e0a971950aeb895e0f6ba1f"
+  },
+  "prisma/seed-data.ts": {
+    "mtime": 1784596196.1443806,
+    "ast_hash": "f40d73e98e82830bec9faeb1b19dca30",
+    "semantic_hash": "f40d73e98e82830bec9faeb1b19dca30"
+  },
+  "prisma/seed.ts": {
+    "mtime": 1783971890.635603,
+    "ast_hash": "60c5d7753eca03ef672cd95f3a491df5",
+    "semantic_hash": "60c5d7753eca03ef672cd95f3a491df5"
+  },
+  "skills-lock.json": {
+    "mtime": 1784486114.2001112,
+    "ast_hash": "c48c2a72af8439dfe80381836a0ad969",
+    "semantic_hash": "c48c2a72af8439dfe80381836a0ad969"
+  },
+  "src/app/admin/(panel)/arbol/page.tsx": {
+    "mtime": 1784510484.8253076,
+    "ast_hash": "e220c4cc3857ddbb4aaf0a2043216671",
+    "semantic_hash": "e220c4cc3857ddbb4aaf0a2043216671"
+  },
+  "src/app/admin/(panel)/avances/[id]/page.tsx": {
+    "mtime": 1783994136.531445,
+    "ast_hash": "e00bddef6568d4f192d9be1a22e7141e",
+    "semantic_hash": "e00bddef6568d4f192d9be1a22e7141e"
+  },
+  "src/app/admin/(panel)/avances/nuevo/page.tsx": {
+    "mtime": 1783994136.531445,
+    "ast_hash": "37b8c5d23be7f0ef0d6bff92736885e3",
+    "semantic_hash": "37b8c5d23be7f0ef0d6bff92736885e3"
+  },
+  "src/app/admin/(panel)/avances/page.tsx": {
+    "mtime": 1784386438.0281782,
+    "ast_hash": "1a3b7ff76cb492d16a3eaea2653f74ee",
+    "semantic_hash": "1a3b7ff76cb492d16a3eaea2653f74ee"
+  },
+  "src/app/admin/(panel)/caminos/page.tsx": {
+    "mtime": 1783989188.4627273,
+    "ast_hash": "875eea26365aa408926156ebd272710d",
+    "semantic_hash": "875eea26365aa408926156ebd272710d"
+  },
+  "src/app/admin/(panel)/categorias/page.tsx": {
+    "mtime": 1784386502.8468513,
+    "ast_hash": "194e17e610428274614954f922b9f95c",
+    "semantic_hash": "194e17e610428274614954f922b9f95c"
+  },
+  "src/app/admin/(panel)/combinaciones-fallidas/page.tsx": {
+    "mtime": 1783994816.6063952,
+    "ast_hash": "0caa604da15fe0e32ff3ab74ed4d61a1",
+    "semantic_hash": "0caa604da15fe0e32ff3ab74ed4d61a1"
+  },
+  "src/app/admin/(panel)/datos/page.tsx": {
+    "mtime": 1784571499.0879138,
+    "ast_hash": "33acb75702b0300b5a6686bb1b1a54a3",
+    "semantic_hash": "33acb75702b0300b5a6686bb1b1a54a3"
+  },
+  "src/app/admin/(panel)/diagnostico/page.tsx": {
+    "mtime": 1784487646.361848,
+    "ast_hash": "772ab226c05905da4d66912e285a8eec",
+    "semantic_hash": "772ab226c05905da4d66912e285a8eec"
+  },
+  "src/app/admin/(panel)/elementos/[id]/page.tsx": {
+    "mtime": 1784508152.3180983,
+    "ast_hash": "5d5aae7fa8ac54a16051b48f496d4111",
+    "semantic_hash": "5d5aae7fa8ac54a16051b48f496d4111"
+  },
+  "src/app/admin/(panel)/elementos/nuevo/page.tsx": {
+    "mtime": 1783988106.8488348,
+    "ast_hash": "ebd545ecbffe3ceebe27053514760c39",
+    "semantic_hash": "ebd545ecbffe3ceebe27053514760c39"
+  },
+  "src/app/admin/(panel)/elementos/page.tsx": {
+    "mtime": 1784415132.3642974,
+    "ast_hash": "50aba2f868cfaf88bf712b49384db816",
+    "semantic_hash": "50aba2f868cfaf88bf712b49384db816"
+  },
+  "src/app/admin/(panel)/layout.tsx": {
+    "mtime": 1784159638.8688977,
+    "ast_hash": "7162cb4d94dff8add0df0ae55e3514e4",
+    "semantic_hash": "7162cb4d94dff8add0df0ae55e3514e4"
+  },
+  "src/app/admin/(panel)/logros/[id]/page.tsx": {
+    "mtime": 1783997676.5404963,
+    "ast_hash": "0968a369969e6a549a8c7ea029ae8c6e",
+    "semantic_hash": "0968a369969e6a549a8c7ea029ae8c6e"
+  },
+  "src/app/admin/(panel)/logros/nuevo/page.tsx": {
+    "mtime": 1783997676.4422967,
+    "ast_hash": "50303baa463017c5ad1bb307e12673a9",
+    "semantic_hash": "50303baa463017c5ad1bb307e12673a9"
+  },
+  "src/app/admin/(panel)/logros/page.tsx": {
+    "mtime": 1783997676.346422,
+    "ast_hash": "07bc7c768fe39dcd1c053fce464d2dd6",
+    "semantic_hash": "07bc7c768fe39dcd1c053fce464d2dd6"
+  },
+  "src/app/admin/(panel)/page.tsx": {
+    "mtime": 1783997676.6205177,
+    "ast_hash": "cca036cafa09b191dbc96821e9d38b53",
+    "semantic_hash": "cca036cafa09b191dbc96821e9d38b53"
+  },
+  "src/app/admin/(panel)/recetas/[id]/page.tsx": {
+    "mtime": 1784437027.835404,
+    "ast_hash": "274606f2b8e5805dbf7da3d7a86f8687",
+    "semantic_hash": "274606f2b8e5805dbf7da3d7a86f8687"
+  },
+  "src/app/admin/(panel)/recetas/nueva/page.tsx": {
+    "mtime": 1783988826.197049,
+    "ast_hash": "000dca704c3ed7893139f1d6437cb02e",
+    "semantic_hash": "000dca704c3ed7893139f1d6437cb02e"
+  },
+  "src/app/admin/(panel)/recetas/page.tsx": {
+    "mtime": 1783985170.0656958,
+    "ast_hash": "380b6b9ed95de05f90953b06f8f100a2",
+    "semantic_hash": "380b6b9ed95de05f90953b06f8f100a2"
+  },
+  "src/app/admin/(panel)/rituales/page.tsx": {
+    "mtime": 1783999885.4277751,
+    "ast_hash": "b67d273ed8502c54e6a67294a3729141",
+    "semantic_hash": "b67d273ed8502c54e6a67294a3729141"
+  },
+  "src/app/admin/login/page.tsx": {
+    "mtime": 1783972548.722051,
+    "ast_hash": "8b8fedbd73d75e193b363b391647b7bf",
+    "semantic_hash": "8b8fedbd73d75e193b363b391647b7bf"
+  },
+  "src/app/api/admin/arbol/route.ts": {
+    "mtime": 1784509780.8146672,
+    "ast_hash": "f8aaaab55217df6a9e809db157937bad",
+    "semantic_hash": "f8aaaab55217df6a9e809db157937bad"
+  },
+  "src/app/api/admin/exportar-elementos/route.ts": {
+    "mtime": 1784081643.4486475,
+    "ast_hash": "a796eb68276e84757bb50a7b8f49b9af",
+    "semantic_hash": "a796eb68276e84757bb50a7b8f49b9af"
+  },
+  "src/app/api/admin/exportar/route.ts": {
+    "mtime": 1783972837.0372565,
+    "ast_hash": "094be746d93c3d823d45db127382db1e",
+    "semantic_hash": "094be746d93c3d823d45db127382db1e"
+  },
+  "src/app/api/combine/route.ts": {
+    "mtime": 1784406558.4877827,
+    "ast_hash": "c159ca7348cb33846113c47e3892a102",
+    "semantic_hash": "c159ca7348cb33846113c47e3892a102"
+  },
+  "src/app/api/estado/route.ts": {
+    "mtime": 1784596274.3641365,
+    "ast_hash": "db0ebcecca251dbf40c75c68c8a56abb",
+    "semantic_hash": "db0ebcecca251dbf40c75c68c8a56abb"
+  },
+  "src/app/api/fases/avanzar/route.ts": {
+    "mtime": 1784596274.3429942,
+    "ast_hash": "2b56ecf2e760132d1e1f428b708dbf6d",
+    "semantic_hash": "2b56ecf2e760132d1e1f428b708dbf6d"
+  },
+  "src/app/api/habilidades/aprendiz/memoria/route.ts": {
+    "mtime": 1784407585.5132804,
+    "ast_hash": "4576b8f9ca2c298c796c29ede892e6a5",
+    "semantic_hash": "4576b8f9ca2c298c796c29ede892e6a5"
+  },
+  "src/app/api/habilidades/potencial/route.ts": {
+    "mtime": 1784398164.535138,
+    "ast_hash": "26b12bcd862371f580ac02dd4e36a751",
+    "semantic_hash": "26b12bcd862371f580ac02dd4e36a751"
+  },
+  "src/app/api/habilidades/vidente/route.ts": {
+    "mtime": 1784502044.403103,
+    "ast_hash": "b42737a2e9bf599632905771dda998fa",
+    "semantic_hash": "b42737a2e9bf599632905771dda998fa"
+  },
+  "src/app/api/logros/vistos/route.ts": {
+    "mtime": 1783997503.1256,
+    "ast_hash": "d75f78d57fe66fef4c705a99580595f6",
+    "semantic_hash": "d75f78d57fe66fef4c705a99580595f6"
+  },
+  "src/app/api/perfil/reiniciar/route.ts": {
+    "mtime": 1784402389.831735,
+    "ast_hash": "2ecc3337051d16a605991ca3605757c5",
+    "semantic_hash": "2ecc3337051d16a605991ca3605757c5"
+  },
+  "src/app/api/recetas-pendientes/route.ts": {
+    "mtime": 1783991856.5247605,
+    "ast_hash": "7ead9d623b7ccfc2e14c41097acba5ee",
+    "semantic_hash": "7ead9d623b7ccfc2e14c41097acba5ee"
+  },
+  "src/app/api/rituales/realizar/route.ts": {
+    "mtime": 1784406512.0952795,
+    "ast_hash": "8a297ceeb99a98ad27e8cdef2cd697ea",
+    "semantic_hash": "8a297ceeb99a98ad27e8cdef2cd697ea"
+  },
+  "src/app/cartas/page.tsx": {
+    "mtime": 1783971492.5304718,
+    "ast_hash": "1146d4cec3d2421547e3c319eb150de5",
+    "semantic_hash": "1146d4cec3d2421547e3c319eb150de5"
+  },
+  "src/app/coleccion/page.tsx": {
+    "mtime": 1784502044.3429298,
+    "ast_hash": "8f1651437f0310a4929753c4758ddaf0",
+    "semantic_hash": "8f1651437f0310a4929753c4758ddaf0"
+  },
+  "src/app/layout.tsx": {
+    "mtime": 1784381723.8968296,
+    "ast_hash": "9dcda3511a67be7beb9482c06acfb3af",
+    "semantic_hash": "9dcda3511a67be7beb9482c06acfb3af"
+  },
+  "src/app/logros/page.tsx": {
+    "mtime": 1783997739.0521486,
+    "ast_hash": "1c34454c313e0def100679e398d55bc2",
+    "semantic_hash": "1c34454c313e0def100679e398d55bc2"
+  },
+  "src/app/page.tsx": {
+    "mtime": 1783991608.6888938,
+    "ast_hash": "2b3b7c2a931844c03a61e8e65f8de658",
+    "semantic_hash": "2b3b7c2a931844c03a61e8e65f8de658"
+  },
+  "src/builder/App.jsx": {
+    "mtime": 1784604810.3273132,
+    "ast_hash": "cf4a06908bc4866da3c882420a75d5a1",
+    "semantic_hash": "cf4a06908bc4866da3c882420a75d5a1"
+  },
+  "src/builder/components/Card.jsx": {
+    "mtime": 1784570663.3723326,
+    "ast_hash": "ce322e3eff23815935b62fa38cf2c774",
+    "semantic_hash": "ce322e3eff23815935b62fa38cf2c774"
+  },
+  "src/builder/components/CoverCard.jsx": {
+    "mtime": 1784570663.3897607,
+    "ast_hash": "3f3770b5d9fec1d5470c48ea1e37e86f",
+    "semantic_hash": "3f3770b5d9fec1d5470c48ea1e37e86f"
+  },
+  "src/builder/components/ExplanationCards.test.ts": {
+    "mtime": 1784602464.8120127,
+    "ast_hash": "ee6767cd55708c52bedc773ce9176d14",
+    "semantic_hash": "ee6767cd55708c52bedc773ce9176d14"
+  },
+  "src/builder/components/Filmstrip.jsx": {
+    "mtime": 1781830769.3652747,
+    "ast_hash": "3ecea926679a54d95835cb3184d8545a",
+    "semantic_hash": "3ecea926679a54d95835cb3184d8545a"
+  },
+  "src/builder/components/FullImageCoverCard.jsx": {
+    "mtime": 1784599677.537622,
+    "ast_hash": "05ee7c8cb844454fc157236fbe1bfd1b",
+    "semantic_hash": "05ee7c8cb844454fc157236fbe1bfd1b"
+  },
+  "src/builder/components/GeneralExplanationCard.jsx": {
+    "mtime": 1784685584.3394675,
+    "ast_hash": "81a3f96a53963dc072a19978d7b12afd",
+    "semantic_hash": "81a3f96a53963dc072a19978d7b12afd"
+  },
+  "src/builder/components/Panel.jsx": {
+    "mtime": 1784604810.3293147,
+    "ast_hash": "0084e04b644c186a79560a4d593eb818",
+    "semantic_hash": "0084e04b644c186a79560a4d593eb818"
+  },
+  "src/builder/components/TierCard.jsx": {
+    "mtime": 1784685580.0077822,
+    "ast_hash": "7505977307d56637eee0f4bcf19fb74f",
+    "semantic_hash": "7505977307d56637eee0f4bcf19fb74f"
+  },
+  "src/builder/components/TierExplanationCard.jsx": {
+    "mtime": 1784685589.4158368,
+    "ast_hash": "2db6779e68488d5845abeebd4cc21bc4",
+    "semantic_hash": "2db6779e68488d5845abeebd4cc21bc4"
+  },
+  "src/builder/data/pathwayBackgrounds.js": {
+    "mtime": 1784604884.7334507,
+    "ast_hash": "dc9a9862a437ca4f6d355ab4ab0aff61",
+    "semantic_hash": "dc9a9862a437ca4f6d355ab4ab0aff61"
+  },
+  "src/builder/data/pathwayBackgrounds.test.ts": {
+    "mtime": 1784604884.7344532,
+    "ast_hash": "6d050cd7d9a4d41fed924f732eaea38d",
+    "semantic_hash": "6d050cd7d9a4d41fed924f732eaea38d"
+  },
+  "src/builder/data/pathwayIcons.js": {
+    "mtime": 1783971476.5695028,
+    "ast_hash": "707cb131569ddd0b0fa50935b3ba55ca",
+    "semantic_hash": "707cb131569ddd0b0fa50935b3ba55ca"
+  },
+  "src/builder/data/pathways.js": {
+    "mtime": 1783959265.9835472,
+    "ast_hash": "5e4d5f05cbeeb133eeef48ab5d66f97d",
+    "semantic_hash": "5e4d5f05cbeeb133eeef48ab5d66f97d"
+  },
+  "src/builder/storage.js": {
+    "mtime": 1781830769.3662715,
+    "ast_hash": "e99e1522b9841e1558c1d4ca2155490c",
+    "semantic_hash": "e99e1522b9841e1558c1d4ca2155490c"
+  },
+  "src/builder/tierText.test.ts": {
+    "mtime": 1784565898.0728703,
+    "ast_hash": "dffabaf76db209e64c43327402427650",
+    "semantic_hash": "dffabaf76db209e64c43327402427650"
+  },
+  "src/builder/tierText.ts": {
+    "mtime": 1784565898.0708334,
+    "ast_hash": "b0fd295bf96a4e6ec961e31cd65150a2",
+    "semantic_hash": "b0fd295bf96a4e6ec961e31cd65150a2"
+  },
+  "src/cards/export.test.ts": {
+    "mtime": 1784600307.5363922,
+    "ast_hash": "7632bfbb3c76b804dccf96658c9a33a7",
+    "semantic_hash": "7632bfbb3c76b804dccf96658c9a33a7"
+  },
+  "src/cards/export.ts": {
+    "mtime": 1784599761.8908606,
+    "ast_hash": "cb2c1af86858ac7bb334bc3b07d427e6",
+    "semantic_hash": "cb2c1af86858ac7bb334bc3b07d427e6"
+  },
+  "src/cards/mcp.test.ts": {
+    "mtime": 1784600307.5353937,
+    "ast_hash": "5c126693b59ca440c8fdfbe4f0ce4e94",
+    "semantic_hash": "5c126693b59ca440c8fdfbe4f0ce4e94"
+  },
+  "src/cards/mcp.ts": {
+    "mtime": 1784599761.8918576,
+    "ast_hash": "0d61c806c9a215c62fd158541b0ce588",
+    "semantic_hash": "0d61c806c9a215c62fd158541b0ce588"
+  },
+  "src/cards/render.tsx": {
+    "mtime": 1784604810.3398335,
+    "ast_hash": "33857bb82adf78d2131ce2bc4f8d672f",
+    "semantic_hash": "33857bb82adf78d2131ce2bc4f8d672f"
+  },
+  "src/cards/repository.test.ts": {
+    "mtime": 1784600307.5253997,
+    "ast_hash": "af4b1efefc65608abf05c37f0ea2434e",
+    "semantic_hash": "af4b1efefc65608abf05c37f0ea2434e"
+  },
+  "src/cards/repository.ts": {
+    "mtime": 1784599833.670565,
+    "ast_hash": "9996ccbf19908f23991bdf58aa469766",
+    "semantic_hash": "9996ccbf19908f23991bdf58aa469766"
+  },
+  "src/cards/schema.test.ts": {
+    "mtime": 1784602464.8109903,
+    "ast_hash": "8db7404bdbfedc4d6462895f0b28ebd8",
+    "semantic_hash": "8db7404bdbfedc4d6462895f0b28ebd8"
+  },
+  "src/cards/schema.ts": {
+    "mtime": 1784602446.4859943,
+    "ast_hash": "e2bd1069e5d2761f85605023f50ad1ea",
+    "semantic_hash": "e2bd1069e5d2761f85605023f50ad1ea"
+  },
+  "src/components/NavPrincipal.tsx": {
+    "mtime": 1784563774.2750292,
+    "ast_hash": "160a1d47064b04767ae550f6d3a4a2e5",
+    "semantic_hash": "160a1d47064b04767ae550f6d3a4a2e5"
+  },
+  "src/components/admin/ArbolConexiones.tsx": {
+    "mtime": 1784563606.0980566,
+    "ast_hash": "ca309887a1774be30c6d626b1f9d7791",
+    "semantic_hash": "ca309887a1774be30c6d626b1f9d7791"
+  },
+  "src/components/admin/BotonEliminar.tsx": {
+    "mtime": 1783985923.2191384,
+    "ast_hash": "8fbfdb32f2a120b9720b736dcbccc635",
+    "semantic_hash": "8fbfdb32f2a120b9720b736dcbccc635"
+  },
+  "src/components/admin/BuscadorElemento.tsx": {
+    "mtime": 1783991012.1079986,
+    "ast_hash": "985e44326f670a9e9efef45f86e4ff45",
+    "semantic_hash": "985e44326f670a9e9efef45f86e4ff45"
+  },
+  "src/components/admin/CampoElemento.tsx": {
+    "mtime": 1783989155.7091925,
+    "ast_hash": "503ed23394a21d771993b9d3696cbd7f",
+    "semantic_hash": "503ed23394a21d771993b9d3696cbd7f"
+  },
+  "src/components/admin/ConstructorReceta.tsx": {
+    "mtime": 1784563849.024912,
+    "ast_hash": "99a84fda0b0302dc3bd037fa85fdcde1",
+    "semantic_hash": "99a84fda0b0302dc3bd037fa85fdcde1"
+  },
+  "src/components/admin/CreadorRapido.tsx": {
+    "mtime": 1783985600.3934524,
+    "ast_hash": "e06ecd118e01d531021d5a52efe8387f",
+    "semantic_hash": "e06ecd118e01d531021d5a52efe8387f"
+  },
+  "src/components/admin/ExploradorElementos.tsx": {
+    "mtime": 1784386247.8949983,
+    "ast_hash": "8ce344985676dab4875e944099a33c1f",
+    "semantic_hash": "8ce344985676dab4875e944099a33c1f"
+  },
+  "src/components/admin/FormularioAvance.tsx": {
+    "mtime": 1784079860.9303014,
+    "ast_hash": "af6cd7cdc72d0783e7994fde0f6a220d",
+    "semantic_hash": "af6cd7cdc72d0783e7994fde0f6a220d"
+  },
+  "src/components/admin/FormularioCamino.tsx": {
+    "mtime": 1784079862.20013,
+    "ast_hash": "dee88d7afeb410679298b49c7cee2bac",
+    "semantic_hash": "dee88d7afeb410679298b49c7cee2bac"
+  },
+  "src/components/admin/FormularioCategoria.tsx": {
+    "mtime": 1783972733.757245,
+    "ast_hash": "5ff286d5634c9ef2cd140d05c2ca326d",
+    "semantic_hash": "5ff286d5634c9ef2cd140d05c2ca326d"
+  },
+  "src/components/admin/FormularioElemento.tsx": {
+    "mtime": 1784508152.3180983,
+    "ast_hash": "52b2e4ec0e8bbf17a0a005f8c9192cfc",
+    "semantic_hash": "52b2e4ec0e8bbf17a0a005f8c9192cfc"
+  },
+  "src/components/admin/FormularioLogro.tsx": {
+    "mtime": 1783997621.945042,
+    "ast_hash": "a834328d9223299f5691650230e3e7d5",
+    "semantic_hash": "a834328d9223299f5691650230e3e7d5"
+  },
+  "src/components/admin/FormularioRitual.tsx": {
+    "mtime": 1783999885.4195127,
+    "ast_hash": "495610493378bdd102a5b69614b17d5b",
+    "semantic_hash": "495610493378bdd102a5b69614b17d5b"
+  },
+  "src/components/admin/ImportadorDatos.tsx": {
+    "mtime": 1784596421.120365,
+    "ast_hash": "ee009b6324ff855a4a19c6e87327e3fa",
+    "semantic_hash": "ee009b6324ff855a4a19c6e87327e3fa"
+  },
+  "src/components/admin/SelectorDesencadenantes.tsx": {
+    "mtime": 1783988053.8370664,
+    "ast_hash": "515da8072b992e30e3950c4ff84e27f9",
+    "semantic_hash": "515da8072b992e30e3950c4ff84e27f9"
+  },
+  "src/components/admin/TablaAvances.tsx": {
+    "mtime": 1784386403.7784495,
+    "ast_hash": "ab4bc52a1747b417d7db2dafae564221",
+    "semantic_hash": "ab4bc52a1747b417d7db2dafae564221"
+  },
+  "src/components/admin/arbol/ArbolPestanas.tsx": {
+    "mtime": 1784566344.401912,
+    "ast_hash": "b69eeedd93f85e89568b59a38b0f8812",
+    "semantic_hash": "b69eeedd93f85e89568b59a38b0f8812"
+  },
+  "src/components/admin/arbol/CaminoEspina.tsx": {
+    "mtime": 1784336631.4496274,
+    "ast_hash": "8a09ce08a48a276f9197a936d13580a2",
+    "semantic_hash": "8a09ce08a48a276f9197a936d13580a2"
+  },
+  "src/components/admin/arbol/EditorReglaFase.tsx": {
+    "mtime": 1784571314.1204128,
+    "ast_hash": "e7a2249c9cd73e647d96ca0589d3981a",
+    "semantic_hash": "e7a2249c9cd73e647d96ca0589d3981a"
+  },
+  "src/components/admin/arbol/ExploradorArbol.tsx": {
+    "mtime": 1784344226.5721133,
+    "ast_hash": "21b40e37baf3c3b5c6d58a16168ea720",
+    "semantic_hash": "21b40e37baf3c3b5c6d58a16168ea720"
+  },
+  "src/components/admin/arbol/MapaFases.tsx": {
+    "mtime": 1784596913.6469789,
+    "ast_hash": "4864ed468dde51975d7a53f26d24d800",
+    "semantic_hash": "4864ed468dde51975d7a53f26d24d800"
+  },
+  "src/components/admin/arbol/ResumenFases.tsx": {
+    "mtime": 1784571335.8472824,
+    "ast_hash": "009c1652c7d2148485b3cf85b11dde5b",
+    "semantic_hash": "009c1652c7d2148485b3cf85b11dde5b"
+  },
+  "src/components/admin/arbol/agrupacionFases.test.ts": {
+    "mtime": 1784562138.6973789,
+    "ast_hash": "135d597f7293266b725ce2ad6a9b443f",
+    "semantic_hash": "135d597f7293266b725ce2ad6a9b443f"
+  },
+  "src/components/admin/arbol/agrupacionFases.ts": {
+    "mtime": 1784562138.6782937,
+    "ast_hash": "0e9a99d9d381e43c65ebf627859206c9",
+    "semantic_hash": "0e9a99d9d381e43c65ebf627859206c9"
+  },
+  "src/components/admin/arbol/disposicion.test.ts": {
+    "mtime": 1784341716.1274319,
+    "ast_hash": "a5aebdb22fe75d1b5bb2e9049017ae8a",
+    "semantic_hash": "a5aebdb22fe75d1b5bb2e9049017ae8a"
+  },
+  "src/components/admin/arbol/disposicion.ts": {
+    "mtime": 1784344063.6747084,
+    "ast_hash": "2d5c64f10f2e64adb3ac4404bd5ecc76",
+    "semantic_hash": "2d5c64f10f2e64adb3ac4404bd5ecc76"
+  },
+  "src/components/admin/arbol/modeloResumenFases.ts": {
+    "mtime": 1784571335.8462815,
+    "ast_hash": "523e1a3ea3e4f2d8349130e6345fe3f2",
+    "semantic_hash": "523e1a3ea3e4f2d8349130e6345fe3f2"
+  },
+  "src/components/admin/arbol/pestanasArbol.test.ts": {
+    "mtime": 1784510484.7395651,
+    "ast_hash": "5fc4d048af247dcd4a7bc8582679d26a",
+    "semantic_hash": "5fc4d048af247dcd4a7bc8582679d26a"
+  },
+  "src/components/admin/arbol/pestanasArbol.ts": {
+    "mtime": 1784510484.726771,
+    "ast_hash": "239df8918e5478c8c5dce4237d84791f",
+    "semantic_hash": "239df8918e5478c8c5dce4237d84791f"
+  },
+  "src/components/admin/arbol/primitivas.tsx": {
+    "mtime": 1784563468.5618083,
+    "ast_hash": "04b463ce3b4ce3a10bdfb94eef795ee9",
+    "semantic_hash": "04b463ce3b4ce3a10bdfb94eef795ee9"
+  },
+  "src/components/admin/arbol/resumenFases.test.ts": {
+    "mtime": 1784566207.112327,
+    "ast_hash": "d2cfeb7b0e4dbfd8e464ecbb8d50afeb",
+    "semantic_hash": "d2cfeb7b0e4dbfd8e464ecbb8d50afeb"
+  },
+  "src/components/admin/arbol/subgrafoFase.test.ts": {
+    "mtime": 1784514390.1402516,
+    "ast_hash": "7b1c6c84195d49e2c75b4f47fd45219f",
+    "semantic_hash": "7b1c6c84195d49e2c75b4f47fd45219f"
+  },
+  "src/components/admin/arbol/subgrafoFase.ts": {
+    "mtime": 1784514137.6283367,
+    "ast_hash": "01a8a1f7a50d9d3383f662b0704ea5c6",
+    "semantic_hash": "01a8a1f7a50d9d3383f662b0704ea5c6"
+  },
+  "src/components/admin/arbol/tipos.test.ts": {
+    "mtime": 1784344190.710822,
+    "ast_hash": "ab2ce6cb8d33bef9bc474bfdafe03f08",
+    "semantic_hash": "ab2ce6cb8d33bef9bc474bfdafe03f08"
+  },
+  "src/components/admin/arbol/tipos.ts": {
+    "mtime": 1784344063.6747084,
+    "ast_hash": "feedb69e34f4e4b7d07737fa12c2ad39",
+    "semantic_hash": "feedb69e34f4e4b7d07737fa12c2ad39"
+  },
+  "src/components/admin/dificultad.ts": {
+    "mtime": 1784386053.4121864,
+    "ast_hash": "5e5f9106059defc81862533e952b43a4",
+    "semantic_hash": "5e5f9106059defc81862533e952b43a4"
+  },
+  "src/components/admin/storeFiltros.ts": {
+    "mtime": 1784386048.2536404,
+    "ast_hash": "dfc27af9279c855f1646b54a4a16afba",
+    "semantic_hash": "dfc27af9279c855f1646b54a4a16afba"
+  },
+  "src/components/admin/tiposReceta.ts": {
+    "mtime": 1784437009.7004697,
+    "ast_hash": "97f916d02a665e7d5606a01e31237cd1",
+    "semantic_hash": "97f916d02a665e7d5606a01e31237cd1"
+  },
+  "src/components/admin/ui.tsx": {
+    "mtime": 1783972536.7115088,
+    "ast_hash": "cf66e0444d8ba9c982d178faec1bc4b2",
+    "semantic_hash": "cf66e0444d8ba9c982d178faec1bc4b2"
+  },
+  "src/components/game/Ambiente.tsx": {
+    "mtime": 1784381836.179124,
+    "ast_hash": "ee41270435f301964db7513230dc9b82",
+    "semantic_hash": "ee41270435f301964db7513230dc9b82"
+  },
+  "src/components/game/Avisos.tsx": {
+    "mtime": 1784563737.6125107,
+    "ast_hash": "387817c552279a53dbb13d696994bdd8",
+    "semantic_hash": "387817c552279a53dbb13d696994bdd8"
+  },
+  "src/components/game/BandejaPreparacion.tsx": {
+    "mtime": 1784596363.5059865,
+    "ast_hash": "758321b20071a74fe2d93461d2b862f2",
+    "semantic_hash": "758321b20071a74fe2d93461d2b862f2"
+  },
+  "src/components/game/GhostArrastre.tsx": {
+    "mtime": 1784563738.8444538,
+    "ast_hash": "78b14be9fddb4391c854e7814c69c147",
+    "semantic_hash": "78b14be9fddb4391c854e7814c69c147"
+  },
+  "src/components/game/IconoElemento.tsx": {
+    "mtime": 1784407522.7996852,
+    "ast_hash": "97289390d51ae193b3b99f7c620f25f4",
+    "semantic_hash": "97289390d51ae193b3b99f7c620f25f4"
+  },
+  "src/components/game/Juego.tsx": {
+    "mtime": 1784597634.3590357,
+    "ast_hash": "0cda29451ad2f3d01949a0439b68cb6a",
+    "semantic_hash": "0cda29451ad2f3d01949a0439b68cb6a"
+  },
+  "src/components/game/MesaCombinacion.tsx": {
+    "mtime": 1784563741.7390573,
+    "ast_hash": "4ce65e6168e0bd6d4c6a07a4d2a8b1cb",
+    "semantic_hash": "4ce65e6168e0bd6d4c6a07a4d2a8b1cb"
+  },
+  "src/components/game/ModalAvanceFase.tsx": {
+    "mtime": 1784596326.254989,
+    "ast_hash": "03c0362ef976cf245acf08e35f30a1e9",
+    "semantic_hash": "03c0362ef976cf245acf08e35f30a1e9"
+  },
+  "src/components/game/ModalLogro.tsx": {
+    "mtime": 1784382251.5006833,
+    "ast_hash": "4fb4dc701dde3d57d117718edf35100e",
+    "semantic_hash": "4fb4dc701dde3d57d117718edf35100e"
+  },
+  "src/components/game/ModalOculto.tsx": {
+    "mtime": 1784563713.5379603,
+    "ast_hash": "eca40811567cec51f14bcaa1bad6a98f",
+    "semantic_hash": "eca40811567cec51f14bcaa1bad6a98f"
+  },
+  "src/components/game/ModalRevelacion.tsx": {
+    "mtime": 1784382240.690249,
+    "ast_hash": "532fba4b6af991a28dc44c5cb9cbd5ef",
+    "semantic_hash": "532fba4b6af991a28dc44c5cb9cbd5ef"
+  },
+  "src/components/game/ModalRiesgoRitual.tsx": {
+    "mtime": 1784563757.3365755,
+    "ast_hash": "b25acb6d296f63e4c1a81533a6711594",
+    "semantic_hash": "b25acb6d296f63e4c1a81533a6711594"
+  },
+  "src/components/game/ModalTutorialAvance.tsx": {
+    "mtime": 1784382267.374871,
+    "ast_hash": "acac45deef7836ae1bad0f2d8adc9cd6",
+    "semantic_hash": "acac45deef7836ae1bad0f2d8adc9cd6"
+  },
+  "src/components/game/PanelDescubiertos.tsx": {
+    "mtime": 1784596363.507982,
+    "ast_hash": "0df88d44ba81e6c6fbda92b4a25b9f97",
+    "semantic_hash": "0df88d44ba81e6c6fbda92b4a25b9f97"
+  },
+  "src/components/game/PanelHabilidades.test.ts": {
+    "mtime": 1784399331.154587,
+    "ast_hash": "ee011199a34ee5a21b93d92e7cfee938",
+    "semantic_hash": "ee011199a34ee5a21b93d92e7cfee938"
+  },
+  "src/components/game/PanelHabilidades.tsx": {
+    "mtime": 1784399618.4898758,
+    "ast_hash": "2d3a975492b94e7c363b4cf75dac366a",
+    "semantic_hash": "2d3a975492b94e7c363b4cf75dac366a"
+  },
+  "src/components/game/PanelRituales.test.ts": {
+    "mtime": 1784407471.827579,
+    "ast_hash": "7c6346915066880f7d7e2850de3f93cd",
+    "semantic_hash": "7c6346915066880f7d7e2850de3f93cd"
+  },
+  "src/components/game/PanelRituales.tsx": {
+    "mtime": 1784407504.3951867,
+    "ast_hash": "c70ea25d6464b764efb9b499590c316f",
+    "semantic_hash": "c70ea25d6464b764efb9b499590c316f"
+  },
+  "src/components/game/Particulas.tsx": {
+    "mtime": 1784381855.651329,
+    "ast_hash": "d09286dfcc1a71733b7e6729e81ed8b6",
+    "semantic_hash": "d09286dfcc1a71733b7e6729e81ed8b6"
+  },
+  "src/components/game/RecetasPendientes.tsx": {
+    "mtime": 1784081124.042912,
+    "ast_hash": "26361023f8ed3767503b0f81469d0673",
+    "semantic_hash": "26361023f8ed3767503b0f81469d0673"
+  },
+  "src/components/game/estadoHabilidades.test.ts": {
+    "mtime": 1784408097.3750846,
+    "ast_hash": "1fe3957870fb3b52217d0b465381b4ee",
+    "semantic_hash": "1fe3957870fb3b52217d0b465381b4ee"
+  },
+  "src/components/game/estadoHabilidades.ts": {
+    "mtime": 1784407909.7491152,
+    "ast_hash": "a57def29b59f260e54ea9ddffb012f70",
+    "semantic_hash": "a57def29b59f260e54ea9ddffb012f70"
+  },
+  "src/components/game/motion.ts": {
+    "mtime": 1784563691.4587913,
+    "ast_hash": "79e7ae9ab9e38706c7edc6d7045afd18",
+    "semantic_hash": "79e7ae9ab9e38706c7edc6d7045afd18"
+  },
+  "src/components/game/store.ts": {
+    "mtime": 1784597634.3580344,
+    "ast_hash": "c014fc34de1bffde0e24edc11211c9ee",
+    "semantic_hash": "c014fc34de1bffde0e24edc11211c9ee"
+  },
+  "src/components/game/storePhase.test.ts": {
+    "mtime": 1784596541.1164258,
+    "ast_hash": "40f9124fa7b884bf1fa8076de6d314dc",
+    "semantic_hash": "40f9124fa7b884bf1fa8076de6d314dc"
+  },
+  "src/components/game/storeRitualRisk.test.ts": {
+    "mtime": 1784407832.703374,
+    "ast_hash": "b2961325d5b6aaa85661e8538a39fd1e",
+    "semantic_hash": "b2961325d5b6aaa85661e8538a39fd1e"
+  },
+  "src/components/game/tipos.ts": {
+    "mtime": 1784596274.3909638,
+    "ast_hash": "5aad02aab88af79f5352e9204bdb98d9",
+    "semantic_hash": "5aad02aab88af79f5352e9204bdb98d9"
+  },
+  "src/components/game/useArrastre.ts": {
+    "mtime": 1784402117.8265502,
+    "ast_hash": "b34893222e6b02f8ea60054ac639b6fb",
+    "semantic_hash": "b34893222e6b02f8ea60054ac639b6fb"
+  },
+  "src/server/actions/auth.ts": {
+    "mtime": 1783972407.6319606,
+    "ast_hash": "1af464198a233a2ff8fccdbb09bf58d6",
+    "semantic_hash": "1af464198a233a2ff8fccdbb09bf58d6"
+  },
+  "src/server/actions/avances.ts": {
+    "mtime": 1784495088.5604708,
+    "ast_hash": "50c548f29e9cf5f375867e96f8f8b4e7",
+    "semantic_hash": "50c548f29e9cf5f375867e96f8f8b4e7"
+  },
+  "src/server/actions/caminos.ts": {
+    "mtime": 1784495114.7051015,
+    "ast_hash": "bfa1fa81ed575848dbf7e3f9da319649",
+    "semantic_hash": "bfa1fa81ed575848dbf7e3f9da319649"
+  },
+  "src/server/actions/categorias.ts": {
+    "mtime": 1783972980.623052,
+    "ast_hash": "14134ff764e7498942995986e97cb479",
+    "semantic_hash": "14134ff764e7498942995986e97cb479"
+  },
+  "src/server/actions/datos.ts": {
+    "mtime": 1784495118.39995,
+    "ast_hash": "3d452b500051803a78be4811a7a16d62",
+    "semantic_hash": "3d452b500051803a78be4811a7a16d62"
+  },
+  "src/server/actions/elementos.ts": {
+    "mtime": 1784575701.3587139,
+    "ast_hash": "5268d5e388f61c36ec0e5bd4b1db9069",
+    "semantic_hash": "5268d5e388f61c36ec0e5bd4b1db9069"
+  },
+  "src/server/actions/fases.ts": {
+    "mtime": 1784594287.4753582,
+    "ast_hash": "5b09a9433e222c20e8a2ae96e1f242e3",
+    "semantic_hash": "5b09a9433e222c20e8a2ae96e1f242e3"
+  },
+  "src/server/actions/logros.ts": {
+    "mtime": 1783997621.9410424,
+    "ast_hash": "1ec2a97220c27028583b0ca3be99072e",
+    "semantic_hash": "1ec2a97220c27028583b0ca3be99072e"
+  },
+  "src/server/actions/recetas.ts": {
+    "mtime": 1784575701.3577127,
+    "ast_hash": "55d47bf42026f90fdda90ae0cc79222c",
+    "semantic_hash": "55d47bf42026f90fdda90ae0cc79222c"
+  },
+  "src/server/actions/rituales.ts": {
+    "mtime": 1784516328.218874,
+    "ast_hash": "7ae849126971c8fcaf20b787c93e823f",
+    "semantic_hash": "7ae849126971c8fcaf20b787c93e823f"
+  },
+  "src/server/actions/tipos.ts": {
+    "mtime": 1783972409.0749135,
+    "ast_hash": "449bc22258ffd9d364f463df202e1e5e",
+    "semantic_hash": "449bc22258ffd9d364f463df202e1e5e"
+  },
+  "src/server/adminAuth.ts": {
+    "mtime": 1784072140.7279258,
+    "ast_hash": "a978307f4cd9e45af6b1588e80da5dd1",
+    "semantic_hash": "a978307f4cd9e45af6b1588e80da5dd1"
+  },
+  "src/server/db.ts": {
+    "mtime": 1783971709.2997503,
+    "ast_hash": "8f7467ad68d77ea5c386a2270b388076",
+    "semantic_hash": "8f7467ad68d77ea5c386a2270b388076"
+  },
+  "src/server/domain/bloqueadoresProgresion.test.ts": {
+    "mtime": 1784562116.174424,
+    "ast_hash": "80c30e03a4a465fe6968695b20b8efa8",
+    "semantic_hash": "80c30e03a4a465fe6968695b20b8efa8"
+  },
+  "src/server/domain/bloqueadoresProgresion.ts": {
+    "mtime": 1784562081.6718686,
+    "ast_hash": "3d5c8b72be97c7a99461bf39cf5f322a",
+    "semantic_hash": "3d5c8b72be97c7a99461bf39cf5f322a"
+  },
+  "src/server/domain/combinar.test.ts": {
+    "mtime": 1784502815.4896224,
+    "ast_hash": "aafbd0d3ec159f5506e37306873a7707",
+    "semantic_hash": "aafbd0d3ec159f5506e37306873a7707"
+  },
+  "src/server/domain/combinar.ts": {
+    "mtime": 1784584419.8470974,
+    "ast_hash": "afbcf5daef2eb976681f7403d1f05cc5",
+    "semantic_hash": "afbcf5daef2eb976681f7403d1f05cc5"
+  },
+  "src/server/domain/combinarRitual.test.ts": {
+    "mtime": 1784584487.4614978,
+    "ast_hash": "86dd5d56e6f17e17c4717d74587257a0",
+    "semantic_hash": "86dd5d56e6f17e17c4717d74587257a0"
+  },
+  "src/server/domain/desbloqueoEspontaneo.ts": {
+    "mtime": 1784414664.8455322,
+    "ast_hash": "4874bd24b04592fbc32beed75019cbfd",
+    "semantic_hash": "4874bd24b04592fbc32beed75019cbfd"
+  },
+  "src/server/domain/descubrimientos.test.ts": {
+    "mtime": 1784502610.317192,
+    "ast_hash": "b5e91dd3cf925ee49ec007c4eaf6f16c",
+    "semantic_hash": "b5e91dd3cf925ee49ec007c4eaf6f16c"
+  },
+  "src/server/domain/descubrimientos.ts": {
+    "mtime": 1784571150.4731264,
+    "ast_hash": "425d7791c34f0319b2640ccec9732017",
+    "semantic_hash": "425d7791c34f0319b2640ccec9732017"
+  },
+  "src/server/domain/diagnostico.test.ts": {
+    "mtime": 1784437476.8145595,
+    "ast_hash": "f97d9f47a0e0512524e01736bf8a3d9f",
+    "semantic_hash": "f97d9f47a0e0512524e01736bf8a3d9f"
+  },
+  "src/server/domain/diagnostico.ts": {
+    "mtime": 1784437476.7918997,
+    "ast_hash": "b613968a18892a6c497f0636bc61c0c9",
+    "semantic_hash": "b613968a18892a6c497f0636bc61c0c9"
+  },
+  "src/server/domain/fases.test.ts": {
+    "mtime": 1784571592.2381203,
+    "ast_hash": "86f85224c2713e791c3da28cea81717f",
+    "semantic_hash": "86f85224c2713e791c3da28cea81717f"
+  },
+  "src/server/domain/fases.ts": {
+    "mtime": 1784596196.1473808,
+    "ast_hash": "4ae3323ee2c8e913b80da8eb991aea1e",
+    "semantic_hash": "4ae3323ee2c8e913b80da8eb991aea1e"
+  },
+  "src/server/domain/featureGates.ts": {
+    "mtime": 1784584419.8414538,
+    "ast_hash": "2242db4bf0dc62fc3c32cf44a46b70e4",
+    "semantic_hash": "2242db4bf0dc62fc3c32cf44a46b70e4"
+  },
+  "src/server/domain/habilidades.test.ts": {
+    "mtime": 1784437476.7918997,
+    "ast_hash": "d87fbb730d8f80204dd957f2c2feda45",
+    "semantic_hash": "d87fbb730d8f80204dd957f2c2feda45"
+  },
+  "src/server/domain/habilidades.ts": {
+    "mtime": 1784437476.7918997,
+    "ast_hash": "af4d47206463e2da21dc78ad988d0920",
+    "semantic_hash": "af4d47206463e2da21dc78ad988d0920"
+  },
+  "src/server/domain/inputKey.ts": {
+    "mtime": 1784407490.349311,
+    "ast_hash": "4586fb30ff029bb0d4d2d2ad8fd75896",
+    "semantic_hash": "4586fb30ff029bb0d4d2d2ad8fd75896"
+  },
+  "src/server/domain/logros.ts": {
+    "mtime": 1783997451.8484938,
+    "ast_hash": "3a52484dfb5bdc3518ecc3081e7a1771",
+    "semantic_hash": "3a52484dfb5bdc3518ecc3081e7a1771"
+  },
+  "src/server/domain/memoriaAprendiz.test.ts": {
+    "mtime": 1784407963.6889875,
+    "ast_hash": "43fd81e07b5ba042beebe0677a2087db",
+    "semantic_hash": "43fd81e07b5ba042beebe0677a2087db"
+  },
+  "src/server/domain/memoriaAprendiz.ts": {
+    "mtime": 1784407566.5693629,
+    "ast_hash": "9feb47fbc74197238cf1896abbfbdc05",
+    "semantic_hash": "9feb47fbc74197238cf1896abbfbdc05"
+  },
+  "src/server/domain/publicos.ts": {
+    "mtime": 1784079902.5658348,
+    "ast_hash": "6cbda6879ef2b054712664c7f61c2e96",
+    "semantic_hash": "6cbda6879ef2b054712664c7f61c2e96"
+  },
+  "src/server/domain/reglasCombinacion.test.ts": {
+    "mtime": 1784437476.7828848,
+    "ast_hash": "76147af06d3df5686aa3b141ac21c2e2",
+    "semantic_hash": "76147af06d3df5686aa3b141ac21c2e2"
+  },
+  "src/server/domain/reglasCombinacion.ts": {
+    "mtime": 1784437120.0281477,
+    "ast_hash": "2ffd1f5496f37d7a80241989da9bf195",
+    "semantic_hash": "2ffd1f5496f37d7a80241989da9bf195"
+  },
+  "src/server/domain/ritualKnowledge.test.ts": {
+    "mtime": 1784469969.5046148,
+    "ast_hash": "0f492875f6ae1923363da85709da5ab9",
+    "semantic_hash": "0f492875f6ae1923363da85709da5ab9"
+  },
+  "src/server/domain/ritualKnowledge.ts": {
+    "mtime": 1784406512.0680246,
+    "ast_hash": "0298976dfcb92c7cdd2dce5695ca4779",
+    "semantic_hash": "0298976dfcb92c7cdd2dce5695ca4779"
+  },
+  "src/server/domain/rituales.test.ts": {
+    "mtime": 1784584487.4604952,
+    "ast_hash": "410543c4f19436aca1da2c9dc5f099bb",
+    "semantic_hash": "410543c4f19436aca1da2c9dc5f099bb"
+  },
+  "src/server/domain/rituales.ts": {
+    "mtime": 1784584419.8450966,
+    "ast_hash": "699fbe3a8b0f3255640f6cfd8d3f7f51",
+    "semantic_hash": "699fbe3a8b0f3255640f6cfd8d3f7f51"
+  },
+  "src/server/domain/slug.ts": {
+    "mtime": 1783974344.30933,
+    "ast_hash": "73961c4cb923ff727d5c2f48c81a772c",
+    "semantic_hash": "73961c4cb923ff727d5c2f48c81a772c"
+  },
+  "src/server/domain/tipos.ts": {
+    "mtime": 1784500184.7912521,
+    "ast_hash": "0f8eb02c75f2762b55cad467b2739848",
+    "semantic_hash": "0f8eb02c75f2762b55cad467b2739848"
+  },
+  "src/server/perfil.ts": {
+    "mtime": 1784422640.6167996,
+    "ast_hash": "5db19fea3e17e220cb5c6f467e80cfd4",
+    "semantic_hash": "5db19fea3e17e220cb5c6f467e80cfd4"
+  },
+  "src/server/schemas.test.ts": {
+    "mtime": 1784596551.8713539,
+    "ast_hash": "3f5aeb395c5ae9d111d67e27b153ac6e",
+    "semantic_hash": "3f5aeb395c5ae9d111d67e27b153ac6e"
+  },
+  "src/server/schemas.ts": {
+    "mtime": 1784596421.1007278,
+    "ast_hash": "a4924ff6c2fa3e6f39a4ab0827b2fd8e",
+    "semantic_hash": "a4924ff6c2fa3e6f39a4ab0827b2fd8e"
+  },
+  "src/server/services/arbolGrafo.ts": {
+    "mtime": 1784415314.0908525,
+    "ast_hash": "e1a898e09bda4bd020da57b34b76370c",
+    "semantic_hash": "e1a898e09bda4bd020da57b34b76370c"
+  },
+  "src/server/services/completarFase.ts": {
+    "mtime": 1784596274.2344854,
+    "ast_hash": "22c2609485e0bd46dc3f5ccffd8d8441",
+    "semantic_hash": "22c2609485e0bd46dc3f5ccffd8d8441"
+  },
+  "src/server/services/datos.test.ts": {
+    "mtime": 1784596421.1263585,
+    "ast_hash": "5ff6735991f70c04638967d974fb995f",
+    "semantic_hash": "5ff6735991f70c04638967d974fb995f"
+  },
+  "src/server/services/datos.ts": {
+    "mtime": 1784596421.1158223,
+    "ast_hash": "f105eac8efedeef695cd520477916bb9",
+    "semantic_hash": "f105eac8efedeef695cd520477916bb9"
+  },
+  "src/server/services/datosExport.test.ts": {
+    "mtime": 1784596421.1243575,
+    "ast_hash": "08257a37f6f3585ee094811b9ff69a85",
+    "semantic_hash": "08257a37f6f3585ee094811b9ff69a85"
+  },
+  "src/server/services/fasesProgresion.test.ts": {
+    "mtime": 1784594367.8044045,
+    "ast_hash": "eab0f9f1bf8f81c72cb1068c6c860677",
+    "semantic_hash": "eab0f9f1bf8f81c72cb1068c6c860677"
+  },
+  "src/server/services/fasesProgresion.ts": {
+    "mtime": 1784596274.2163432,
+    "ast_hash": "49f53259264b1535cccbcb1868563676",
+    "semantic_hash": "49f53259264b1535cccbcb1868563676"
+  },
+  "src/server/services/habilidades.test.ts": {
+    "mtime": 1784487953.9799092,
+    "ast_hash": "db10fb48ebbfbab44d5e9fb8e6779ea6",
+    "semantic_hash": "db10fb48ebbfbab44d5e9fb8e6779ea6"
+  },
+  "src/server/services/habilidades.ts": {
+    "mtime": 1784585252.7694917,
+    "ast_hash": "c4beb5f14105136235643c8d19f7aeaa",
+    "semantic_hash": "c4beb5f14105136235643c8d19f7aeaa"
+  },
+  "src/server/services/memoriaAprendiz.ts": {
+    "mtime": 1784502044.3995721,
+    "ast_hash": "d30a190aaf581b3c9bb2fc7fcbefd5b5",
+    "semantic_hash": "d30a190aaf581b3c9bb2fc7fcbefd5b5"
+  },
+  "src/server/services/progresion.ts": {
+    "mtime": 1784584672.8865895,
+    "ast_hash": "f80b984d06650418b797b63b70cfa269",
+    "semantic_hash": "f80b984d06650418b797b63b70cfa269"
+  },
+  "src/server/services/recetas.test.ts": {
+    "mtime": 1784574927.4118302,
+    "ast_hash": "aecad03d93f0f5b114a78c15275c6f05",
+    "semantic_hash": "aecad03d93f0f5b114a78c15275c6f05"
+  },
+  "src/server/services/recetas.ts": {
+    "mtime": 1784575701.3567102,
+    "ast_hash": "38599591c07c91f890a9fe71f66c6d4a",
+    "semantic_hash": "38599591c07c91f890a9fe71f66c6d4a"
+  },
+  "src/shared/featureGates.test.ts": {
+    "mtime": 1784584419.8384526,
+    "ast_hash": "fe60c2ce731eb6efcb32a42a8fa1f03f",
+    "semantic_hash": "fe60c2ce731eb6efcb32a42a8fa1f03f"
+  },
+  "src/shared/featureGates.ts": {
+    "mtime": 1784584456.499247,
+    "ast_hash": "6f496095052df21a85d3dac8124a7d76",
+    "semantic_hash": "6f496095052df21a85d3dac8124a7d76"
+  },
+  "src/shared/formulaOverlapPolicy.ts": {
+    "mtime": 1784419124.1105611,
+    "ast_hash": "192ae38117606eca9d735d0cfef1579c",
+    "semantic_hash": "192ae38117606eca9d735d0cfef1579c"
+  },
+  "src/shared/inputKey.test.ts": {
+    "mtime": 1784407951.6270137,
+    "ast_hash": "a7c3f711745f27b12b164fb584393e3d",
+    "semantic_hash": "a7c3f711745f27b12b164fb584393e3d"
+  },
+  "src/shared/inputKey.ts": {
+    "mtime": 1784407485.497032,
+    "ast_hash": "d6ab6da832bc0f64adaa1081ccf013b9",
+    "semantic_hash": "d6ab6da832bc0f64adaa1081ccf013b9"
+  },
+  "src/shared/phaseCelebrations.test.ts": {
+    "mtime": 1784596196.1323006,
+    "ast_hash": "ca754d091e6f34864780f7c272e5c1cc",
+    "semantic_hash": "ca754d091e6f34864780f7c272e5c1cc"
+  },
+  "src/shared/phaseCelebrations.ts": {
+    "mtime": 1784596196.1302984,
+    "ast_hash": "a80ce8dfc583bb76e05f7f39aab29e02",
+    "semantic_hash": "a80ce8dfc583bb76e05f7f39aab29e02"
+  },
+  "src/shared/phaseRules.test.ts": {
+    "mtime": 1784571592.2301202,
+    "ast_hash": "b6d820e82d12b6c6e8d122a250c16b96",
+    "semantic_hash": "b6d820e82d12b6c6e8d122a250c16b96"
+  },
+  "src/shared/phaseRules.ts": {
+    "mtime": 1784571089.9390252,
+    "ast_hash": "d5b67bc54cd1af18edb5855fda25157a",
+    "semantic_hash": "d5b67bc54cd1af18edb5855fda25157a"
+  },
+  "tsconfig.json": {
+    "mtime": 1784685510.9662466,
+    "ast_hash": "acc474661c39534ebcaae846173a3d0b",
+    "semantic_hash": "acc474661c39534ebcaae846173a3d0b"
+  },
+  ".agents/skills/find-skills/SKILL.md": {
+    "mtime": 1784486114.1845243,
+    "ast_hash": "bbc8f08f359e30b4abbe86b06310460c",
+    "semantic_hash": "bbc8f08f359e30b4abbe86b06310460c"
+  },
+  "README.md": {
+    "mtime": 1784602464.8129942,
+    "ast_hash": "a9a9eb82002c58dd9bd5df54740e314e",
+    "semantic_hash": "a9a9eb82002c58dd9bd5df54740e314e"
+  },
+  "prisma/seed-content/README.md": {
+    "mtime": 1784339936.4260051,
+    "ast_hash": "e8374c2f8c0d6e63c7b0009fdde51c26",
+    "semantic_hash": "e8374c2f8c0d6e63c7b0009fdde51c26"
+  }
+}

@@ -37,10 +37,6 @@ const TierCard = forwardRef(function TierCard(
       <div className="frame" aria-hidden="true" />
       <div className="scanlines" aria-hidden="true" />
       <div className="content tier-content">
-        <p className="tier-head">
-          <span className="tier-head-hl">TIERLIST</span> · THE 22 PATHWAYS
-        </p>
-
         <header className="tier-summary">
           <div className="tier-iconwrap">
             <img

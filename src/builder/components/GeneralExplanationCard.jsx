@@ -15,7 +15,6 @@ const GeneralExplanationCard = forwardRef(function GeneralExplanationCard(
       <div className="frame" aria-hidden="true" />
       <div className="scanlines" aria-hidden="true" />
       <div className="explanation-content general-explanation-content">
-        <p className="explanation-scope">{scope}</p>
         <h2 className="general-explanation-title">{title || 'Explanation title'}</h2>
         <div className="general-explanation-rule" aria-hidden="true" />
         <p className="general-explanation-description">

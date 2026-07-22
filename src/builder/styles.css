@@ -190,9 +190,6 @@
 .tier-content{position:relative;z-index:3;display:flex;flex-direction:column;
   align-items:center;width:100%;height:100%;min-height:0;text-align:center}
 
-.tier-head{flex:0 0 auto;font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted2)}
-.tier-head-hl{color:var(--tier);font-weight:700}
-
 .tier-summary{flex:0 0 auto;width:100%;display:grid;
   grid-template-columns:84px minmax(0,1fr) 60px;align-items:center;gap:13px;margin:14px 0 12px}
 .tier-iconwrap{width:84px;height:84px;border-radius:50%;display:flex;align-items:center;
@@ -255,11 +252,9 @@
 }
 .explanation-content{position:relative;z-index:3;width:100%;height:100%;display:flex;
   flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:0}
-.explanation-scope{position:absolute;top:4px;left:0;right:0;font-size:10px;font-weight:700;
-  letter-spacing:.26em;text-transform:uppercase;color:var(--tier,#d9b869);overflow-wrap:anywhere}
-
 .explanation-tier{font-family:'Cinzel',serif;font-size:268px;font-weight:900;line-height:1.2;
-  color:var(--tier);letter-spacing:-.06em;text-shadow:0 0 64px var(--tier-deep)}
+  color:var(--tier);letter-spacing:-.06em;text-shadow:0 0 64px var(--tier-deep);
+  margin-top:-45px}
 .tier-explanation-rule{width:42px;height:2px;margin:80px auto 22px;
   background:var(--tier);box-shadow:0 0 12px var(--tier-deep)}
 .tier-explanation-description{max-width:29ch;font-size:18px;line-height:1.55;
