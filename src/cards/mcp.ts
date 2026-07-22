@@ -32,7 +32,7 @@ export function createCardsMcpServer({ repository, downloadBaseUrl }: McpOptions
       title: 'Guardar lote de cartas',
       description:
         'Crea o reutiliza un anime/universo y una parte, y agrega hasta 100 cartas. ' +
-        'Acepta Character, Artifact, Cover, Full Image Cover, Tier, Tier Explanation y General Explanation. ' +
+        'Acepta Character, Artifact, Cover, Full Image Cover, Tier, Pathway, Tier Explanation y General Explanation. ' +
         'Las explicaciones pueden ser generales o asociarse a uno de los 22 pathways. ' +
         'Las imagenes son solo URLs o rutas de /public.',
       inputSchema: SaveCardBatchSchema,

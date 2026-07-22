@@ -253,8 +253,8 @@ export class CardRepository {
 
   private migrate(): void {
     const version = this.db.pragma('user_version', { simple: true }) as number
-    if (version > 3) throw new Error(`La version ${version} de cards.db no es compatible.`)
-    if (version === 3) return
+    if (version > 4) throw new Error(`La version ${version} de cards.db no es compatible.`)
+    if (version === 4) return
 
     if (version === 1 || version === 2) {
       this.db.exec(`
@@ -283,6 +283,38 @@ export class CardRepository {
         DROP TABLE cards_previous;
         CREATE INDEX cards_part_id_idx ON cards(part_id);
         PRAGMA user_version = 3;
+      `)
+      this.migrate()
+      return
+    }
+
+    if (version === 3) {
+      this.db.exec(`
+        DROP INDEX cards_part_id_idx;
+        ALTER TABLE cards RENAME TO cards_previous;
+
+        CREATE TABLE cards (
+          id TEXT PRIMARY KEY,
+          part_id TEXT NOT NULL REFERENCES parts(id) ON DELETE CASCADE,
+          position INTEGER NOT NULL CHECK (position > 0),
+          type TEXT NOT NULL CHECK (type IN (
+            'Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Pathway',
+            'Tier Explanation', 'General Explanation'
+          )),
+          title TEXT NOT NULL,
+          data_json TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE (part_id, position)
+        );
+
+        INSERT INTO cards (id, part_id, position, type, title, data_json, created_at, updated_at)
+        SELECT id, part_id, position, type, title, data_json, created_at, updated_at
+        FROM cards_previous;
+
+        DROP TABLE cards_previous;
+        CREATE INDEX cards_part_id_idx ON cards(part_id);
+        PRAGMA user_version = 4;
       `)
       return
     }
@@ -314,7 +346,7 @@ export class CardRepository {
         part_id TEXT NOT NULL REFERENCES parts(id) ON DELETE CASCADE,
         position INTEGER NOT NULL CHECK (position > 0),
         type TEXT NOT NULL CHECK (type IN (
-          'Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier',
+          'Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Pathway',
           'Tier Explanation', 'General Explanation'
         )),
         title TEXT NOT NULL,
@@ -326,7 +358,7 @@ export class CardRepository {
 
       CREATE INDEX cards_part_id_idx ON cards(part_id);
       CREATE INDEX parts_universe_id_idx ON parts(universe_id);
-      PRAGMA user_version = 3;
+      PRAGMA user_version = 4;
     `)
   }
 }

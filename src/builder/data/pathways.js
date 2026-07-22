@@ -67,6 +67,34 @@ export const TIER_RANKS = {
 };
 export const TIER_RANK_NAMES = Object.keys(TIER_RANKS);
 
+// Per-pathway thematic color (curated, not lore-canonical — no official source
+// exists). Used only by the Pathway card, which has no tier rank to derive an
+// accent from.
+export const PATHWAY_COLORS = {
+  "Fool": { c: "#9d8fc2", d: "#332b52" },
+  "Door": { c: "#6a5acd", d: "#241c4a" },
+  "Error": { c: "#9fe83a", d: "#2c4a10" },
+  "Visionary": { c: "#8452c9", d: "#2b1a4a" },
+  "Sun": { c: "#f2b53c", d: "#5c3d0d" },
+  "Tyrant": { c: "#2f8fd0", d: "#123650" },
+  "White Tower": { c: "#b9d4e8", d: "#3a4a58" },
+  "Hanged Man": { c: "#c23b4a", d: "#4a141c" },
+  "Darkness": { c: "#7456b8", d: "#231a44" },
+  "Death": { c: "#9aa88a", d: "#333d2a" },
+  "Twilight Giant": { c: "#c98a4b", d: "#4a3018" },
+  "Demoness": { c: "#d1467e", d: "#4a1730" },
+  "Red Priest": { c: "#e8542e", d: "#5c1c0d" },
+  "Hermit": { c: "#4a6fb5", d: "#1a2540" },
+  "Paragon": { c: "#d9a441", d: "#4a3313" },
+  "Wheel of Fortune": { c: "#3aa66e", d: "#123d28" },
+  "Mother": { c: "#4f8a3e", d: "#1c3315" },
+  "Moon": { c: "#d68fae", d: "#4a2c3a" },
+  "Abyss": { c: "#4a3560", d: "#0f0918" },
+  "Chained": { c: "#8a5a3a", d: "#301f12" },
+  "Black Emperor": { c: "#a68a2e", d: "#332705" },
+  "Justiciar": { c: "#4d7ea8", d: "#1a2c3d" },
+};
+
 // Resolve the active power level into a color + progress percentage.
 export function powerTier(type, power, grade) {
   if (type === "Artifact") {

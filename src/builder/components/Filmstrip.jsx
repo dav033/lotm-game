@@ -57,7 +57,7 @@ export default function Filmstrip({
       <button
         className="btn-zip"
         style={{ background: accent.c }}
-        disabled={batch.length === 0}
+        disabled={batch.length === 0 || busy}
         onClick={onDownloadZip}
       >
         Download all ({batch.length})

@@ -1,17 +1,19 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
+import { flushSync } from 'react-dom'
 import html2canvas from 'html2canvas'
 import JSZip from 'jszip'
 import Card from './components/Card.jsx'
 import CoverCard from './components/CoverCard.jsx'
 import FullImageCoverCard from './components/FullImageCoverCard.jsx'
 import TierCard from './components/TierCard.jsx'
+import PathwayCard from './components/PathwayCard.jsx'
 import TierExplanationCard from './components/TierExplanationCard.jsx'
 import GeneralExplanationCard from './components/GeneralExplanationCard.jsx'
 import Panel from './components/Panel.jsx'
 import Filmstrip from './components/Filmstrip.jsx'
-import { PATHWAYS, PATH_NAMES, tierColor, powerTier, TIER_RANKS } from './data/pathways.js'
+import { PATHWAYS, PATH_NAMES, tierColor, powerTier, TIER_RANKS, PATHWAY_COLORS } from './data/pathways.js'
 import { PATHWAY_ICONS } from './data/pathwayIcons.js'
 import { PATHWAY_BACKGROUNDS } from './data/pathwayBackgrounds.js'
 import { loadData, saveData } from './storage.js'
@@ -43,6 +45,11 @@ const DEFAULT_STATE = {
   tierText: '',
   tierFooterText: '',
   tierBackgroundImage: null,
+  pathwayCardPath: 'Fool',
+  pathwayCardSeq: null,
+  pathwayCardText: '',
+  pathwayCardFooterText: '',
+  pathwayCardBackgroundImage: null,
   explanationPath: null,
   tierExplanationText: '',
   tierExplanationBackgroundImage: null,
@@ -62,6 +69,38 @@ const readFileAsDataURL = (file) =>
     reader.onerror = reject
     reader.readAsDataURL(file)
   })
+
+const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
+
+// html2canvas snapshots whatever is currently painted, so a capture taken
+// before this card's own images/fonts/layout have actually settled can
+// silently include stale or mid-transition content (e.g. a still-loading
+// background image, or text captured mid-reflow). Wait for everything the
+// card depends on before handing it to html2canvas.
+const waitForCardAssets = async (root) => {
+  if (document.fonts?.ready) {
+    try { await document.fonts.ready } catch { /* ignore */ }
+  }
+  if (root) {
+    const images = [...root.querySelectorAll('img')]
+    const backgroundUrls = [...root.querySelectorAll('[style*="background-image"]')]
+      .map((el) => el.style.backgroundImage.match(/url\(["']?(.*?)["']?\)/)?.[1])
+      .filter(Boolean)
+    await Promise.all([
+      ...images.map((img) => (img.decode ? img.decode().catch(() => undefined) : Promise.resolve())),
+      ...backgroundUrls.map((src) => new Promise((resolve) => {
+        const preload = new Image()
+        preload.onload = resolve
+        preload.onerror = resolve
+        preload.src = src
+      })),
+    ])
+  }
+  // Give layout/paint a couple of frames to settle after the assets above
+  // and any just-applied state update finish.
+  await nextFrame()
+  await nextFrame()
+}
 
 export default function App() {
   const cardRef = useRef(null)
@@ -113,9 +152,7 @@ export default function App() {
   }
 
   const captureCard = async () => {
-    if (document.fonts?.ready) {
-      try { await document.fonts.ready } catch { /* ignore */ }
-    }
+    await waitForCardAssets(cardRef.current)
     const canvas = await html2canvas(cardRef.current, {
       backgroundColor: null,
       scale: 2,
@@ -124,8 +161,21 @@ export default function App() {
     return canvas.toDataURL('image/png')
   }
 
-  // ---- Auto-save: mirror the live form into the active card + refresh its
-  // thumbnail, debounced so html2canvas doesn't run on every keystroke. ----
+  // ---- Keep the active card's stored state/label in sync immediately. This
+  // is what onDownloadZip reads per card, so it must never lag behind the
+  // live editor — switching cards faster than the thumbnail debounce below
+  // used to leave stale state/label behind (wrong background, missing text). ----
+  useEffect(() => {
+    if (!loaded || !editingId) return
+    setBatch((b) =>
+      b.map((c) => (c.id === editingId ? { ...c, label: labelFor(state), state: { ...state } } : c))
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, editingId, loaded])
+
+  // ---- Debounced thumbnail refresh for the filmstrip preview only — this is
+  // just a UI preview, so it's fine for it to lag; the real export always
+  // re-captures each card fresh (see onDownloadZip / onDownload). ----
   useEffect(() => {
     if (!loaded || !editingId) return
     setSaveStatus('saving')
@@ -133,13 +183,7 @@ export default function App() {
     thumbTimer.current = setTimeout(async () => {
       let url = null
       try { url = await captureCard() } catch { /* keep previous thumbnail */ }
-      setBatch((b) =>
-        b.map((c) =>
-          c.id === editingId
-            ? { ...c, label: labelFor(state), state: { ...state }, ...(url ? { url } : {}) }
-            : c
-        )
-      )
+      if (url) setBatch((b) => b.map((c) => (c.id === editingId ? { ...c, url } : c)))
       setSaveStatus('saved')
     }, 500)
     return () => clearTimeout(thumbTimer.current)
@@ -172,6 +216,9 @@ export default function App() {
       tierText: '',
       tierFooterText: '',
       tierBackgroundImage: null,
+      pathwayCardText: '',
+      pathwayCardFooterText: '',
+      pathwayCardBackgroundImage: null,
       tierExplanationText: '',
       tierExplanationBackgroundImage: null,
       generalExplanationTitle: '',
@@ -262,22 +309,40 @@ export default function App() {
   }
 
   const onDownloadZip = async () => {
-    if (!batch.length) return
-    const zip = new JSZip()
-    // Make sure every card has an up-to-date thumbnail before zipping.
-    for (let i = 0; i < batch.length; i++) {
-      const item = batch[i]
-      const data = item.url ?? (item.id === editingId ? await captureCard() : null)
-      if (!data) continue
-      const base64 = data.split(',')[1]
-      zip.file(`${String(i + 1).padStart(2, '0')}_${item.label}.png`, base64, { base64: true })
+    if (!batch.length || busy) return
+    setBusy(true)
+    const previousState = state
+    const previousEditingId = editingId
+    try {
+      const zip = new JSZip()
+      // Render every card fresh instead of trusting each item's auto-saved
+      // thumbnail — that thumbnail is captured on a debounce while editing,
+      // so switching cards quickly can leave it stale or mid-transition
+      // (wrong background, clipped text). Loading each card into the live
+      // editor and re-capturing guarantees the export matches its final state.
+      for (let i = 0; i < batch.length; i++) {
+        const item = batch[i]
+        flushSync(() => {
+          setState(item.state)
+          setEditingId(item.id)
+        })
+        const data = await captureCard()
+        const base64 = data.split(',')[1]
+        zip.file(`${String(i + 1).padStart(2, '0')}_${item.label}.png`, base64, { base64: true })
+      }
+      const blob = await zip.generateAsync({ type: 'blob' })
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = 'lotm-cards.zip'
+      a.click()
+      URL.revokeObjectURL(a.href)
+    } finally {
+      flushSync(() => {
+        setState(previousState)
+        setEditingId(previousEditingId)
+      })
+      setBusy(false)
     }
-    const blob = await zip.generateAsync({ type: 'blob' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = 'lotm-cards.zip'
-    a.click()
-    URL.revokeObjectURL(a.href)
   }
 
   // One tier slide per pathway, in canon order, keeping the current rank as a
@@ -313,6 +378,7 @@ export default function App() {
   const isCover = state.type === 'Cover'
   const isFullImageCover = state.type === 'Full Image Cover'
   const isTier = state.type === 'Tier'
+  const isPathwayCard = state.type === 'Pathway'
   const isTierExplanation = state.type === 'Tier Explanation'
   const isGeneralExplanation = state.type === 'General Explanation'
   // Older saved cards predate the tier fields — fall back to sane defaults.
@@ -321,18 +387,24 @@ export default function App() {
     ? state.tierSeq
     : null
   const tierRank = TIER_RANKS[state.tierRank] ? state.tierRank : 'S'
+  const pathwayCardPath = PATHWAYS[state.pathwayCardPath] ? state.pathwayCardPath : 'Fool'
+  const pathwayCardSeq = Number.isInteger(state.pathwayCardSeq) && state.pathwayCardSeq >= 0 && state.pathwayCardSeq <= 9
+    ? state.pathwayCardSeq
+    : null
   const accent = isCover || isFullImageCover
     ? COVER_ACCENT
     : isTier || isTierExplanation
       ? { ...TIER_RANKS[tierRank], pct: 100 }
+      : isPathwayCard
+        ? { ...PATHWAY_COLORS[pathwayCardPath], pct: 100 }
       : isGeneralExplanation
         ? COVER_ACCENT
       : powerTier(state.type, state.power, state.grade)
   const pathLabel = [...new Set(sequences.map((s) => s.path))].join(' · ')
   const explanationPath = PATHWAYS[state.explanationPath] ? state.explanationPath : null
   const explanationScope = isTierExplanation ? 'All pathways' : explanationPath ?? 'All pathways'
-  const tierBackgroundImage = state.tierBackgroundImage
-    || (tierSeq === null ? null : PATHWAY_BACKGROUNDS[tierPath] ?? null)
+  const tierBackgroundImage = state.tierBackgroundImage || PATHWAY_BACKGROUNDS[tierPath] || null
+  const pathwayCardBackgroundImage = state.pathwayCardBackgroundImage || PATHWAY_BACKGROUNDS[pathwayCardPath] || null
 
   if (!loaded) {
     return <div className="app-loading">Loading your cards…</div>
@@ -383,6 +455,18 @@ export default function App() {
               text={state.tierText ?? ''}
               footerText={state.tierFooterText ?? ''}
               backgroundImage={tierBackgroundImage}
+            />
+          ) : isPathwayCard ? (
+            <PathwayCard
+              ref={cardRef}
+              path={pathwayCardPath}
+              icon={PATHWAY_ICONS[pathwayCardPath]}
+              sequence={pathwayCardSeq}
+              sequenceName={pathwayCardSeq === null ? null : PATHWAYS[pathwayCardPath][9 - pathwayCardSeq]}
+              tier={PATHWAY_COLORS[pathwayCardPath]}
+              text={state.pathwayCardText ?? ''}
+              footerText={state.pathwayCardFooterText ?? ''}
+              backgroundImage={pathwayCardBackgroundImage}
             />
           ) : isTierExplanation ? (
             <TierExplanationCard
@@ -448,6 +532,9 @@ function labelFor(s) {
   if (s.type === 'Full Image Cover') return `full_cover_${s.fullCoverTitle || 'untitled'}`.replace(/\s+/g, '_')
   if (s.type === 'Tier') {
     return `tier_${s.tierRank || 'S'}_${s.tierPath || 'pathway'}${Number.isInteger(s.tierSeq) ? `_seq${s.tierSeq}` : ''}`.replace(/\s+/g, '_')
+  }
+  if (s.type === 'Pathway') {
+    return `pathway_${s.pathwayCardPath || 'pathway'}${Number.isInteger(s.pathwayCardSeq) ? `_seq${s.pathwayCardSeq}` : ''}`.replace(/\s+/g, '_')
   }
   if (s.type === 'Tier Explanation') {
     return `tier_explanation_${s.tierRank || 'S'}${s.explanationPath ? `_${s.explanationPath}` : ''}`.replace(/\s+/g, '_')

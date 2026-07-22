@@ -20,6 +20,40 @@ test('convierte una carta Tier al estado que consume el renderer actual', () => 
   assert.equal(filenameForCard(content), 'tier-s_fool_seq-9')
 })
 
+test('convierte una carta Pathway (sin rank) al estado que consume el renderer actual', () => {
+  const wholePathway = CardContentSchema.parse({
+    type: 'Pathway',
+    pathway: 'Moon',
+    points: ['Magia vivificante', 'Domesticación de bestias'],
+    footerText: 'Un camino de crianza y poder.',
+  })
+  const specificSequence = CardContentSchema.parse({
+    type: 'Pathway',
+    pathway: 'Moon',
+    sequence: 9,
+    points: ['Magia vivificante'],
+    backgroundImageUrl: '/cover-default.jpg',
+  })
+
+  assert.equal(toBuilderCardState(wholePathway).pathwayCardPath, 'Moon')
+  assert.equal(toBuilderCardState(wholePathway).pathwayCardSeq, null)
+  assert.equal(toBuilderCardState(wholePathway).pathwayCardText, 'Magia vivificante\nDomesticación de bestias')
+  assert.equal(toBuilderCardState(wholePathway).pathwayCardFooterText, 'Un camino de crianza y poder.')
+  assert.equal(toBuilderCardState(specificSequence).pathwayCardSeq, 9)
+  assert.equal(toBuilderCardState(specificSequence).pathwayCardBackgroundImage, '/cover-default.jpg')
+  assert.equal(filenameForCard(wholePathway), 'pathway_moon')
+  assert.equal(filenameForCard(specificSequence), 'pathway_moon_seq-9')
+})
+
+test('rechaza que una carta Pathway incluya un rank de tier', () => {
+  assert.throws(() => CardContentSchema.parse({
+    type: 'Pathway',
+    pathway: 'Moon',
+    rank: 'S',
+    points: ['Magia vivificante'],
+  }))
+})
+
 test('rechaza guardar binarios de imagen dentro del contenido textual', () => {
   assert.throws(() => CardContentSchema.parse({
     type: 'Character',

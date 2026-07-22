@@ -33,6 +33,11 @@ test('guarda y consulta cartas agrupadas en un SQLite separado', async (t) => {
         points: ['Control espiritual'],
       },
       {
+        type: 'Pathway',
+        pathway: 'Moon',
+        points: ['Magia vivificante'],
+      },
+      {
         type: 'Tier Explanation',
         rank: 'S',
         description: 'El rango más completo.',
@@ -51,10 +56,10 @@ test('guarda y consulta cartas agrupadas en un SQLite separado', async (t) => {
     ],
   })
 
-  assert.equal(saved.length, 5)
-  assert.deepEqual(saved.map(({ position }) => position), [1, 2, 3, 4, 5])
-  assert.equal(repository.listLibrary()[0].parts[0].cards.length, 5)
-  assert.equal(repository.listCards({ universe: 'bleach', part: 'soul-society' }).length, 5)
+  assert.equal(saved.length, 6)
+  assert.deepEqual(saved.map(({ position }) => position), [1, 2, 3, 4, 5, 6])
+  assert.equal(repository.listLibrary()[0].parts[0].cards.length, 6)
+  assert.equal(repository.listCards({ universe: 'bleach', part: 'soul-society' }).length, 6)
 
   const updated = repository.updateCard(saved[0].id, {
     type: 'Artifact',
@@ -65,7 +70,7 @@ test('guarda y consulta cartas agrupadas en un SQLite separado', async (t) => {
   })
   assert.equal(updated?.title, 'Zangetsu')
   assert.equal(repository.deleteCards([saved[1].id]), 1)
-  assert.equal(repository.listCards().length, 4)
+  assert.equal(repository.listCards().length, 5)
 })
 
 test('migra cards.db v1 a v3 sin perder cartas', async (t) => {
@@ -121,4 +126,58 @@ test('migra cards.db v1 a v3 sin perder cartas', async (t) => {
     cards: [{ type: 'Full Image Cover', title: 'Portada final' }],
   })
   assert.equal(repository.listCards().length, 3)
+})
+
+test('migra cards.db v3 a v4 sin perder cartas y acepta cartas Pathway', async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-cards-v3-'))
+  const dbPath = path.join(directory, 'cards.db')
+  const legacy = new Database(dbPath)
+  legacy.exec(`
+    CREATE TABLE universes (
+      id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
+    CREATE TABLE parts (
+      id TEXT PRIMARY KEY, universe_id TEXT NOT NULL REFERENCES universes(id) ON DELETE CASCADE,
+      slug TEXT NOT NULL COLLATE NOCASE, name TEXT NOT NULL, number INTEGER,
+      description TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      UNIQUE (universe_id, slug)
+    );
+    CREATE TABLE cards (
+      id TEXT PRIMARY KEY, part_id TEXT NOT NULL REFERENCES parts(id) ON DELETE CASCADE,
+      position INTEGER NOT NULL CHECK (position > 0),
+      type TEXT NOT NULL CHECK (type IN (
+        'Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier',
+        'Tier Explanation', 'General Explanation'
+      )),
+      title TEXT NOT NULL, data_json TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      UNIQUE (part_id, position)
+    );
+    CREATE INDEX cards_part_id_idx ON cards(part_id);
+    CREATE INDEX parts_universe_id_idx ON parts(universe_id);
+    INSERT INTO universes VALUES ('u', 'lotm', 'LOTM', '', 'now', 'now');
+    INSERT INTO parts VALUES ('p', 'u', 'tiers', 'Tiers', 1, '', 'now', 'now');
+    INSERT INTO cards VALUES (
+      'c', 'p', 1, 'Tier', 'Fool - Tier S',
+      '{"type":"Tier","pathway":"Fool","rank":"S","points":["Versátil"]}',
+      'now', 'now'
+    );
+    PRAGMA user_version = 3;
+  `)
+  legacy.close()
+
+  const repository = new CardRepository(dbPath)
+  t.after(async () => {
+    repository.close()
+    await fs.rm(directory, { recursive: true, force: true })
+  })
+  assert.equal(repository.listCards()[0].content.type, 'Tier')
+  const saved = repository.saveBatch({
+    universe: { name: 'LOTM' },
+    part: { name: 'Tiers', number: 1 },
+    cards: [{ type: 'Pathway', pathway: 'Moon', points: ['Magia vivificante'] }],
+  })
+  assert.equal(saved[0].content.type, 'Pathway')
+  assert.equal(repository.listCards().length, 2)
 })

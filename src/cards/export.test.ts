@@ -22,17 +22,22 @@ test('el ZIP contiene todas las cartas organizadas y un manifiesto textual', asy
       points: ['Control espiritual'],
     }),
     storedCard('c', 3, {
+      type: 'Pathway',
+      pathway: 'Moon',
+      points: ['Magia vivificante'],
+    }),
+    storedCard('d', 4, {
       type: 'Tier Explanation',
       rank: 'A',
       description: 'Gran utilidad general.',
     }),
-    storedCard('d', 4, {
+    storedCard('e', 5, {
       type: 'General Explanation',
       title: 'Los caminos',
       description: 'Una introducción general.',
       pathway: 'Door',
     }),
-    storedCard('e', 5, {
+    storedCard('f', 6, {
       type: 'Full Image Cover',
       title: 'Soul Society',
       imageUrl: '/cover-default.jpg',
@@ -45,13 +50,14 @@ test('el ZIP contiene todas las cartas organizadas y un manifiesto textual', asy
   assert.deepEqual(files.sort(), [
     'bleach/01-soul-society/001_ichigo-kurosaki_seq-4.png',
     'bleach/01-soul-society/002_tier-s_fool_seq-9.png',
-    'bleach/01-soul-society/003_tier-explanation-a.png',
-    'bleach/01-soul-society/004_general-explanation_los-caminos_door.png',
-    'bleach/01-soul-society/005_full-cover_soul-society.png',
+    'bleach/01-soul-society/003_pathway_moon.png',
+    'bleach/01-soul-society/004_tier-explanation-a.png',
+    'bleach/01-soul-society/005_general-explanation_los-caminos_door.png',
+    'bleach/01-soul-society/006_full-cover_soul-society.png',
     'manifest.json',
   ])
   const manifest = JSON.parse(await zip.file('manifest.json')!.async('text'))
-  assert.equal(manifest.cards.length, 5)
+  assert.equal(manifest.cards.length, 6)
   assert.equal(manifest.version, 3)
   assert.equal(manifest.cards[0].content.name, 'Ichigo Kurosaki')
 })

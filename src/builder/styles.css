@@ -240,6 +240,30 @@
 .tier-toggle .seg{font-weight:700}
 .tier-background-actions{margin-bottom:7px}
 
+/* ================= PATHWAY CARD (clone of TIER CARD, no rank) ================= */
+.pathway-card{
+  position:relative;width:480px;height:640px;flex:0 0 auto;
+  background:
+    radial-gradient(120% 75% at 50% -8%, rgba(255,255,255,.045), transparent 60%),
+    radial-gradient(135% 95% at 50% 118%, var(--tier-deep), transparent 55%),
+    #0a0a11;
+  border:1px solid var(--line2);
+  padding:24px 26px 20px;overflow:hidden;display:flex;flex-direction:column;
+  box-shadow:0 0 0 1px rgba(0,0,0,.6),0 30px 70px -30px rgba(0,0,0,.9);
+}
+/* No rank column, so the header is icon + identity only */
+.pathway-card .tier-summary{grid-template-columns:84px minmax(0,1fr)}
+/* No boxed background/border or "Explanation" label — bullets sit directly on
+   the card. Keep the original padding (same text-wrap width as .tier-card,
+   which is already proven to export correctly via html2canvas) — dropping it
+   widens the wrap and made the export tool miscalculate line count and clip
+   the last bullet. */
+.pathway-card .tier-text{background:none;border:none}
+/* Bigger explanation text only when there's little content (sparse) — the
+   label is gone so there's a bit of extra room at every density, but bumping
+   the default/dense sizes too caused real bullet text (6+ lines) to overflow. */
+.pathway-card .tier-text.sparse .tier-points li{font-size:20px}
+
 /* ================= EXPLANATION CARDS ================= */
 .explanation-card{
   position:relative;width:480px;height:640px;flex:0 0 auto;overflow:hidden;

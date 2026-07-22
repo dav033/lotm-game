@@ -95,6 +95,26 @@ export const TierCardSchema = z
   })
   .strict()
 
+export const PathwayCardSchema = z
+  .object({
+    type: z.literal('Pathway'),
+    pathway: PathwayNameSchema,
+    sequence: z.int().min(0).max(9).optional().describe(
+      'Secuencia concreta opcional entre 0 y 9. Si se omite, aplica al pathway completo.',
+    ),
+    points: z
+      .array(z.string().trim().min(1).max(180))
+      .max(14)
+      .describe('Puntos de explicacion, uno por linea en la carta.'),
+    footerText: z.string().trim().max(240).optional().describe(
+      'Texto destacado opcional mostrado al pie de la carta.',
+    ),
+    backgroundImageUrl: ImageSourceSchema.optional().describe(
+      'Imagen de fondo opcional, mostrada bajo un overlay oscuro.',
+    ),
+  })
+  .strict()
+
 export const TierExplanationCardSchema = z
   .object({
     type: z.literal('Tier Explanation'),
@@ -123,6 +143,7 @@ export const CardContentSchema = z.discriminatedUnion('type', [
   CoverCardSchema,
   FullImageCoverCardSchema,
   TierCardSchema,
+  PathwayCardSchema,
   TierExplanationCardSchema,
   GeneralExplanationCardSchema,
 ])
@@ -190,7 +211,7 @@ export type SaveCardBatchInput = z.infer<typeof SaveCardBatchSchema>
 export type CardFilter = z.infer<typeof CardFilterSchema>
 
 export type BuilderCardState = {
-  type: 'Character' | 'Artifact' | 'Cover' | 'Full Image Cover' | 'Tier' | 'Tier Explanation' | 'General Explanation'
+  type: 'Character' | 'Artifact' | 'Cover' | 'Full Image Cover' | 'Tier' | 'Pathway' | 'Tier Explanation' | 'General Explanation'
   name: string
   path: string
   seq: number
@@ -214,6 +235,11 @@ export type BuilderCardState = {
   tierText: string
   tierFooterText: string
   tierBackgroundImage: string | null
+  pathwayCardPath: string
+  pathwayCardSeq: number | null
+  pathwayCardText: string
+  pathwayCardFooterText: string
+  pathwayCardBackgroundImage: string | null
   explanationPath: string | null
   tierExplanationText: string
   tierExplanationBackgroundImage: string | null
@@ -246,6 +272,11 @@ const DEFAULT_BUILDER_STATE: BuilderCardState = {
   tierText: '',
   tierFooterText: '',
   tierBackgroundImage: null,
+  pathwayCardPath: 'Fool',
+  pathwayCardSeq: null,
+  pathwayCardText: '',
+  pathwayCardFooterText: '',
+  pathwayCardBackgroundImage: null,
   explanationPath: null,
   tierExplanationText: '',
   tierExplanationBackgroundImage: null,
@@ -283,6 +314,17 @@ export function toBuilderCardState(content: CardContent): BuilderCardState {
       tierText: content.points.join('\n'),
       tierFooterText: content.footerText ?? '',
       tierBackgroundImage: content.backgroundImageUrl ?? null,
+    }
+  }
+
+  if (content.type === 'Pathway') {
+    return {
+      ...state,
+      pathwayCardPath: content.pathway,
+      pathwayCardSeq: content.sequence ?? null,
+      pathwayCardText: content.points.join('\n'),
+      pathwayCardFooterText: content.footerText ?? '',
+      pathwayCardBackgroundImage: content.backgroundImageUrl ?? null,
     }
   }
 
@@ -326,6 +368,9 @@ export function titleForCard(content: CardContent): string {
   if (content.type === 'Tier') {
     return `${content.pathway}${content.sequence === undefined ? '' : ` Sequence ${content.sequence}`} - Tier ${content.rank}`
   }
+  if (content.type === 'Pathway') {
+    return `${content.pathway}${content.sequence === undefined ? '' : ` Sequence ${content.sequence}`} - Pathway`
+  }
   if (content.type === 'Tier Explanation') {
     return `Tier ${content.rank} Explanation`
   }
@@ -350,6 +395,10 @@ export function filenameForCard(content: CardContent): string {
   if (content.type === 'Full Image Cover') return `full-cover_${slugify(content.title)}`
   if (content.type === 'Tier') {
     const base = `tier-${content.rank.toLowerCase()}_${slugify(content.pathway)}`
+    return content.sequence === undefined ? base : `${base}_seq-${content.sequence}`
+  }
+  if (content.type === 'Pathway') {
+    const base = `pathway_${slugify(content.pathway)}`
     return content.sequence === undefined ? base : `${base}_seq-${content.sequence}`
   }
   if (content.type === 'Tier Explanation') {

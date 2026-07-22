@@ -7,11 +7,13 @@ import Card from '../builder/components/Card.jsx'
 import CoverCard from '../builder/components/CoverCard.jsx'
 import FullImageCoverCard from '../builder/components/FullImageCoverCard.jsx'
 import TierCard from '../builder/components/TierCard.jsx'
+import PathwayCard from '../builder/components/PathwayCard.jsx'
 import TierExplanationCard from '../builder/components/TierExplanationCard.jsx'
 import GeneralExplanationCard from '../builder/components/GeneralExplanationCard.jsx'
 import {
   PATHWAYS,
   TIER_RANKS,
+  PATHWAY_COLORS,
   powerTier,
   tierColor,
 } from '../builder/data/pathways.js'
@@ -23,10 +25,12 @@ const MAX_IMAGE_BYTES = 15 * 1024 * 1024
 const COVER_ACCENT = { c: '#d9b869', d: '#4a3a17', pct: 100 }
 const PATHWAY_DATA = PATHWAYS as Record<string, string[]>
 const TIER_DATA = TIER_RANKS as Record<string, { c: string; d: string }>
+const PATHWAY_COLOR_DATA = PATHWAY_COLORS as Record<string, { c: string; d: string }>
 const StaticCard = Card as unknown as ComponentType<Record<string, unknown>>
 const StaticCoverCard = CoverCard as unknown as ComponentType<Record<string, unknown>>
 const StaticFullImageCoverCard = FullImageCoverCard as unknown as ComponentType<Record<string, unknown>>
 const StaticTierCard = TierCard as unknown as ComponentType<Record<string, unknown>>
+const StaticPathwayCard = PathwayCard as unknown as ComponentType<Record<string, unknown>>
 const StaticTierExplanationCard = TierExplanationCard as unknown as ComponentType<Record<string, unknown>>
 const StaticGeneralExplanationCard = GeneralExplanationCard as unknown as ComponentType<Record<string, unknown>>
 const FONT_STYLESHEET =
@@ -124,6 +128,7 @@ function CardMarkup({ state, icons }: { state: BuilderCardState; icons: Record<s
   const isCover = state.type === 'Cover'
   const isFullImageCover = state.type === 'Full Image Cover'
   const isTier = state.type === 'Tier'
+  const isPathwayCard = state.type === 'Pathway'
   const isTierExplanation = state.type === 'Tier Explanation'
   const isGeneralExplanation = state.type === 'General Explanation'
   const rawSequences = [
@@ -144,6 +149,8 @@ function CardMarkup({ state, icons }: { state: BuilderCardState; icons: Record<s
     ? COVER_ACCENT
     : isTier || isTierExplanation
       ? { ...TIER_DATA[tierRank], pct: 100 }
+      : isPathwayCard
+        ? { ...PATHWAY_COLOR_DATA[state.pathwayCardPath], pct: 100 }
       : isGeneralExplanation
         ? COVER_ACCENT
       : powerTier(state.type, state.power, state.grade)
@@ -179,6 +186,17 @@ function CardMarkup({ state, icons }: { state: BuilderCardState; icons: Record<s
           text={state.tierText}
           footerText={state.tierFooterText}
           backgroundImage={state.tierBackgroundImage}
+        />
+      ) : isPathwayCard ? (
+        <StaticPathwayCard
+          path={state.pathwayCardPath}
+          icon={icons[state.pathwayCardPath]}
+          sequence={state.pathwayCardSeq}
+          sequenceName={state.pathwayCardSeq === null ? null : PATHWAY_DATA[state.pathwayCardPath][9 - state.pathwayCardSeq]}
+          tier={PATHWAY_COLOR_DATA[state.pathwayCardPath]}
+          text={state.pathwayCardText}
+          footerText={state.pathwayCardFooterText}
+          backgroundImage={state.pathwayCardBackgroundImage}
         />
       ) : isTierExplanation ? (
         <StaticTierExplanationCard
@@ -218,8 +236,12 @@ async function resolveStateImages(
   defaultCover: string,
 ): Promise<BuilderCardState> {
   const tierBackgroundSource = state.tierBackgroundImage
-    ?? (state.type === 'Tier' && state.tierSeq !== null
+    ?? (state.type === 'Tier'
       ? (PATHWAY_BACKGROUNDS as Record<string, string>)[state.tierPath] ?? null
+      : null)
+  const pathwayCardBackgroundSource = state.pathwayCardBackgroundImage
+    ?? (state.type === 'Pathway'
+      ? (PATHWAY_BACKGROUNDS as Record<string, string>)[state.pathwayCardPath] ?? null
       : null)
   return {
     ...state,
@@ -238,6 +260,9 @@ async function resolveStateImages(
       : null,
     tierExplanationBackgroundImage: state.tierExplanationBackgroundImage
       ? await resolveImageSource(state.tierExplanationBackgroundImage, publicDir)
+      : null,
+    pathwayCardBackgroundImage: pathwayCardBackgroundSource
+      ? await resolveImageSource(pathwayCardBackgroundSource, publicDir)
       : null,
   }
 }

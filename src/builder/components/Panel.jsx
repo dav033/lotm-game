@@ -81,12 +81,12 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
   const isCover = state.type === 'Cover'
   const isFullImageCover = state.type === 'Full Image Cover'
   const isTier = state.type === 'Tier'
+  const isPathwayCard = state.type === 'Pathway'
   const isTierExplanation = state.type === 'Tier Explanation'
   const isGeneralExplanation = state.type === 'General Explanation'
   const isExplanation = isTierExplanation || isGeneralExplanation
-  const defaultTierBackground = state.tierSeq === null
-    ? null
-    : PATHWAY_BACKGROUNDS[state.tierPath] ?? null
+  const defaultTierBackground = PATHWAY_BACKGROUNDS[state.tierPath] ?? null
+  const defaultPathwayCardBackground = PATHWAY_BACKGROUNDS[state.pathwayCardPath] ?? null
 
   return (
     <aside className="panel">
@@ -99,7 +99,7 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
       <div className="field">
         <label>Type</label>
         <div className="toggle">
-          {['Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Tier Explanation', 'General Explanation'].map((t) => (
+          {['Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Pathway', 'Tier Explanation', 'General Explanation'].map((t) => (
             <button
               key={t}
               className={'seg' + (state.type === t ? ' sel' : '')}
@@ -319,9 +319,7 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
                 ? 'Using custom image with dark overlay.'
                 : defaultTierBackground
                   ? `Using the default ${state.tierPath} background with dark overlay.`
-                  : state.tierSeq === null
-                    ? 'Defaults are applied only to specific sequences.'
-                    : `No default background exists for ${state.tierPath}.`}
+                  : `No default background exists for ${state.tierPath}.`}
             </p>
             <input
               ref={fileRef}
@@ -381,6 +379,117 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
             One slide per pathway: pick it, rank it, add explanation points. The rank
             color tints the whole card. "Generate all 22" appends one slide per
             pathway in canon order so you can rank them one by one.
+          </p>
+        </div>
+      ) : isPathwayCard ? (
+        <div key="pathway-card-fields">
+          <div className="field">
+            <label>Pathway (search all 22)</label>
+            <PathwayCombo
+              value={PATHWAYS[state.pathwayCardPath] ? state.pathwayCardPath : 'Fool'}
+              onPick={(n) => set({ pathwayCardPath: n })}
+            />
+          </div>
+
+          <div className="field">
+            <label>Subject</label>
+            <div className="toggle">
+              <button
+                className={'seg' + (state.pathwayCardSeq === null ? ' sel' : '')}
+                onClick={() => set({ pathwayCardSeq: null })}
+              >
+                Whole pathway
+              </button>
+              <button
+                className={'seg' + (state.pathwayCardSeq !== null ? ' sel' : '')}
+                onClick={() => set({ pathwayCardSeq: state.pathwayCardSeq ?? 9 })}
+              >
+                Specific sequence
+              </button>
+            </div>
+          </div>
+
+          {state.pathwayCardSeq !== null && (
+            <div className="field">
+              <label>Sequence</label>
+              <SeqSelect
+                path={PATHWAYS[state.pathwayCardPath] ? state.pathwayCardPath : 'Fool'}
+                value={state.pathwayCardSeq}
+                onChange={(pathwayCardSeq) => set({ pathwayCardSeq })}
+              />
+            </div>
+          )}
+
+          <div className="field">
+            <label>Background image (optional)</label>
+            <div className="actions tier-background-actions">
+              <button className="btn-img" onClick={() => fileRef.current?.click()}>
+                {state.pathwayCardBackgroundImage ? 'Replace image' : defaultPathwayCardBackground ? 'Override image' : 'Upload image'}
+              </button>
+              {state.pathwayCardBackgroundImage && (
+                <button className="btn-img" onClick={() => set({ pathwayCardBackgroundImage: null })}>Remove</button>
+              )}
+            </div>
+            <p className="field-help">
+              {state.pathwayCardBackgroundImage
+                ? 'Using custom image with dark overlay.'
+                : defaultPathwayCardBackground
+                  ? `Using the default ${state.pathwayCardPath} background with dark overlay.`
+                  : `No default background exists for ${state.pathwayCardPath}.`}
+            </p>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              aria-label="Choose Pathway background image"
+              hidden
+              onChange={(event) => {
+                onUploadImage(event.target.files[0], 'pathwayCardBackgroundImage')
+                event.target.value = ''
+              }}
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="pathway-card-explanation">Explanation points (one per line)</label>
+            <p className="field-help" id="pathway-card-explanation-help">
+              Each non-empty line becomes a bullet. A leading -, *, or • is optional.
+            </p>
+            <textarea
+              className="tier-textarea"
+              id="pathway-card-explanation"
+              name="pathwayCardText"
+              rows={10}
+              value={state.pathwayCardText ?? ''}
+              placeholder={'Strong at low sequences…\nFlexible across matchups…\nFalls off at the highest levels…'}
+              aria-describedby="pathway-card-explanation-help"
+              autoComplete="off"
+              onChange={(e) => set({ pathwayCardText: e.target.value })}
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="pathway-card-footer-text">Large bottom text</label>
+            <textarea
+              id="pathway-card-footer-text"
+              name="pathwayCardFooterText"
+              rows={3}
+              maxLength={240}
+              value={state.pathwayCardFooterText ?? ''}
+              placeholder="Add a final highlighted statement…"
+              autoComplete="off"
+              onChange={(event) => set({ pathwayCardFooterText: event.target.value })}
+            />
+            <p className="field-help">{(state.pathwayCardFooterText ?? '').length}/240 characters</p>
+          </div>
+
+          <div className="actions">
+            <button className="btn-dl" style={{ background: accent.c }} onClick={onDownload}>Download PNG</button>
+          </div>
+
+          <p className="hint">
+            Same layout as a Tier slide, without the rank badge — the pathway's own
+            color tints the whole card instead.
           </p>
         </div>
       ) : isCover ? (
