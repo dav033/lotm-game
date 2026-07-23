@@ -28,6 +28,11 @@ const app = createMcpExpressApp({ host, allowedHosts })
 const repository = new CardRepository()
 const publicHost = host === '0.0.0.0' || host === '::' ? 'localhost' : host
 const publicBaseUrl = process.env.CARDS_MCP_PUBLIC_URL || `http://${publicHost}:${port}`
+// Solo tiene sentido abrir un navegador en la maquina donde corre este proceso
+// si ese proceso efectivamente corre en la maquina del usuario (host local).
+const liveViewUrl = localHosts.has(host)
+  ? process.env.CARDS_LIVE_VIEW_URL || 'http://localhost:3000/cartas/vivo'
+  : undefined
 
 app.get('/health', (_request, response) => {
   response.json({ ok: true, service: 'lotm-card-studio' })
@@ -43,7 +48,7 @@ app.use('/mcp', (request, response, next) => {
 
 app.post('/mcp', async (request, response) => {
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
-  const mcp = createCardsMcpServer({ repository, downloadBaseUrl: publicBaseUrl })
+  const mcp = createCardsMcpServer({ repository, downloadBaseUrl: publicBaseUrl, liveViewUrl })
   response.on('close', () => void Promise.all([transport.close(), mcp.close()]))
 
   try {

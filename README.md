@@ -47,6 +47,7 @@ Variables:
 | `CARDS_MCP_HOST` / `CARDS_MCP_PORT` | Escucha HTTP del MCP; por defecto `127.0.0.1:3101` |
 | `CARDS_MCP_TOKEN` | Bearer token obligatorio al exponer el MCP fuera de localhost |
 | `CARDS_MCP_PUBLIC_URL` | URL base publica para construir enlaces de descarga |
+| `CARDS_LIVE_VIEW_URL` | Pagina que se abre en el navegador al primer guardado/edicion de la sesion; por defecto `http://localhost:3000/cartas/vivo` (requiere `npm run dev` activo) |
 
 ## 3 · Crear la base de datos
 

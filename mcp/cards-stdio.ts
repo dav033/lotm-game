@@ -5,7 +5,8 @@ import { createCardsMcpServer } from '../src/cards/mcp'
 try { process.loadEnvFile() } catch { /* .env is optional */ }
 
 const repository = new CardRepository()
-const server = createCardsMcpServer({ repository })
+const liveViewUrl = process.env.CARDS_LIVE_VIEW_URL || 'http://localhost:3000/cartas/vivo'
+const server = createCardsMcpServer({ repository, liveViewUrl })
 
 async function shutdown() {
   await server.close()

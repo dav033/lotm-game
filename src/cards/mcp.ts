@@ -8,14 +8,22 @@ import {
   UpdateCardSchema,
 } from './schema'
 import { exportCardsToZip } from './export'
+import { openBrowserOnce } from './openBrowser'
 import type { CardRepository, StoredCard } from './repository'
 
 type McpOptions = {
   repository: CardRepository
   downloadBaseUrl?: string
+  // Si se define, la primera vez que se guarde o edite una carta en este
+  // proceso se abre esta URL en el navegador del usuario (ver openBrowser.ts).
+  liveViewUrl?: string
 }
 
-export function createCardsMcpServer({ repository, downloadBaseUrl }: McpOptions): McpServer {
+export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl }: McpOptions): McpServer {
+  const openLiveViewOnce = () => {
+    if (liveViewUrl) openBrowserOnce(liveViewUrl)
+  }
+
   const server = new McpServer(
     { name: 'lotm-card-studio', version: '1.2.0' },
     {
@@ -45,6 +53,7 @@ export function createCardsMcpServer({ repository, downloadBaseUrl }: McpOptions
     },
     async (input) => runTool(() => {
       const cards = repository.saveBatch(input)
+      openLiveViewOnce()
       return {
         saved: cards.length,
         cards: cards.map(cardSummary),
@@ -97,6 +106,7 @@ export function createCardsMcpServer({ repository, downloadBaseUrl }: McpOptions
     async ({ cardId, card }) => runTool(() => {
       const updated = repository.updateCard(cardId, card)
       if (!updated) throw new Error(`No existe la carta ${cardId}.`)
+      openLiveViewOnce()
       return { card: updated }
     }),
   )

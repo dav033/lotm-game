@@ -401,3 +401,25 @@
   .filmstrip .btn-zip{width:100%}
   .panel{padding:18px}
 }
+
+/* ================= LIVE VIEW (/cartas/vivo) ================= */
+.live-view{max-width:1100px;margin:0 auto;padding:28px 22px 60px}
+.live-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}
+.live-header h1{font-family:'Cinzel',serif;font-size:20px;font-weight:700;letter-spacing:.02em}
+.live-status{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted2);
+  display:flex;align-items:center;gap:7px}
+.live-status::before{content:'';width:7px;height:7px;border-radius:50%;background:#46c2a0}
+.live-status.offline::before{background:#c0392b}
+.live-empty{color:var(--muted);font-size:13px;padding:40px 0;text-align:center}
+.live-universe{margin-bottom:30px}
+.live-universe h2{font-size:15px;font-weight:700;margin-bottom:2px}
+.live-part{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);
+  margin:14px 0 10px}
+.live-grid{display:flex;flex-wrap:wrap;gap:14px}
+.live-tile{position:relative;width:168px;height:224px;border-radius:8px;overflow:hidden;
+  border:1px solid var(--line2);background:#0a0a11;transition:box-shadow .3s,border-color .3s}
+.live-tile-inner{width:480px;height:640px;transform:scale(.35);transform-origin:top left}
+.live-tile.flash{border-color:var(--tier);box-shadow:0 0 0 3px var(--tier-deep),0 0 24px var(--tier)}
+.live-tile-title{position:absolute;left:0;right:0;bottom:0;padding:4px 7px;font-size:10px;
+  color:#fff;background:linear-gradient(0deg,rgba(0,0,0,.85),transparent);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

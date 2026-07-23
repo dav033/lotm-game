@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "cards": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "--import",
+        "tsx",
+        "mcp/cards-stdio.ts"
+      ],
+      "env": {}
+    }
+  }
+}
