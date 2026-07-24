@@ -23,7 +23,7 @@ export type RecetaInput = {
 
 type RecipeDeletionClient = Pick<
   PrismaClient,
-  'playerCombinationStat' | 'recipe' | 'recipeSeedSuppression'
+  'playerCombinationStat' | 'recipe'
 >
 
 export async function eliminarRecetasCompletamente(
@@ -34,14 +34,6 @@ export async function eliminarRecetasCompletamente(
 
   const ids = recipes.map((recipe) => recipe.id)
   const inputKeys = recipes.map((recipe) => recipe.inputKey)
-
-  for (const recipe of recipes) {
-    await db.recipeSeedSuppression.upsert({
-      where: { inputKey: recipe.inputKey },
-      update: { suppressedAt: new Date() },
-      create: { inputKey: recipe.inputKey },
-    })
-  }
 
   // Una estadística compartida con un avance sigue siendo válida; solo pierde
   // el vínculo a la receta. El historial exclusivo de la fórmula se retira.

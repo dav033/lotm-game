@@ -289,13 +289,6 @@ model Recipe {
   stats       PlayerCombinationStat[]
 }
 
-// Evita que el seed periódico recree fórmulas que el administrador retiró.
-// No se relaciona con Recipe porque la receta suprimida ya no existe.
-model RecipeSeedSuppression {
-  inputKey     String   @id
-  suppressedAt DateTime @default(now())
-}
-
 model RecipeOutput {
   id        String  @id @default(cuid())
   recipeId  String
