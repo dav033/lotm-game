@@ -1,14 +1,12 @@
 // Simulador puro y determinista del grafo de progresión. No accede a Prisma:
-// recibe catálogos normalizados (los mismos que sirven al seed) y calcula el
-// cierre alcanzable por punto fijo. Se usa en las pruebas para verificar los
-// cierres de ingredientes, de forma independiente del runtime, y para las
-// auditorías aleatorias de orden de acciones.
+// recibe catálogos normalizados cargados desde PostgreSQL y calcula el cierre
+// alcanzable por punto fijo para el runtime y sus diagnósticos.
 //
 // La regla de desbloqueo espontáneo reutiliza el mismo predicado puro que el
 // runtime (`desbloqueoEspontaneoSatisfecho`) para que ambos no puedan
 // divergir.
 
-import { desbloqueoEspontaneoSatisfecho } from '../../src/server/domain/desbloqueoEspontaneo'
+import { desbloqueoEspontaneoSatisfecho } from './desbloqueoEspontaneo'
 
 export type SimElement = {
   slug: string

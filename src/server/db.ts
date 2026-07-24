@@ -1,6 +1,4 @@
-import fs from 'node:fs'
-import path from 'node:path'
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
+import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '@/generated/prisma/client'
 
 // Una única instancia de PrismaClient reutilizada entre recargas de dev
@@ -8,13 +6,21 @@ import { PrismaClient } from '@/generated/prisma/client'
 const globalForPrisma = globalThis as unknown as { prismaGame?: PrismaClient }
 
 function createClient(): PrismaClient {
-  const url = process.env.DATABASE_URL ?? 'file:./data/game.db'
-  if (url.startsWith('file:') && !url.includes(':memory:')) {
-    // Garantiza que la carpeta persistente exista antes de abrir el archivo.
-    const file = url.slice('file:'.length)
-    fs.mkdirSync(path.dirname(path.resolve(process.cwd(), file)), { recursive: true })
+  const connectionString = process.env.DATABASE_URL
+  if (!connectionString) {
+    throw new Error(
+      'Falta DATABASE_URL. Usa la conexión PostgreSQL pooled de Supabase para el runtime.',
+    )
   }
-  const adapter = new PrismaBetterSqlite3({ url })
+
+  const configuredMax = Number(process.env.DATABASE_POOL_MAX ?? 10)
+  const max = Number.isInteger(configuredMax) && configuredMax > 0 ? configuredMax : 10
+  const adapter = new PrismaPg({
+    connectionString,
+    max,
+    connectionTimeoutMillis: 10_000,
+    idleTimeoutMillis: 30_000,
+  })
   return new PrismaClient({ adapter })
 }
 

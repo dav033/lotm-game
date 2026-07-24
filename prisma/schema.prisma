@@ -1,6 +1,6 @@
 // Archivo de Misterios — esquema de datos.
-// SQLite hoy, pero sin enums nativos ni rasgos específicos del motor para que
-// migrar a PostgreSQL solo requiera cambiar el provider y el adaptador.
+// PostgreSQL es la base autoritativa del juego. Se evitan enums nativos para
+// que las reglas del dominio sigan validadas por Zod y sean fáciles de migrar.
 
 generator client {
   provider = "prisma-client"
@@ -8,7 +8,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 // ---------- Contenido del juego ----------

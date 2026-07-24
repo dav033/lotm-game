@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import type { SimInput } from '../../../prisma/seed-content/progression-simulator'
+import type { SimInput } from '../domain/progressionSimulator'
 import type { Db } from '../db'
 import {
   analizarFaseDesdeSim,

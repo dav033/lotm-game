@@ -1,4 +1,4 @@
-import type { SimInput } from '../../../prisma/seed-content/progression-simulator'
+import type { SimInput } from '../domain/progressionSimulator'
 import type { Db } from '../db'
 import {
   analizarProgresion,

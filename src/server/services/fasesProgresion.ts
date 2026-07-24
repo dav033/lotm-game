@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@/generated/prisma/client'
-import { simulateProgression, type SimInput } from '../../../prisma/seed-content/progression-simulator'
+import { simulateProgression, type SimInput } from '../domain/progressionSimulator'
 import type { Db } from '../db'
 import { parsePhaseRule, summarizePhaseRule } from '@/shared/phaseRules'
 import {

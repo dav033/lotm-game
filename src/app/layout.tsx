@@ -8,6 +8,10 @@ export const metadata: Metadata = {
     'Un juego de combinación y descubrimiento de ambientación victoriana y esotérica.',
 }
 
+// El contenido y el progreso viven en PostgreSQL; ninguna ruta del juego debe
+// consultar la base durante `next build`.
+export const dynamic = 'force-dynamic'
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">

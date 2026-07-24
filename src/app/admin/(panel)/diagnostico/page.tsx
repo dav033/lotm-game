@@ -15,12 +15,6 @@ import {
   resumenParticipacion,
   type DiagElementResult,
 } from '@/server/domain/diagnostico'
-import {
-  DISCOVERY_COUNT_TRANSITION_THRESHOLD,
-  PHASE1_CLOSURE_SLUGS,
-} from '../../../../../prisma/seed-content/progression'
-import { PHASE_2_AVAILABLE_SLUGS } from '../../../../../prisma/seed-content/phases'
-import { simulateProgression } from '../../../../../prisma/seed-content/progression-simulator'
 
 export const runtime = 'nodejs'
 
@@ -37,7 +31,6 @@ export default async function PaginaDiagnostico() {
     secuenciasDiag,
     avancesDiag,
     ritualesDiag,
-    simInput,
   } = await cargarAnalisisProgresion(prisma)
 
   const nombreDe = new Map(elementos.map((e) => [e.id, e.name]))
@@ -65,25 +58,6 @@ export default async function PaginaDiagnostico() {
     desencadenantes,
   )
 
-  const auditoriaFase = (slugs: readonly string[], discoveryCountCap: number) => {
-    const cierre = simulateProgression(simInput, { discoveryCountCap }).discovered
-    const esperados = new Set<string>(slugs)
-    const faltantes = slugs.filter((slug) => !cierre.has(slug))
-    const sobrantes = [...cierre].filter((slug) => !esperados.has(slug)).sort()
-    return {
-      total: slugs.length,
-      alcanzados: slugs.length - faltantes.length,
-      faltantes,
-      sobrantes,
-    }
-  }
-  const hitos = [
-    [`Cierre de Fase 1 (${PHASE1_CLOSURE_SLUGS.length})`, PHASE1_CLOSURE_SLUGS, 0],
-    [`Cierre de Fase 2 (${PHASE_2_AVAILABLE_SLUGS.length})`, PHASE_2_AVAILABLE_SLUGS, DISCOVERY_COUNT_TRANSITION_THRESHOLD],
-  ] as const
-  const auditoriasHitos = hitos.map(([etiqueta, slugs, cap]) =>
-    [etiqueta, auditoriaFase(slugs, cap)] as const,
-  )
   const referenciasInactivas = recetas.filter(
     (r) =>
       r.isActive &&
@@ -131,34 +105,6 @@ export default async function PaginaDiagnostico() {
       </p>
 
       <div className="space-y-4">
-        <Seccion
-          titulo="Auditoría de hitos de progresión"
-          vacio={
-            auditoriasHitos.every(([, a]) => a.faltantes.length === 0 && a.sobrantes.length === 0)
-          }
-          alerta
-        >
-          <ul className="mb-2 space-y-1 text-parchment">
-            {auditoriasHitos.map(([etiqueta, a]) => (
-              <li key={etiqueta}>{etiqueta}: {a.alcanzados}/{a.total}</li>
-            ))}
-          </ul>
-          {auditoriasHitos.map(([etiqueta, a]) =>
-            a.faltantes.length > 0 ? (
-              <p key={etiqueta} className="text-wine">
-                {etiqueta} — esperados y no alcanzables: {a.faltantes.join(', ')}
-              </p>
-            ) : null,
-          )}
-          {auditoriasHitos.map(([etiqueta, a]) =>
-            a.sobrantes.length > 0 ? (
-              <p key={`${etiqueta}-sobrantes`} className="text-wine">
-                {etiqueta} — alcanzados antes de tiempo: {a.sobrantes.join(', ')}
-              </p>
-            ) : null,
-          )}
-        </Seccion>
-
         <Seccion titulo="Elementos inalcanzables" vacio={inalcanzables.length === 0} alerta>
           <p className="mb-2 text-fog">
             Elementos activos que no se pueden obtener desde los iniciales

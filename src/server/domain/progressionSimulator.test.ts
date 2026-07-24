@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { simulateProgression, type SimElement, type SimInput } from './progression-simulator'
+import { simulateProgression, type SimElement, type SimInput } from './progressionSimulator'
 
 function element(slug: string, partial: Partial<SimElement> = {}): SimElement {
   return {

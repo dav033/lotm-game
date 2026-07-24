@@ -19,7 +19,7 @@
 //
 // Esta es la única fuente de verdad de la regla: el resolvedor en tiempo real
 // (descubrimientos.ts), el analizador de potencial (diagnostico.ts) y el
-// simulador de progresión (prisma/seed-content/progression-simulator.ts) la
+// simulador de progresión (src/server/domain/progressionSimulator.ts) la
 // reutilizan para no divergir.
 
 export type EspontaneoConfig = {

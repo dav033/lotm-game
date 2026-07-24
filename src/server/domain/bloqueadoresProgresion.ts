@@ -1,4 +1,4 @@
-import type { SimInput, SimResult } from '../../../prisma/seed-content/progression-simulator'
+import type { SimInput, SimResult } from './progressionSimulator'
 import { RITUAL_KNOWLEDGE_ELEMENT_SLUG } from './ritualKnowledge'
 
 export type BloqueadoresElemento = {
