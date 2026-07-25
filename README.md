@@ -47,6 +47,7 @@ Variables:
 | `CARDS_MCP_HOST` / `CARDS_MCP_PORT` | Escucha HTTP del MCP; por defecto `127.0.0.1:3101` |
 | `CARDS_MCP_TOKEN` | Bearer token obligatorio al exponer el MCP fuera de localhost |
 | `CARDS_MCP_PUBLIC_URL` | URL base publica para construir enlaces de descarga |
+| `CARDS_MCP_ALLOWED_HOSTS` | Hostnames publicos del MCP, separados por comas |
 | `CARDS_LIVE_VIEW_URL` | Pagina que se abre en el navegador al primer guardado/edicion de la sesion; por defecto `http://localhost:3000/cartas/vivo` (requiere `npm run dev` activo) |
 
 ## 3 · Crear la base de datos
@@ -121,6 +122,21 @@ en `data/card-exports` con PNG de 960x1280 ordenados por universo y parte, y un
 `manifest.json` v3. El servidor HTTP también devuelve una URL `/downloads/...`.
 Si se enlaza a una interfaz no local, es obligatorio definir
 `CARDS_MCP_TOKEN`; el cliente debe enviarlo como `Authorization: Bearer ...`.
+
+### Producción y ChatGPT
+
+El contenedor `cards-mcp` del archivo `docker-compose.production.yml` ejecuta
+este servidor por separado del sitio web. Configura el proxy inverso del
+servidor para enviar el dominio HTTPS elegido al destino `cards-mcp:3101` sin
+eliminar el prefijo `/mcp`. Define en `.env` `CARDS_MCP_TOKEN`,
+`CARDS_MCP_PUBLIC_URL` y `CARDS_MCP_ALLOWED_HOSTS` con ese dominio antes de
+desplegar. La URL que se registra en ChatGPT es:
+
+```text
+https://mcp.tu-dominio.com/mcp
+```
+
+Usa como autenticación el esquema Bearer y el valor de `CARDS_MCP_TOKEN`.
 
 ## 6 · Entrar al panel administrativo
 
