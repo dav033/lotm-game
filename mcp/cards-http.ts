@@ -11,12 +11,13 @@ try { process.loadEnvFile() } catch { /* .env is optional */ }
 const host = process.env.CARDS_MCP_HOST || '127.0.0.1'
 const port = Number(process.env.CARDS_MCP_PORT || 3_101)
 const token = process.env.CARDS_MCP_TOKEN
+const allowUnauthenticated = process.env.CARDS_MCP_ALLOW_UNAUTHENTICATED === 'true'
 const localHosts = new Set(['127.0.0.1', 'localhost', '::1'])
 
 if (!Number.isInteger(port) || port < 1 || port > 65_535) {
   throw new Error('CARDS_MCP_PORT debe ser un puerto valido.')
 }
-if (!localHosts.has(host) && !token) {
+if (!localHosts.has(host) && !token && !allowUnauthenticated) {
   throw new Error('Define CARDS_MCP_TOKEN antes de exponer el servidor fuera de localhost.')
 }
 
