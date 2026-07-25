@@ -9,9 +9,9 @@ import { clearData, loadData, saveData } from './storage.js'
 // y se envia al servidor, y todo lo que llegue del servidor se adopta salvo en
 // las cartas que aun tienen una escritura sin confirmar.
 const SESSION_URL = '/api/cards/session'
-const STREAM_URL = '/api/cards/live/stream'
+const REVISION_URL = '/api/cards/revision'
 const SAVE_DEBOUNCE_MS = 400
-const RECONNECT_POLL_MS = 5_000
+const POLL_MS = 1_000
 const OFFLINE_MESSAGE = 'Sin conexion con el servidor.'
 
 const IMAGE_FIELDS = [
@@ -51,6 +51,7 @@ export function useCardSession() {
   const timers = useRef(new Map())
   const editSeq = useRef(new Map())
   const pullRequest = useRef(0)
+  const revisionRef = useRef(null)
   const cardsRef = useRef([])
   cardsRef.current = cards
 
@@ -74,6 +75,7 @@ export function useCardSession() {
       const session = await response.json()
       // Una respuesta que llega tarde no puede pisar a una mas reciente.
       if (requestId !== pullRequest.current) return
+      revisionRef.current = session.revision
       setCards((previous) => {
         const local = new Map(previous.map((card) => [card.id, card]))
         return session.cards.map((card) => {
@@ -213,19 +215,29 @@ export function useCardSession() {
     }
     void start()
 
-    const events = new EventSource(STREAM_URL)
-    events.addEventListener('connected', () => void pull())
-    events.addEventListener('library-change', () => void pull())
-    // Con el stream abierto los avisos ya son inmediatos; esto solo cubre el
-    // rato en que esta caido, mientras EventSource reintenta por su cuenta.
-    const fallback = setInterval(() => {
-      if (events.readyState !== EventSource.OPEN) void pull()
-    }, RECONNECT_POLL_MS)
+    // Sondeo del navegador: pide solo la revision y recarga la sesion cuando
+    // cambia, venga el cambio del MCP, de otra pestana o de este mismo editor.
+    const poll = setInterval(async () => {
+      if (cancelled || document.hidden) return
+      try {
+        const response = await fetch(REVISION_URL, { cache: 'no-store' })
+        if (!response.ok) throw new Error(String(response.status))
+        const { revision } = await response.json()
+        if (revision !== revisionRef.current) await pull()
+        else setError((current) => (current === OFFLINE_MESSAGE ? null : current))
+      } catch {
+        if (!cancelled) setError(OFFLINE_MESSAGE)
+      }
+    }, POLL_MS)
+
+    // Al volver a la pestana se comprueba enseguida, sin esperar al siguiente turno.
+    const onVisible = () => { if (!document.hidden) void pull() }
+    document.addEventListener('visibilitychange', onVisible)
 
     return () => {
       cancelled = true
-      events.close()
-      clearInterval(fallback)
+      clearInterval(poll)
+      document.removeEventListener('visibilitychange', onVisible)
       for (const timer of timersAtMount.values()) clearTimeout(timer)
     }
   }, [pull, uploadImage])

@@ -5,9 +5,8 @@ import '@/builder/styles.css'
 import LiveCardPreview from '@/builder/LiveCardPreview.jsx'
 import type { CardContent } from '@/cards/schema'
 
-const FALLBACK_POLL_MS = 15_000
+const POLL_MS = 1_000
 const FLASH_MS = 4_000
-const EVENTS_URL = '/api/cards/live/stream'
 
 type LiveCard = {
   id: string
@@ -58,16 +57,18 @@ export default function CartasVivoPage() {
   useEffect(() => {
     let cancelled = false
     let pending = 0
+    let revision: string | null = null
 
     async function refresh() {
-      // Varios avisos seguidos pueden dejar respuestas en vuelo: solo la lectura
-      // mas reciente puede pintar, para no volver a una version anterior.
+      // Varias lecturas seguidas pueden dejar respuestas en vuelo: solo la mas
+      // reciente puede pintar, para no volver a una version anterior.
       const requestId = ++pending
       try {
         const response = await fetch('/api/cards/session', { cache: 'no-store' })
         if (!response.ok) throw new Error(String(response.status))
         const data = await response.json()
         if (cancelled || requestId !== pending) return
+        revision = data.revision
         setUniverses(groupByUniverse(data.cards))
         setConnected(true)
       } catch {
@@ -77,20 +78,23 @@ export default function CartasVivoPage() {
     }
 
     refresh()
-    const events = new EventSource(EVENTS_URL)
-    // Al (re)conectar recuperamos lo que haya cambiado mientras no hubo stream.
-    events.addEventListener('connected', () => void refresh())
-    events.addEventListener('library-change', () => void refresh())
+    // Se pide solo la revision y se recarga la biblioteca cuando cambia.
+    const poll = setInterval(async () => {
+      if (cancelled || document.hidden) return
+      try {
+        const response = await fetch('/api/cards/revision', { cache: 'no-store' })
+        if (!response.ok) throw new Error(String(response.status))
+        const data = await response.json()
+        if (data.revision !== revision) await refresh()
+        else if (!cancelled) setConnected(true)
+      } catch {
+        if (!cancelled) setConnected(false)
+      }
+    }, POLL_MS)
 
-    // El estado depende de si la biblioteca se puede leer, no del stream: este
-    // se reconecta solo y quedarse sin el solo significa volver al respaldo lento.
-    const interval = setInterval(() => {
-      if (events.readyState !== EventSource.OPEN) void refresh()
-    }, FALLBACK_POLL_MS)
     return () => {
       cancelled = true
-      events.close()
-      clearInterval(interval)
+      clearInterval(poll)
     }
   }, [])
 

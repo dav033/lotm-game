@@ -133,15 +133,20 @@ cartas por su cuenta, solo refleja el servidor y le manda cambios.
 | Ruta | Uso |
 | --- | --- |
 | `GET /api/cards/session` | Sesión completa: `revision` y cartas ya ordenadas |
-| `GET /api/cards/live/stream` | SSE; avisa en cuanto cambia la revisión de `cards.db` |
+| `GET /api/cards/revision` | Revisión actual de `cards.db`, sin leer las cartas |
 | `POST /api/cards` | Crea una carta desde el editor |
 | `PUT`/`DELETE /api/cards/:id` | Edita o borra |
 | `POST /api/cards/reorder` | Reordena una parte completa |
 | `POST /api/cards/images` | Sube una imagen; devuelve la ruta que se guarda en la carta |
 
-El stream vigila la revisión de la base, no al proceso que escribe, así que
-refleja por igual al MCP stdio, al MCP HTTP y al propio editor. Si se cae, el
-navegador reconecta solo y mientras tanto relee cada 5 segundos.
+El navegador pide la revisión cada segundo y solo recarga la sesión cuando
+cambia. Al mirar la revisión de la base y no al proceso que escribe, refleja por
+igual al MCP stdio, al MCP HTTP y al propio editor. El sondeo se detiene con la
+pestaña en segundo plano.
+
+Antes esto era un stream SSE, pero los temporizadores que necesitaba para
+vigilar la base no se ejecutan dentro de un `ReadableStream` en el build de
+producción: el evento inicial llegaba y después nada, ni siquiera el keep-alive.
 
 Cada edición se aplica al instante en pantalla y se envía al servidor. Mientras
 una carta tenga una escritura sin confirmar, lo que llegue del servidor no la
