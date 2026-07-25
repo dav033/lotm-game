@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { fromBuilderCardState, toBuilderCardState } from '../cards/schema'
-import { clearData, loadData } from './storage.js'
+import { clearData, loadData, saveData } from './storage.js'
 
 // La biblioteca del servidor es la unica fuente de verdad. Este hook mantiene
 // un espejo local de esa sesion: cada edicion se aplica al instante en pantalla
@@ -204,8 +204,12 @@ export function useCardSession() {
     const timersAtMount = timers.current
 
     async function start() {
-      await migrateLocalCards(uploadImage)
-      if (!cancelled) await pull()
+      const migration = await migrateOnce(uploadImage)
+      if (cancelled) return
+      if (migration?.failed) {
+        setError(`No se pudieron subir ${migration.failed} carta(s) guardadas en este navegador; siguen aqui y se reintentan al recargar.`)
+      }
+      await pull()
     }
     void start()
 
@@ -240,39 +244,72 @@ export function useCardSession() {
   }
 }
 
+// En desarrollo React monta el efecto dos veces; sin esta guarda cada carta
+// local se subiria por duplicado.
+let migrationRun = null
+const migrateOnce = (uploadImage) => (migrationRun ??= migrateLocalCards(uploadImage))
+
+const PLACEHOLDER = 'Sin titulo'
+
+// Una carta a medio escribir (sin nombre, sin texto) no pasa la validacion del
+// servidor. Antes que dejarla fuera se completa con un marcador visible.
+function withPlaceholders(state) {
+  const next = { ...state }
+  const fill = (field, value = PLACEHOLDER) => {
+    if (!String(next[field] ?? '').trim()) next[field] = value
+  }
+  if (state.type === 'Character' || state.type === 'Artifact') fill('name')
+  if (state.type === 'Cover') { fill('coverTitle'); fill('coverPartNum', '1') }
+  if (state.type === 'Full Image Cover') fill('fullCoverTitle')
+  if (state.type === 'Tier Explanation') fill('tierExplanationText')
+  if (state.type === 'General Explanation') {
+    fill('generalExplanationTitle')
+    fill('generalExplanationText')
+  }
+  return next
+}
+
+async function createLegacyCard(state) {
+  const post = (card) => fetch('/api/cards', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ card, part: { name: 'Migradas del editor', number: 1 } }),
+  })
+  const response = await post(fromBuilderCardState(state))
+  if (response.ok) return true
+  if (response.status !== 400) return false
+  return (await post(fromBuilderCardState(withPlaceholders(state)))).ok
+}
+
 // Sube al servidor las cartas que quedaron en IndexedDB de la version anterior.
-// Solo se borra el rastro local si todas subieron, para no perder trabajo.
+// Cada carta se quita del lote local en cuanto sube, asi que un reintento ni la
+// duplica ni la pierde.
 async function migrateLocalCards(uploadImage) {
   let snapshot = null
   try {
     snapshot = await loadData()
   } catch {
-    return
+    return null
   }
   const batch = snapshot?.batch ?? []
   if (!batch.length) {
     if (snapshot) await clearData()
-    return
+    return null
   }
 
-  let allSaved = true
+  let remaining = batch
+  let saved = 0
   for (const item of batch) {
     try {
       const state = await uploadStateImages(item.state, uploadImage)
-      const response = await fetch('/api/cards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          card: fromBuilderCardState(state),
-          part: { name: 'Migradas del editor', number: 1 },
-        }),
-      })
-      if (!response.ok) allSaved = false
-    } catch {
-      allSaved = false
-    }
+      if (!(await createLegacyCard(state))) continue
+      saved += 1
+      remaining = remaining.filter((card) => card.id !== item.id)
+      await saveData({ ...snapshot, batch: remaining })
+    } catch { /* se queda en el lote local para el proximo intento */ }
   }
-  if (allSaved) await clearData()
+  if (!remaining.length) await clearData()
+  return { saved, failed: remaining.length }
 }
 
 async function uploadStateImages(state, uploadImage) {

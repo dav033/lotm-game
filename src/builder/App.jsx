@@ -416,7 +416,14 @@ export default function App() {
         </div>
 
         <div className="stage-canvas">
-          {isCover ? (
+          {/* Sin cartas no hay nada que editar: escribir aqui no guardaria en
+              ningun sitio, asi que se dice que hay que crear una. */}
+          {cards.length === 0 ? (
+            <div className="stage-empty">
+              <p>La biblioteca del servidor esta vacia.</p>
+              <button className="btn-new-card" onClick={onNewCard}>Crear la primera carta</button>
+            </div>
+          ) : isCover ? (
             <CoverCard
               ref={cardRef}
               image1={state.coverImage1}

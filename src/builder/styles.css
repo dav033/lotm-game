@@ -43,6 +43,11 @@
 
 .stage-canvas{flex:1 1 auto;display:flex;align-items:center;justify-content:center;
   width:100%;min-height:0}
+.stage-empty{display:flex;flex-direction:column;align-items:center;gap:16px;
+  color:var(--muted2);font-size:14px;text-align:center}
+.btn-new-card{padding:10px 18px;border-radius:8px;border:1px solid var(--tier);
+  background:transparent;color:var(--tier);font:inherit;cursor:pointer}
+.btn-new-card:hover{background:var(--tier);color:#0a0a11}
 
 /* Bottom: filmstrip of saved cards */
 .filmstrip{width:100%;margin-top:16px;display:flex;align-items:center;gap:14px}
