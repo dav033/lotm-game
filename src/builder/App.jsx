@@ -18,6 +18,7 @@ import { PATHWAY_ICONS } from './data/pathwayIcons.js'
 import { PATHWAY_BACKGROUNDS } from './data/pathwayBackgrounds.js'
 import { loadData, saveData } from './storage.js'
 import { fromBuilderCardState, toBuilderCardState } from '../cards/schema'
+import { discardCachedRemoteCards, localEditorSnapshot, mergeRemoteCards } from './remoteSync'
 
 const EVENTS_URL = process.env.NEXT_PUBLIC_CARDS_MCP_EVENTS_URL || 'http://127.0.0.1:3101/events'
 
@@ -117,12 +118,21 @@ export default function App() {
   const thumbTimer = useRef(null)
   const persistTimer = useRef(null)
   const remoteSaveTimer = useRef(null)
+  const syncRequest = useRef(0)
+  const remoteDirty = useRef(false)
+  const remoteRevision = useRef(0)
+  const editor = useRef({ editingId: null, state: DEFAULT_STATE })
+  const batchRef = useRef([])
+  editor.current = { editingId, state }
+  batchRef.current = batch
 
   const syncMcpCards = async () => {
+    const requestId = ++syncRequest.current
     try {
       const response = await fetch('/api/cards/live', { cache: 'no-store' })
       if (!response.ok) return
       const { universes } = await response.json()
+      if (requestId !== syncRequest.current) return
       const remoteCards = universes.flatMap((universe) => universe.parts.flatMap((part) =>
         part.cards.map((card) => ({
           id: `mcp:${card.id}`,
@@ -133,11 +143,63 @@ export default function App() {
           state: normalizeState(toBuilderCardState(card.content)),
         })),
       ))
-      setBatch((current) => {
-        const localCards = current.filter((card) => card.source !== 'mcp')
-        return [...remoteCards, ...localCards]
-      })
+      let next = mergeRemoteCards(batchRef.current, remoteCards)
+      const activeId = editor.current.editingId
+      const active = next.find((card) => card.id === activeId)
+
+      // Mientras una edición remota está pendiente, una lectura del servidor
+      // no puede pisarla con la versión anterior.
+      if (active?.source === 'mcp' && remoteDirty.current) {
+        next = next.map((card) => card.id === activeId
+          ? { ...card, state: editor.current.state, label: labelFor(editor.current.state) }
+          : card)
+      } else if (active?.source === 'mcp') {
+        setState(active.state)
+      }
+
+      // Si el MCP eliminó la carta activa, salimos del estado fantasma y
+      // seleccionamos una carta que realmente siga existiendo.
+      if (activeId && !active) {
+        clearTimeout(remoteSaveTimer.current)
+        remoteRevision.current += 1
+        remoteDirty.current = false
+        const fallback = next[0]
+        if (fallback) {
+          setEditingId(fallback.id)
+          setState(normalizeState(fallback.state))
+        } else {
+          const id = newId()
+          const fresh = normalizeState(DEFAULT_STATE)
+          next = [{ id, label: labelFor(fresh), url: null, state: fresh }]
+          setEditingId(id)
+          setState(fresh)
+        }
+      }
+      setBatch(next)
     } catch { /* El editor local sigue funcionando sin el servidor de cartas. */ }
+  }
+
+  const saveRemoteState = async (remoteId, value, revision = remoteRevision.current) => {
+    try {
+      const card = fromBuilderCardState(value)
+      const response = await fetch(`/api/cards/${remoteId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ card }),
+      })
+      if (response.ok && revision === remoteRevision.current) remoteDirty.current = false
+      return response.ok
+    } catch {
+      return false
+    }
+  }
+
+  const flushRemoteEdit = () => {
+    if (!remoteDirty.current) return
+    const remoteId = batch.find((card) => card.id === editingId)?.remoteId
+    if (!remoteId) return
+    clearTimeout(remoteSaveTimer.current)
+    void saveRemoteState(remoteId, state, remoteRevision.current)
   }
 
   // ---- Initial load from IndexedDB (with legacy localStorage migration) ----
@@ -145,7 +207,7 @@ export default function App() {
     let alive = true
     loadData().then((data) => {
       if (!alive) return
-      const restoredBatch = (data?.batch ?? []).map((card) => ({
+      const restoredBatch = discardCachedRemoteCards(data?.batch ?? []).map((card) => ({
         ...card,
         state: normalizeState(card.state),
       }))
@@ -182,7 +244,13 @@ export default function App() {
     }
   }, [loaded])
 
-  const set = (patch) => setState((s) => ({ ...s, ...patch }))
+  const set = (patch) => {
+    if (batch.find((card) => card.id === editingId)?.source === 'mcp') {
+      remoteDirty.current = true
+      remoteRevision.current += 1
+    }
+    setState((s) => ({ ...s, ...patch }))
+  }
 
   const onUploadImage = (file, field = 'image') => {
     if (!file) return
@@ -230,12 +298,13 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, editingId, loaded])
 
-  // ---- Persist the whole snapshot to IndexedDB (debounced). ----
+  // IndexedDB es solo para cartas locales. Persistir copias MCP hacía que una
+  // carta borrada reapareciera al recargar hasta terminar la reconciliación.
   useEffect(() => {
     if (!loaded) return
     clearTimeout(persistTimer.current)
     persistTimer.current = setTimeout(() => {
-      saveData({ batch, state, editingId })
+      saveData(localEditorSnapshot(batch, editingId))
     }, 400)
     return () => clearTimeout(persistTimer.current)
   }, [batch, state, editingId, loaded])
@@ -245,17 +314,10 @@ export default function App() {
   useEffect(() => {
     if (!loaded || !editingId) return
     const remoteId = batch.find((card) => card.id === editingId)?.remoteId
-    if (!remoteId) return
+    if (!remoteId || !remoteDirty.current) return
     clearTimeout(remoteSaveTimer.current)
     remoteSaveTimer.current = setTimeout(async () => {
-      try {
-        const card = fromBuilderCardState(state)
-        await fetch(`/api/cards/${remoteId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ card }),
-        })
-      } catch { /* No sobrescribimos el trabajo local si el servidor falla. */ }
+      await saveRemoteState(remoteId, state)
     }, 700)
     return () => clearTimeout(remoteSaveTimer.current)
   }, [batch, editingId, loaded, state])
@@ -265,6 +327,9 @@ export default function App() {
   // New card: keep the pathway/power setup you're working with, but clear the
   // identity (name + image) so batching variants is fast. Then select it.
   const onNewCard = () => {
+    flushRemoteEdit()
+    remoteRevision.current += 1
+    remoteDirty.current = false
     const id = newId()
     const fresh = {
       ...state,
@@ -292,6 +357,9 @@ export default function App() {
   const onLoadCard = (id) => {
     const item = batch.find((x) => x.id === id)
     if (!item) return
+    flushRemoteEdit()
+    remoteRevision.current += 1
+    remoteDirty.current = false
     setEditingId(id)
     setState(normalizeState(item.state))
   }
@@ -306,6 +374,18 @@ export default function App() {
   }
 
   const onRemoveFromBatch = (id) => {
+    const remoteId = batch.find((card) => card.id === id)?.remoteId
+    if (remoteId) {
+      if (id === editingId) {
+        clearTimeout(remoteSaveTimer.current)
+        remoteRevision.current += 1
+        remoteDirty.current = false
+      }
+      void fetch(`/api/cards/${remoteId}`, { method: 'DELETE' }).then((response) => {
+        if (response.ok) void syncMcpCards()
+      })
+      return
+    }
     setBatch((b) => {
       const next = b.filter((x) => x.id !== id)
       if (id === editingId) {

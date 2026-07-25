@@ -19,3 +19,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ card
     )
   }
 }
+
+export async function DELETE(_request: Request, { params }: { params: Promise<{ cardId: string }> }) {
+  const { cardId } = await params
+  const deleted = cardsRepository.deleteCards([cardId])
+  if (!deleted) return NextResponse.json({ error: 'Carta no encontrada.' }, { status: 404 })
+  return NextResponse.json({ deleted })
+}
