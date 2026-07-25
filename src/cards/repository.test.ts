@@ -228,6 +228,38 @@ test('divide una seccion en varias conservando las cartas', async (t) => {
   )
 })
 
+test('renombra una seccion y rechaza colisiones dentro del universo', async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-cards-'))
+  const repository = new CardRepository(path.join(directory, 'cards.db'))
+  t.after(async () => {
+    repository.close()
+    await fs.rm(directory, { recursive: true, force: true })
+  })
+
+  const card = { type: 'Pathway' as const, pathway: 'Fool' as const, points: ['x'] }
+  const [primera] = repository.saveBatch({
+    universe: { name: 'LOTM' }, part: { name: 'Primera', number: 1 }, cards: [card],
+  })
+  repository.saveBatch({ universe: { name: 'LOTM' }, part: { name: 'Segunda', number: 2 }, cards: [card] })
+
+  const renamed = repository.renamePart(primera.part.id, { name: 'Rituales de apertura' })
+  assert.equal(renamed.name, 'Rituales de apertura')
+  assert.equal(renamed.slug, 'rituales-de-apertura', 'el slug sigue al nombre')
+  assert.equal(repository.getCard(primera.id)?.part.name, 'Rituales de apertura')
+
+  // Con el slug actualizado, el MCP la reutiliza por el nombre nuevo.
+  repository.saveBatch({
+    universe: { name: 'LOTM' }, part: { name: 'Rituales de apertura' }, cards: [card],
+  })
+  assert.equal(repository.listLibrary()[0].parts.length, 2, 'no se creo una seccion duplicada')
+
+  assert.throws(
+    () => repository.renamePart(primera.part.id, { name: 'Segunda' }),
+    /Ya existe otra seccion/,
+  )
+  assert.throws(() => repository.renamePart(randomUUID(), { name: 'X' }), /No existe la seccion/)
+})
+
 test('reordena una parte sin romper la unicidad de posiciones', async (t) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-cards-'))
   const repository = new CardRepository(path.join(directory, 'cards.db'))

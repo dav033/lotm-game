@@ -13,6 +13,7 @@ import TierExplanationCard from './components/TierExplanationCard.jsx'
 import GeneralExplanationCard from './components/GeneralExplanationCard.jsx'
 import Panel from './components/Panel.jsx'
 import Filmstrip from './components/Filmstrip.jsx'
+import SectionField from './components/SectionField.jsx'
 import { PATHWAYS, PATH_NAMES, tierColor, powerTier, TIER_RANKS, PATHWAY_COLORS } from './data/pathways.js'
 import { PATHWAY_ICONS } from './data/pathwayIcons.js'
 import { PATHWAY_BACKGROUNDS } from './data/pathwayBackgrounds.js'
@@ -109,7 +110,7 @@ const waitForCardAssets = async (root) => {
 export default function App() {
   const cardRef = useRef(null)
   const session = useCardSession()
-  const { cards, ready, error: sessionError, saving } = session
+  const { cards, sections, ready, error: sessionError, saving } = session
 
   const [editingId, setEditingId] = useState(null)
   const [state, setState] = useState(DEFAULT_STATE)
@@ -405,6 +406,12 @@ export default function App() {
           </span>
         </div>
 
+        <SectionField
+          section={cards.find((card) => card.id === editingId)?.part ?? null}
+          sections={sections}
+          onMove={(target) => session.moveCards([editingId], target)}
+        />
+
         <div className="stage-canvas">
           {/* Sin cartas no hay nada que editar: escribir aqui no guardaria en
               ningun sitio, asi que se dice que hay que crear una. */}
@@ -497,6 +504,7 @@ export default function App() {
           onRemoveFromBatch={onRemoveFromBatch}
           onReorder={onReorder}
           onDownloadZip={onDownloadZip}
+          onRenameSection={(partId, name) => session.renameSection(partId, { name })}
         />
       </section>
 

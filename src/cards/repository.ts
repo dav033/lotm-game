@@ -315,6 +315,26 @@ export class CardRepository {
     return moved.map((id) => this.getCard(id) as StoredCard)
   }
 
+  // Renombra o renumera una seccion. El slug acompaña al nombre para que el MCP
+  // siga encontrandola por su nombre nuevo.
+  renamePart(partId: string, patch: { name?: string; number?: number | null }): PartRow {
+    const part = this.db.prepare('SELECT * FROM parts WHERE id = ?').get(partId) as PartRow | undefined
+    if (!part) throw new Error('No existe la seccion indicada.')
+
+    const name = patch.name?.trim() || part.name
+    const slug = slugify(name)
+    const clash = this.db
+      .prepare('SELECT id FROM parts WHERE universe_id = ? AND slug = ? AND id != ?')
+      .get(part.universe_id, slug, partId)
+    if (clash) throw new Error(`Ya existe otra seccion llamada "${name}" en este universo.`)
+
+    this.db
+      .prepare('UPDATE parts SET name = ?, slug = ?, number = ?, updated_at = ? WHERE id = ?')
+      .run(name, slug, patch.number === undefined ? part.number : patch.number, new Date().toISOString(), partId)
+    this.localWrites += 1
+    return this.db.prepare('SELECT * FROM parts WHERE id = ?').get(partId) as PartRow
+  }
+
   // Reordena una parte completa. Las posiciones se desplazan primero fuera de
   // rango porque UNIQUE (part_id, position) rechaza los estados intermedios de
   // una permutacion. Las cartas de la parte que no vengan en la lista se

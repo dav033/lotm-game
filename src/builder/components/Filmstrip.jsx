@@ -18,12 +18,50 @@ function groupBySection(batch) {
   return groups
 }
 
+// La etiqueta del grupo se edita en el sitio para renombrar la seccion. Quien
+// esta en edicion lo guarda el padre: la biblioteca se relee cada segundo y un
+// estado local aqui se perderia a media escritura si React remontara la etiqueta.
+function SectionLabel({ text, name, editing, draft, onStart, onDraft, onCommit, onCancel }) {
+  if (!editing) {
+    return (
+      <button
+        className="film-group-label"
+        title={`${name} — clic para renombrar`}
+        onClick={() => onStart(name)}
+      >
+        {text}
+      </button>
+    )
+  }
+
+  return (
+    <input
+      className="film-group-input"
+      value={draft}
+      autoFocus
+      onChange={(e) => onDraft(e.target.value)}
+      onBlur={onCommit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur()
+        if (e.key === 'Escape') onCancel()
+      }}
+    />
+  )
+}
+
 export default function Filmstrip({
   batch, editingId, accent, busy,
-  onLoadCard, onNewCard, onRemoveFromBatch, onReorder, onDownloadZip,
+  onLoadCard, onNewCard, onRemoveFromBatch, onReorder, onDownloadZip, onRenameSection,
 }) {
   const [dragIndex, setDragIndex] = useState(null)
   const [overIndex, setOverIndex] = useState(null)
+  const [renaming, setRenaming] = useState(null) // { partId, draft }
+
+  const commitRename = async () => {
+    const pending = renaming
+    setRenaming(null)
+    if (pending?.draft.trim()) await onRenameSection(pending.partId, pending.draft.trim())
+  }
 
   const handleDrop = (to) => {
     if (dragIndex !== null) onReorder(dragIndex, to)
@@ -40,14 +78,20 @@ export default function Filmstrip({
       <div className="filmstrip-rail">
         {groups.map((group) => (
           <div className="film-group" key={group.partId}>
-            <span
-              className="film-group-label"
-              title={`${group.universe.name} · ${group.part.name}`}
-            >
-              {showUniverse ? `${group.universe.name} · ` : ''}
-              {group.part.number === null ? '' : `${group.part.number}. `}
-              {group.part.name}
-            </span>
+            <SectionLabel
+              name={group.part.name}
+              text={
+                (showUniverse ? `${group.universe.name} · ` : '') +
+                (group.part.number === null ? '' : `${group.part.number}. `) +
+                group.part.name
+              }
+              editing={renaming?.partId === group.partId}
+              draft={renaming?.draft ?? ''}
+              onStart={(name) => setRenaming({ partId: group.partId, draft: name })}
+              onDraft={(draft) => setRenaming((current) => ({ ...current, draft }))}
+              onCommit={commitRename}
+              onCancel={() => setRenaming(null)}
+            />
             <div className="film-group-cards">
               {group.items.map(({ item, index: i }) => (
                 <div

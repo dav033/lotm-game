@@ -184,6 +184,48 @@ export function useCardSession() {
     }
   }, [pull])
 
+  // Mueve cartas a una seccion, creandola si el nombre es nuevo. Sin universo
+  // explicito se quedan en el suyo; con el, cambian tambien de universo.
+  const moveCards = useCallback(async (cardIds, target) => {
+    try {
+      const response = await fetch('/api/cards/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardIds, ...target }),
+      })
+      if (!response.ok) {
+        setError(await readError(response, 'No se pudieron mover las cartas'))
+        return false
+      }
+      setError(null)
+      await pull()
+      return true
+    } catch {
+      setError(OFFLINE_MESSAGE)
+      return false
+    }
+  }, [pull])
+
+  const renameSection = useCallback(async (partId, patch) => {
+    try {
+      const response = await fetch(`/api/cards/sections/${partId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      })
+      if (!response.ok) {
+        setError(await readError(response, 'No se pudo renombrar la seccion'))
+        return false
+      }
+      setError(null)
+      await pull()
+      return true
+    } catch {
+      setError(OFFLINE_MESSAGE)
+      return false
+    }
+  }, [pull])
+
   const uploadImage = useCallback(async (file) => {
     const form = new FormData()
     form.append('file', file)
@@ -242,8 +284,16 @@ export function useCardSession() {
     }
   }, [pull, uploadImage])
 
+  // Secciones que existen ahora mismo, en el orden en que se muestran.
+  const sections = []
+  for (const card of cards) {
+    if (sections.some((section) => section.id === card.part.id)) continue
+    sections.push({ id: card.part.id, ...card.part, universe: card.universe })
+  }
+
   return {
     cards,
+    sections,
     ready,
     error,
     saving: savingIds.length > 0,
@@ -252,6 +302,8 @@ export function useCardSession() {
     updateCard,
     deleteCard,
     reorder,
+    moveCards,
+    renameSection,
     uploadImage,
   }
 }
