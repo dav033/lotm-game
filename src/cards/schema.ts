@@ -362,6 +362,70 @@ export function toBuilderCardState(content: CardContent): BuilderCardState {
   }
 }
 
+// Convierte el estado que edita la interfaz al formato validado que guarda el
+// MCP. Las imagenes siguen siendo solo referencias URL/rutas publicas.
+export function fromBuilderCardState(state: BuilderCardState): CardContent {
+  if (state.type === 'Cover') {
+    return {
+      type: 'Cover',
+      title: state.coverTitle.trim(),
+      partNumber: state.coverPartNum.trim(),
+      ...(state.coverImage1 ? { topImageUrl: state.coverImage1 } : {}),
+      ...(state.coverImage2 ? { mainImageUrl: state.coverImage2 } : {}),
+    }
+  }
+  if (state.type === 'Full Image Cover') {
+    return {
+      type: 'Full Image Cover',
+      title: state.fullCoverTitle.trim(),
+      ...(state.fullCoverImage ? { imageUrl: state.fullCoverImage } : {}),
+    }
+  }
+  if (state.type === 'Tier') {
+    return {
+      type: 'Tier', pathway: state.tierPath, rank: state.tierRank as CardContent & { rank: string }['rank'],
+      ...(state.tierSeq === null ? {} : { sequence: state.tierSeq }),
+      points: state.tierText.split('\n').map((point) => point.trim()).filter(Boolean),
+      ...(state.tierFooterText.trim() ? { footerText: state.tierFooterText.trim() } : {}),
+      ...(state.tierBackgroundImage ? { backgroundImageUrl: state.tierBackgroundImage } : {}),
+    }
+  }
+  if (state.type === 'Pathway') {
+    return {
+      type: 'Pathway', pathway: state.pathwayCardPath,
+      ...(state.pathwayCardSeq === null ? {} : { sequence: state.pathwayCardSeq }),
+      points: state.pathwayCardText.split('\n').map((point) => point.trim()).filter(Boolean),
+      ...(state.pathwayCardFooterText.trim() ? { footerText: state.pathwayCardFooterText.trim() } : {}),
+      ...(state.pathwayCardBackgroundImage ? { backgroundImageUrl: state.pathwayCardBackgroundImage } : {}),
+    }
+  }
+  if (state.type === 'Tier Explanation') {
+    return {
+      type: 'Tier Explanation', rank: state.tierRank as CardContent & { rank: string }['rank'],
+      description: state.tierExplanationText.trim(),
+      ...(state.tierExplanationBackgroundImage ? { backgroundImageUrl: state.tierExplanationBackgroundImage } : {}),
+    }
+  }
+  if (state.type === 'General Explanation') {
+    return {
+      type: 'General Explanation', title: state.generalExplanationTitle.trim(),
+      description: state.generalExplanationText.trim(),
+      ...(state.explanationPath ? { pathway: state.explanationPath } : {}),
+    }
+  }
+  const standard = {
+    name: state.name.trim(),
+    pathway: state.path,
+    sequence: state.seq,
+    ...(state.hasSecond ? { secondSequence: { pathway: state.path2, sequence: state.seq2 } } : {}),
+    ...(state.mod.trim() ? { modifier: state.mod.trim() } : {}),
+    ...(state.dom.trim() && state.dom !== 'None' ? { alterDomain: state.dom.trim() } : {}),
+    ...(state.image ? { imageUrl: state.image } : {}),
+  }
+  if (state.type === 'Character') return { ...standard, type: 'Character', power: state.power }
+  return { ...standard, type: 'Artifact', grade: state.grade as '0' | '1' | '2' | '3' | '4' | '5' }
+}
+
 export function titleForCard(content: CardContent): string {
   if (content.type === 'Cover') return `Pathways in ${content.title} - Part ${content.partNumber}`
   if (content.type === 'Full Image Cover') return content.title

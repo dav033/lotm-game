@@ -17,6 +17,9 @@ import { PATHWAYS, PATH_NAMES, tierColor, powerTier, TIER_RANKS, PATHWAY_COLORS 
 import { PATHWAY_ICONS } from './data/pathwayIcons.js'
 import { PATHWAY_BACKGROUNDS } from './data/pathwayBackgrounds.js'
 import { loadData, saveData } from './storage.js'
+import { fromBuilderCardState, toBuilderCardState } from '../cards/schema'
+
+const EVENTS_URL = process.env.NEXT_PUBLIC_CARDS_MCP_EVENTS_URL || 'http://127.0.0.1:3101/events'
 
 const COVER_ACCENT = { c: '#d9b869', d: '#4a3a17', pct: 100 }
 
@@ -113,6 +116,29 @@ export default function App() {
 
   const thumbTimer = useRef(null)
   const persistTimer = useRef(null)
+  const remoteSaveTimer = useRef(null)
+
+  const syncMcpCards = async () => {
+    try {
+      const response = await fetch('/api/cards/live', { cache: 'no-store' })
+      if (!response.ok) return
+      const { universes } = await response.json()
+      const remoteCards = universes.flatMap((universe) => universe.parts.flatMap((part) =>
+        part.cards.map((card) => ({
+          id: `mcp:${card.id}`,
+          remoteId: card.id,
+          source: 'mcp',
+          label: card.title,
+          url: null,
+          state: normalizeState(toBuilderCardState(card.content)),
+        })),
+      ))
+      setBatch((current) => {
+        const localCards = current.filter((card) => card.source !== 'mcp')
+        return [...remoteCards, ...localCards]
+      })
+    } catch { /* El editor local sigue funcionando sin el servidor de cartas. */ }
+  }
 
   // ---- Initial load from IndexedDB (with legacy localStorage migration) ----
   useEffect(() => {
@@ -141,6 +167,20 @@ export default function App() {
     })
     return () => { alive = false }
   }, [])
+
+  // Importa las cartas que haya creado el MCP al editor normal y conserva las
+  // cartas locales de IndexedDB. El stream las incorpora sin recargar la pagina.
+  useEffect(() => {
+    if (!loaded) return
+    syncMcpCards()
+    const events = new EventSource(EVENTS_URL)
+    events.addEventListener('library-change', () => void syncMcpCards())
+    const fallback = setInterval(syncMcpCards, 15_000)
+    return () => {
+      events.close()
+      clearInterval(fallback)
+    }
+  }, [loaded])
 
   const set = (patch) => setState((s) => ({ ...s, ...patch }))
 
@@ -199,6 +239,26 @@ export default function App() {
     }, 400)
     return () => clearTimeout(persistTimer.current)
   }, [batch, state, editingId, loaded])
+
+  // Una carta importada conserva su ID del MCP. Cada edicion valida y guarda
+  // directamente en la biblioteca compartida, sin afectar las cartas locales.
+  useEffect(() => {
+    if (!loaded || !editingId) return
+    const remoteId = batch.find((card) => card.id === editingId)?.remoteId
+    if (!remoteId) return
+    clearTimeout(remoteSaveTimer.current)
+    remoteSaveTimer.current = setTimeout(async () => {
+      try {
+        const card = fromBuilderCardState(state)
+        await fetch(`/api/cards/${remoteId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ card }),
+        })
+      } catch { /* No sobrescribimos el trabajo local si el servidor falla. */ }
+    }, 700)
+    return () => clearTimeout(remoteSaveTimer.current)
+  }, [batch, editingId, loaded, state])
 
   // ---- Card operations ----
 
