@@ -25,7 +25,7 @@ test('expone herramientas MCP para guardar y consultar cartas', async (t) => {
   const tools = await client.listTools()
   assert.deepEqual(
     tools.tools.map(({ name }) => name).sort(),
-    ['delete_cards', 'export_cards_zip', 'list_card_library', 'move_cards', 'save_card_batch', 'update_card'],
+    ['delete_cards', 'export_cards_zip', 'list_card_library', 'move_cards', 'save_card_batch', 'save_card_image', 'update_card'],
   )
 
   const saved = await client.callTool({
@@ -78,4 +78,37 @@ test('expone herramientas MCP para guardar y consultar cartas', async (t) => {
     regrouped.parts.map(({ name, cards }: { name: string; cards: unknown[] }) => [name, cards.length]),
     [['Parte 1', 1], ['Parte 2', 2]],
   )
+
+  // Una imagen propia entra por save_card_image; el campo de imagen solo acepta
+  // la ruta que devuelve, nunca el binario en linea.
+  process.env.CARDS_IMAGE_DIR = path.join(directory, 'card-images')
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+  const image = await client.callTool({
+    name: 'save_card_image',
+    arguments: { mimeType: 'image/png', data: png },
+  })
+  assert.equal(image.isError, undefined)
+  const { url } = readText(image)
+  assert.match(url, /^\/api\/cards\/images\/[0-9a-f-]+\.png$/)
+  assert.ok(await fs.stat(path.join(directory, 'card-images', path.basename(url))))
+
+  const withImage = await client.callTool({
+    name: 'save_card_batch',
+    arguments: {
+      universe: { name: 'Fate' },
+      part: { name: 'Parte 2' },
+      cards: [{ type: 'Full Image Cover', title: 'Con imagen', imageUrl: url }],
+    },
+  })
+  assert.equal(withImage.isError, undefined)
+
+  const inline = await client.callTool({
+    name: 'save_card_batch',
+    arguments: {
+      universe: { name: 'Fate' },
+      part: { name: 'Parte 2' },
+      cards: [{ type: 'Full Image Cover', title: 'Inline', imageUrl: `data:image/png;base64,${png}` }],
+    },
+  })
+  assert.equal(inline.isError, true, 'el base64 en linea se rechaza')
 })

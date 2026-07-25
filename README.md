@@ -109,6 +109,7 @@ y vuelve a abrir OpenCode después de instalarlo.
 | `list_card_library` | Lista la biblioteca agrupada por universo y sección |
 | `update_card` | Reemplaza el contenido de una carta, sin moverla |
 | `move_cards` | Reagrupa cartas ya guardadas en otra sección, creándola si hace falta |
+| `save_card_image` | Guarda una imagen (base64) y devuelve la ruta que se pone en `imageUrl` |
 | `delete_cards` | Elimina cartas definitivamente |
 | `export_cards_zip` | Renderiza a PNG 960×1280 y genera el ZIP |
 
@@ -167,7 +168,10 @@ barra de estado en vez de perderse en silencio.
 
 Las imágenes que se suben desde el editor se guardan en `data/card-images` y en
 la carta queda solo su ruta, igual que con las que referencia el MCP: la base
-nunca almacena binarios. Las cartas que quedaran en IndexedDB de versiones
+nunca almacena binarios. Una IA que genere una imagen la sube con
+`save_card_image` (base64) y usa la ruta devuelta en `imageUrl`, `topImageUrl`,
+`mainImageUrl` o `backgroundImageUrl`; los campos de imagen rechazan el binario
+en línea, así que ese es el único camino. Las cartas que quedaran en IndexedDB de versiones
 anteriores se suben al servidor la primera vez que se abre el editor.
 
 ### Producción y ChatGPT

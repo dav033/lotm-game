@@ -6,8 +6,10 @@ import {
   ListCardLibrarySchema,
   MoveCardsSchema,
   SaveCardBatchSchema,
+  SaveCardImageSchema,
   UpdateCardSchema,
 } from './schema'
+import { storeCardImage } from './images'
 import { exportCardsToZip } from './export'
 import { openBrowserOnce } from './openBrowser'
 import type { CardRepository, StoredCard } from './repository'
@@ -37,7 +39,9 @@ export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl 
         'Guarda contenido textual y referencias de imagen en un SQLite separado; nunca guarda binarios en la base. ' +
         'Flujo recomendado: save_card_batch, list_card_library y export_cards_zip. ' +
         'Para dividir o reagrupar cartas que ya existen usa move_cards: crea la seccion destino si hace falta y ' +
-        'conserva los ids, asi que nunca hay que borrar y volver a crear para reorganizar.',
+        'conserva los ids, asi que nunca hay que borrar y volver a crear para reorganizar. ' +
+        'Para usar una imagen propia (generada o local) llama antes a save_card_image y pon la ruta que ' +
+        'devuelve en imageUrl, topImageUrl, mainImageUrl o backgroundImageUrl.',
     },
   )
 
@@ -115,6 +119,32 @@ export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl 
       if (!updated) throw new Error(`No existe la carta ${cardId}.`)
       openLiveViewOnce()
       return { card: updated }
+    }),
+  )
+
+  server.registerTool(
+    'save_card_image',
+    {
+      title: 'Guardar una imagen para una carta',
+      description:
+        'Guarda una imagen y devuelve la ruta que hay que poner en imageUrl, topImageUrl, ' +
+        'mainImageUrl o backgroundImageUrl al crear o actualizar una carta. ' +
+        'Es el unico modo de usar una imagen propia: los campos de imagen solo aceptan URLs ' +
+        'http(s) o rutas del sitio, nunca el binario en linea. ' +
+        'El archivo se guarda junto a la base; en la carta queda solo su ruta.',
+      inputSchema: SaveCardImageSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ mimeType, data }) => runTool(async () => {
+      const bytes = Buffer.from(data, 'base64')
+      if (!bytes.byteLength) throw new Error('El base64 no contiene datos de imagen.')
+      const url = await storeCardImage(bytes, mimeType)
+      return { url, bytes: bytes.byteLength }
     }),
   )
 

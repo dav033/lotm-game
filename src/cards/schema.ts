@@ -191,6 +191,21 @@ export const UpdateCardSchema = z
   })
   .strict()
 
+export const SaveCardImageSchema = z
+  .object({
+    mimeType: z
+      .enum(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif'])
+      .describe('Tipo de la imagen que se envia.'),
+    data: z
+      .string()
+      .min(1)
+      .describe(
+        'Contenido de la imagen en base64, sin el prefijo "data:...;base64,". ' +
+        'Hasta 15 MB ya decodificados.',
+      ),
+  })
+  .strict()
+
 export const MoveCardsSchema = z
   .object({
     cardIds: z
