@@ -19,8 +19,8 @@ type McpOptions = {
   liveViewUrl?: string
 }
 
-// Este servidor no avisa de los cambios: la app observa cards.db directamente
-// (src/server/cardsLive.ts), asi que la vista en vivo refleja por igual lo que
+// Este servidor no avisa de los cambios: la app observa la revision de cards.db
+// desde su propio stream, asi que la vista en vivo refleja por igual lo que
 // escriba este proceso, otro servidor MCP o el propio editor.
 export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl }: McpOptions): McpServer {
   const openLiveViewOnce = () => {
