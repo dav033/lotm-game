@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 import Database from 'better-sqlite3'
-import { CardRepository } from './repository'
+import { CardRepository, type StoredCard } from './repository'
 
 test('guarda y consulta cartas agrupadas en un SQLite separado', async (t) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-cards-'))
@@ -180,6 +180,41 @@ test('migra cards.db v3 a v4 sin perder cartas y acepta cartas Pathway', async (
   })
   assert.equal(saved[0].content.type, 'Pathway')
   assert.equal(repository.listCards().length, 2)
+})
+
+test('reordena una parte sin romper la unicidad de posiciones', async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-cards-'))
+  const repository = new CardRepository(path.join(directory, 'cards.db'))
+  t.after(async () => {
+    repository.close()
+    await fs.rm(directory, { recursive: true, force: true })
+  })
+
+  const saved = repository.saveBatch({
+    universe: { name: 'LOTM' },
+    part: { name: 'Tiers', number: 1 },
+    cards: (['Fool', 'Moon', 'Sun', 'Door'] as const).map((pathway) => ({
+      type: 'Pathway' as const,
+      pathway,
+      points: [pathway],
+    })),
+  })
+  const partId = saved[0].part.id
+  const nameOf = ({ content }: StoredCard) =>
+    'pathway' in content ? content.pathway : content.type
+
+  // Invierte el orden: cada carta pasa por una posicion que otra ocupaba.
+  const reversed = [...saved].reverse().map(({ id }) => id)
+  const result = repository.reorderPart(partId, reversed)
+
+  assert.deepEqual(result.map(nameOf), ['Door', 'Sun', 'Moon', 'Fool'])
+  assert.deepEqual(result.map(({ position }) => position), [1, 2, 3, 4])
+  assert.deepEqual(repository.listCards().map(nameOf), ['Door', 'Sun', 'Moon', 'Fool'])
+
+  // Una lista parcial deja el resto al final, conservando su orden relativo.
+  const partial = repository.reorderPart(partId, [saved[1].id])
+  assert.deepEqual(partial.map(nameOf), ['Moon', 'Door', 'Sun', 'Fool'])
+  assert.deepEqual(partial.map(({ position }) => position), [1, 2, 3, 4])
 })
 
 test('la revision cambia con las escrituras propias y con las de otra conexion', async (t) => {

@@ -266,6 +266,31 @@ export class CardRepository {
     return deleted
   }
 
+  // Reordena una parte completa. Las posiciones se desplazan primero fuera de
+  // rango porque UNIQUE (part_id, position) rechaza los estados intermedios de
+  // una permutacion. Las cartas de la parte que no vengan en la lista se
+  // conservan al final, en su orden actual.
+  reorderPart(partId: string, orderedIds: string[]): StoredCard[] {
+    const reorder = this.db.transaction(() => {
+      const current = this.db
+        .prepare('SELECT id FROM cards WHERE part_id = ? ORDER BY position')
+        .all(partId) as Array<{ id: string }>
+      const known = new Set(current.map(({ id }) => id))
+      const requested = orderedIds.filter((id) => known.has(id))
+      const final = [...requested, ...current.map(({ id }) => id).filter((id) => !requested.includes(id))]
+
+      this.db.prepare('UPDATE cards SET position = position + 1000000 WHERE part_id = ?').run(partId)
+      const update = this.db.prepare('UPDATE cards SET position = ?, updated_at = ? WHERE id = ?')
+      const now = new Date().toISOString()
+      final.forEach((id, index) => update.run(index + 1, now, id))
+      return final.length
+    })
+
+    if (!reorder()) return []
+    this.localWrites += 1
+    return this.listCards().filter((card) => card.part.id === partId)
+  }
+
   private migrate(): void {
     const version = this.db.pragma('user_version', { simple: true }) as number
     if (version > 4) throw new Error(`La version ${version} de cards.db no es compatible.`)

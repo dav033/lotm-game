@@ -44,6 +44,7 @@ Variables:
 | `ADMIN_SESSION_SECRET` | Secreto (mínimo 16 caracteres) que firma la cookie de sesión admin |
 | `CARDS_DB_PATH` | SQLite textual independiente de cartas; por defecto `./data/cards.db` |
 | `CARDS_EXPORT_DIR` | Carpeta de ZIP generados; por defecto `./data/card-exports` |
+| `CARDS_IMAGE_DIR` | Carpeta de imágenes subidas desde el editor; por defecto `./data/card-images` |
 | `CARDS_MCP_HOST` / `CARDS_MCP_PORT` | Escucha HTTP del MCP; por defecto `127.0.0.1:3101` |
 | `CARDS_MCP_TOKEN` | Bearer token obligatorio al exponer el MCP fuera de localhost |
 | `CARDS_MCP_PUBLIC_URL` | URL base publica para construir enlaces de descarga |
@@ -120,14 +121,37 @@ npm run cards:mcp:http
 El endpoint queda en `http://127.0.0.1:3101/mcp`. Cada exportación crea un ZIP
 en `data/card-exports` con PNG de 960x1280 ordenados por universo y parte, y un
 `manifest.json` v3. El servidor HTTP también devuelve una URL `/downloads/...`.
-Tanto `http://localhost:3000/cartas/vivo` como el editor `/cartas` mantienen un
-stream SSE contra `/api/cards/live/stream`, servido por la propia app. Ese
-stream vigila `cards.db` y avisa en cuanto cambia su revisión, venga el cambio
-del MCP stdio, del MCP HTTP o del propio editor: no depende de qué proceso haya
-escrito. Si el stream se cae, la vista se reconecta sola y mientras tanto
-mantiene una actualización de respaldo cada 15 segundos.
 Si se enlaza a una interfaz no local, es obligatorio definir
 `CARDS_MCP_TOKEN`; el cliente debe enviarlo como `Authorization: Bearer ...`.
+
+### Sesión compartida
+
+`cards.db` es la única fuente de verdad. El editor `/cartas`, la vista
+`/cartas/vivo` y el MCP trabajan sobre la misma sesión; el editor no guarda
+cartas por su cuenta, solo refleja el servidor y le manda cambios.
+
+| Ruta | Uso |
+| --- | --- |
+| `GET /api/cards/session` | Sesión completa: `revision` y cartas ya ordenadas |
+| `GET /api/cards/live/stream` | SSE; avisa en cuanto cambia la revisión de `cards.db` |
+| `POST /api/cards` | Crea una carta desde el editor |
+| `PUT`/`DELETE /api/cards/:id` | Edita o borra |
+| `POST /api/cards/reorder` | Reordena una parte completa |
+| `POST /api/cards/images` | Sube una imagen; devuelve la ruta que se guarda en la carta |
+
+El stream vigila la revisión de la base, no al proceso que escribe, así que
+refleja por igual al MCP stdio, al MCP HTTP y al propio editor. Si se cae, el
+navegador reconecta solo y mientras tanto relee cada 5 segundos.
+
+Cada edición se aplica al instante en pantalla y se envía al servidor. Mientras
+una carta tenga una escritura sin confirmar, lo que llegue del servidor no la
+pisa; el resto se adopta al momento. Un guardado rechazado se muestra en la
+barra de estado en vez de perderse en silencio.
+
+Las imágenes que se suben desde el editor se guardan en `data/card-images` y en
+la carta queda solo su ruta, igual que con las que referencia el MCP: la base
+nunca almacena binarios. Las cartas que quedaran en IndexedDB de versiones
+anteriores se suben al servidor la primera vez que se abre el editor.
 
 ### Producción y ChatGPT
 

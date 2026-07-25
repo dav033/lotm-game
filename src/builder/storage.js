@@ -47,6 +47,21 @@ export async function loadData() {
   return null
 }
 
+// Las cartas viven en el servidor. Esto solo borra el rastro local una vez que
+// la migracion las subio todas (ver migrateLocalCards en useCardSession).
+export async function clearData() {
+  try {
+    const db = await openDB()
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite')
+      tx.objectStore(STORE).delete(KEY)
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  } catch { /* nada que borrar */ }
+  try { localStorage.removeItem(LEGACY_LS_KEY) } catch { /* ignore */ }
+}
+
 // Persist the whole snapshot. Returns true on success so the UI can show status.
 export async function saveData(data) {
   try {

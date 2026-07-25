@@ -16,13 +16,26 @@ import Filmstrip from './components/Filmstrip.jsx'
 import { PATHWAYS, PATH_NAMES, tierColor, powerTier, TIER_RANKS, PATHWAY_COLORS } from './data/pathways.js'
 import { PATHWAY_ICONS } from './data/pathwayIcons.js'
 import { PATHWAY_BACKGROUNDS } from './data/pathwayBackgrounds.js'
-import { loadData, saveData } from './storage.js'
-import { fromBuilderCardState, toBuilderCardState } from '../cards/schema'
-import { discardCachedRemoteCards, localEditorSnapshot, mergeRemoteCards } from './remoteSync'
-
-const EVENTS_URL = '/api/cards/live/stream'
+import { sameCardState, useCardSession } from './useCardSession.js'
 
 const COVER_ACCENT = { c: '#d9b869', d: '#4a3a17', pct: 100 }
+
+// Una carta se crea directamente en el servidor, asi que su contenido inicial
+// tiene que pasar la validacion: los textos obligatorios de cada tipo llevan un
+// marcador que el usuario sobrescribe.
+const NEW_CARD_SEEDS = {
+  Character: { name: 'Nueva carta' },
+  Artifact: { name: 'Nuevo artefacto' },
+  Cover: { coverTitle: 'Nueva portada', coverPartNum: '1' },
+  'Full Image Cover': { fullCoverTitle: 'Nueva portada' },
+  Tier: {},
+  Pathway: {},
+  'Tier Explanation': { tierExplanationText: 'Nueva explicacion' },
+  'General Explanation': {
+    generalExplanationTitle: 'Nueva explicacion',
+    generalExplanationText: 'Nueva explicacion',
+  },
+}
 
 const DEFAULT_STATE = {
   type: 'Character',
@@ -61,19 +74,6 @@ const DEFAULT_STATE = {
   generalExplanationText: '',
 }
 
-const normalizeState = (value) => ({ ...DEFAULT_STATE, ...(value ?? {}) })
-
-const newId = () =>
-  (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()))
-
-const readFileAsDataURL = (file) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = (ev) => resolve(ev.target.result)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
 
 // html2canvas snapshots whatever is currently painted, so a capture taken
@@ -108,165 +108,58 @@ const waitForCardAssets = async (root) => {
 
 export default function App() {
   const cardRef = useRef(null)
-  const [loaded, setLoaded] = useState(false)
-  const [batch, setBatch] = useState([])
+  const session = useCardSession()
+  const { cards, ready, error: sessionError, saving } = session
+
   const [editingId, setEditingId] = useState(null)
   const [state, setState] = useState(DEFAULT_STATE)
+  const [thumbs, setThumbs] = useState({})
   const [busy, setBusy] = useState(false)
-  const [saveStatus, setSaveStatus] = useState('saved') // 'saving' | 'saved'
 
   const thumbTimer = useRef(null)
-  const persistTimer = useRef(null)
-  const remoteSaveTimer = useRef(null)
-  const syncRequest = useRef(0)
-  const remoteDirty = useRef(false)
-  const remoteRevision = useRef(0)
-  const editor = useRef({ editingId: null, state: DEFAULT_STATE })
-  const batchRef = useRef([])
-  editor.current = { editingId, state }
-  batchRef.current = batch
+  const stateRef = useRef(state)
+  const editingIdRef = useRef(editingId)
+  stateRef.current = state
+  editingIdRef.current = editingId
 
-  const syncMcpCards = async () => {
-    const requestId = ++syncRequest.current
-    try {
-      const response = await fetch('/api/cards/live', { cache: 'no-store' })
-      if (!response.ok) return
-      const { universes } = await response.json()
-      if (requestId !== syncRequest.current) return
-      const remoteCards = universes.flatMap((universe) => universe.parts.flatMap((part) =>
-        part.cards.map((card) => ({
-          id: `mcp:${card.id}`,
-          remoteId: card.id,
-          source: 'mcp',
-          label: card.title,
-          url: null,
-          state: normalizeState(toBuilderCardState(card.content)),
-        })),
-      ))
-      let next = mergeRemoteCards(batchRef.current, remoteCards)
-      const activeId = editor.current.editingId
-      const active = next.find((card) => card.id === activeId)
-
-      // Mientras una edición remota está pendiente, una lectura del servidor
-      // no puede pisarla con la versión anterior.
-      if (active?.source === 'mcp' && remoteDirty.current) {
-        next = next.map((card) => card.id === activeId
-          ? { ...card, state: editor.current.state, label: labelFor(editor.current.state) }
-          : card)
-      } else if (active?.source === 'mcp' && JSON.stringify(active.state) !== JSON.stringify(editor.current.state)) {
-        // Guardar tambien dispara el stream, asi que la carta activa vuelve por
-        // aca enseguida: adoptarla solo cuando trae algo distinto evita pisar lo
-        // que se esta escribiendo con la version que acabamos de enviar.
-        setState(active.state)
-      }
-
-      // Si el MCP eliminó la carta activa, salimos del estado fantasma y
-      // seleccionamos una carta que realmente siga existiendo.
-      if (activeId && !active) {
-        clearTimeout(remoteSaveTimer.current)
-        remoteRevision.current += 1
-        remoteDirty.current = false
-        const fallback = next[0]
-        if (fallback) {
-          setEditingId(fallback.id)
-          setState(normalizeState(fallback.state))
-        } else {
-          const id = newId()
-          const fresh = normalizeState(DEFAULT_STATE)
-          next = [{ id, label: labelFor(fresh), url: null, state: fresh }]
-          setEditingId(id)
-          setState(fresh)
-        }
-      }
-      setBatch(next)
-    } catch { /* El editor local sigue funcionando sin el servidor de cartas. */ }
-  }
-
-  const saveRemoteState = async (remoteId, value, revision = remoteRevision.current) => {
-    try {
-      const card = fromBuilderCardState(value)
-      const response = await fetch(`/api/cards/${remoteId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ card }),
-      })
-      if (response.ok && revision === remoteRevision.current) remoteDirty.current = false
-      return response.ok
-    } catch {
-      return false
-    }
-  }
-
-  const flushRemoteEdit = () => {
-    if (!remoteDirty.current) return
-    const remoteId = batch.find((card) => card.id === editingId)?.remoteId
-    if (!remoteId) return
-    clearTimeout(remoteSaveTimer.current)
-    void saveRemoteState(remoteId, state, remoteRevision.current)
-  }
-
-  // ---- Initial load from IndexedDB (with legacy localStorage migration) ----
-  useEffect(() => {
-    let alive = true
-    loadData().then((data) => {
-      if (!alive) return
-      const restoredBatch = discardCachedRemoteCards(data?.batch ?? []).map((card) => ({
-        ...card,
-        state: normalizeState(card.state),
-      }))
-      if (restoredBatch.length > 0) {
-        const active =
-          restoredBatch.find((c) => c.id === data?.editingId) ?? restoredBatch[0]
-        setBatch(restoredBatch)
-        setEditingId(active.id)
-        setState(active.state)
-      } else {
-        // Fresh start: seed one card so there is always something to edit.
-        const id = newId()
-        const seedState = normalizeState(data?.state)
-        setBatch([{ id, label: labelFor(seedState), url: null, state: seedState }])
-        setEditingId(id)
-        setState(seedState)
-      }
-      setLoaded(true)
-    })
-    return () => { alive = false }
-  }, [])
-
-  // Importa las cartas que haya creado el MCP al editor normal y conserva las
-  // cartas locales de IndexedDB. El stream las incorpora sin recargar la pagina.
-  useEffect(() => {
-    if (!loaded) return
-    syncMcpCards()
-    const events = new EventSource(EVENTS_URL)
-    // Al (re)conectar recuperamos lo que haya cambiado mientras no hubo stream.
-    events.addEventListener('connected', () => void syncMcpCards())
-    events.addEventListener('library-change', () => void syncMcpCards())
-    // Con el stream abierto los avisos ya son inmediatos: sondear ademas solo
-    // repintaria el lote entero cada 15 s mientras se edita.
-    const fallback = setInterval(() => {
-      if (events.readyState !== EventSource.OPEN) void syncMcpCards()
-    }, 15_000)
-    return () => {
-      events.close()
-      clearInterval(fallback)
-    }
-  }, [loaded])
-
+  // Toda edicion se aplica al instante en pantalla y viaja al servidor, que es
+  // quien manda. No hay copia local que reconciliar despues.
   const set = (patch) => {
-    if (batch.find((card) => card.id === editingId)?.source === 'mcp') {
-      remoteDirty.current = true
-      remoteRevision.current += 1
-    }
-    setState((s) => ({ ...s, ...patch }))
+    const next = { ...stateRef.current, ...patch }
+    stateRef.current = next
+    setState(next)
+    if (editingIdRef.current) session.updateCard(editingIdRef.current, next)
   }
 
-  const onUploadImage = (file, field = 'image') => {
+  const onUploadImage = async (file, field = 'image') => {
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => set({ [field]: ev.target.result })
-    reader.readAsDataURL(file)
+    const url = await session.uploadImage(file)
+    if (url) set({ [field]: url })
   }
+
+  // Selecciona una carta existente cuando no hay ninguna activa, y sale del
+  // estado fantasma si la que se estaba editando desaparecio del servidor.
+  useEffect(() => {
+    if (!ready) return
+    if (editingId && cards.some((card) => card.id === editingId)) return
+    const fallback = cards[0] ?? null
+    setEditingId(fallback?.id ?? null)
+    if (fallback) {
+      stateRef.current = fallback.state
+      setState(fallback.state)
+    }
+  }, [cards, editingId, ready])
+
+  // Adopta lo que llegue del servidor para la carta activa (una edicion del MCP,
+  // por ejemplo). Mientras haya una escritura propia sin confirmar se respeta lo
+  // que se esta escribiendo.
+  useEffect(() => {
+    if (!editingId || session.isPending(editingId)) return
+    const active = cards.find((card) => card.id === editingId)
+    if (!active || sameCardState(active.state, stateRef.current)) return
+    stateRef.current = active.state
+    setState(active.state)
+  }, [cards, editingId, session])
 
   const captureCard = async () => {
     await waitForCardAssets(cardRef.current)
@@ -278,68 +171,26 @@ export default function App() {
     return canvas.toDataURL('image/png')
   }
 
-  // ---- Keep the active card's stored state/label in sync immediately. This
-  // is what onDownloadZip reads per card, so it must never lag behind the
-  // live editor — switching cards faster than the thumbnail debounce below
-  // used to leave stale state/label behind (wrong background, missing text). ----
-  useEffect(() => {
-    if (!loaded || !editingId) return
-    setBatch((b) =>
-      b.map((c) => (c.id === editingId ? { ...c, label: labelFor(state), state: { ...state } } : c))
-    )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, editingId, loaded])
-
   // ---- Debounced thumbnail refresh for the filmstrip preview only — this is
   // just a UI preview, so it's fine for it to lag; the real export always
   // re-captures each card fresh (see onDownloadZip / onDownload). ----
   useEffect(() => {
-    if (!loaded || !editingId) return
-    setSaveStatus('saving')
+    if (!ready || !editingId) return
     clearTimeout(thumbTimer.current)
     thumbTimer.current = setTimeout(async () => {
       let url = null
       try { url = await captureCard() } catch { /* keep previous thumbnail */ }
-      if (url) setBatch((b) => b.map((c) => (c.id === editingId ? { ...c, url } : c)))
-      setSaveStatus('saved')
+      if (url) setThumbs((previous) => ({ ...previous, [editingId]: url }))
     }, 500)
     return () => clearTimeout(thumbTimer.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, editingId, loaded])
-
-  // IndexedDB es solo para cartas locales. Persistir copias MCP hacía que una
-  // carta borrada reapareciera al recargar hasta terminar la reconciliación.
-  useEffect(() => {
-    if (!loaded) return
-    clearTimeout(persistTimer.current)
-    persistTimer.current = setTimeout(() => {
-      saveData(localEditorSnapshot(batch, editingId))
-    }, 400)
-    return () => clearTimeout(persistTimer.current)
-  }, [batch, state, editingId, loaded])
-
-  // Una carta importada conserva su ID del MCP. Cada edicion valida y guarda
-  // directamente en la biblioteca compartida, sin afectar las cartas locales.
-  useEffect(() => {
-    if (!loaded || !editingId) return
-    const remoteId = batch.find((card) => card.id === editingId)?.remoteId
-    if (!remoteId || !remoteDirty.current) return
-    clearTimeout(remoteSaveTimer.current)
-    remoteSaveTimer.current = setTimeout(async () => {
-      await saveRemoteState(remoteId, state)
-    }, 700)
-    return () => clearTimeout(remoteSaveTimer.current)
-  }, [batch, editingId, loaded, state])
+  }, [state, editingId, ready])
 
   // ---- Card operations ----
 
   // New card: keep the pathway/power setup you're working with, but clear the
   // identity (name + image) so batching variants is fast. Then select it.
-  const onNewCard = () => {
-    flushRemoteEdit()
-    remoteRevision.current += 1
-    remoteDirty.current = false
-    const id = newId()
+  const onNewCard = async () => {
     const fresh = {
       ...state,
       name: '',
@@ -357,72 +208,41 @@ export default function App() {
       tierExplanationBackgroundImage: null,
       generalExplanationTitle: '',
       generalExplanationText: '',
+      ...(NEW_CARD_SEEDS[state.type] ?? {}),
     }
-    setBatch((b) => [...b, { id, label: labelFor(fresh), url: null, state: fresh }])
+    const id = await session.createCard(fresh)
+    if (!id) return
     setEditingId(id)
+    stateRef.current = fresh
     setState(fresh)
   }
 
   const onLoadCard = (id) => {
-    const item = batch.find((x) => x.id === id)
+    const item = cards.find((x) => x.id === id)
     if (!item) return
-    flushRemoteEdit()
-    remoteRevision.current += 1
-    remoteDirty.current = false
     setEditingId(id)
-    setState(normalizeState(item.state))
+    stateRef.current = item.state
+    setState(item.state)
   }
 
-  const editingIndex = batch.findIndex((x) => x.id === editingId)
+  const editingIndex = cards.findIndex((x) => x.id === editingId)
 
   const onStep = (dir) => {
-    if (!batch.length) return
-    let i = editingIndex === -1 ? (dir > 0 ? 0 : batch.length - 1) : editingIndex + dir
-    i = Math.max(0, Math.min(batch.length - 1, i))
-    onLoadCard(batch[i].id)
+    if (!cards.length) return
+    let i = editingIndex === -1 ? (dir > 0 ? 0 : cards.length - 1) : editingIndex + dir
+    i = Math.max(0, Math.min(cards.length - 1, i))
+    onLoadCard(cards[i].id)
   }
 
   const onRemoveFromBatch = (id) => {
-    const remoteId = batch.find((card) => card.id === id)?.remoteId
-    if (remoteId) {
-      if (id === editingId) {
-        clearTimeout(remoteSaveTimer.current)
-        remoteRevision.current += 1
-        remoteDirty.current = false
-      }
-      void fetch(`/api/cards/${remoteId}`, { method: 'DELETE' }).then((response) => {
-        if (response.ok) void syncMcpCards()
-      })
-      return
-    }
-    setBatch((b) => {
-      const next = b.filter((x) => x.id !== id)
-      if (id === editingId) {
-        if (next.length) {
-          const fallback = next[Math.min(editingIndex, next.length - 1)]
-          setEditingId(fallback.id)
-          setState(fallback.state)
-        } else {
-          // Never leave the editor empty — seed a fresh card.
-          const nid = newId()
-          setEditingId(nid)
-          setState(DEFAULT_STATE)
-          return [{ id: nid, label: labelFor(DEFAULT_STATE), url: null, state: DEFAULT_STATE }]
-        }
-      }
-      return next
-    })
+    // El efecto de seleccion elige la siguiente carta cuando desaparece la activa.
+    void session.deleteCard(id)
   }
 
   // Drag-to-reorder a thumbnail from one slot to another.
   const onReorder = (from, to) => {
     if (from === to) return
-    setBatch((b) => {
-      const next = [...b]
-      const [moved] = next.splice(from, 1)
-      next.splice(to, 0, moved)
-      return next
-    })
+    void session.reorder(from, to)
   }
 
   // Drop several images at once -> one card per image (same fields, swapped art).
@@ -436,14 +256,13 @@ export default function App() {
     if (busy) return
     setBusy(true)
     try {
-      const dataUrls = await Promise.all(images.map(readFileAsDataURL))
+      const urls = (await Promise.all(images.map((file) => session.uploadImage(file)))).filter(Boolean)
+      if (!urls.length) return
       // First image fills the current card; the rest become new cards.
-      set({ image: dataUrls[0] })
-      const added = dataUrls.slice(1).map((image) => {
-        const cardState = { ...state, image }
-        return { id: newId(), label: labelFor(cardState), url: null, state: cardState }
-      })
-      if (added.length) setBatch((b) => [...b, ...added])
+      set({ image: urls[0] })
+      for (const image of urls.slice(1)) {
+        await session.createCard({ ...stateRef.current, image })
+      }
     } finally {
       setBusy(false)
     }
@@ -458,7 +277,7 @@ export default function App() {
   }
 
   const onDownloadZip = async () => {
-    if (!batch.length || busy) return
+    if (!cards.length || busy) return
     setBusy(true)
     const previousState = state
     const previousEditingId = editingId
@@ -469,15 +288,15 @@ export default function App() {
       // so switching cards quickly can leave it stale or mid-transition
       // (wrong background, clipped text). Loading each card into the live
       // editor and re-capturing guarantees the export matches its final state.
-      for (let i = 0; i < batch.length; i++) {
-        const item = batch[i]
+      for (let i = 0; i < cards.length; i++) {
+        const item = cards[i]
         flushSync(() => {
           setState(item.state)
           setEditingId(item.id)
         })
         const data = await captureCard()
         const base64 = data.split(',')[1]
-        zip.file(`${String(i + 1).padStart(2, '0')}_${item.label}.png`, base64, { base64: true })
+        zip.file(`${String(i + 1).padStart(2, '0')}_${labelFor(item.state)}.png`, base64, { base64: true })
       }
       const blob = await zip.generateAsync({ type: 'blob' })
       const a = document.createElement('a')
@@ -496,14 +315,24 @@ export default function App() {
 
   // One tier slide per pathway, in canon order, keeping the current rank as a
   // starting point — then jump to the first one so you can start judging.
-  const onGenerateTierBatch = () => {
-    const cards = PATH_NAMES.map((path) => {
-      const cardState = { ...state, type: 'Tier', tierPath: path, tierText: '' }
-      return { id: newId(), label: labelFor(cardState), url: null, state: cardState }
-    })
-    setBatch((b) => [...b, ...cards])
-    setEditingId(cards[0].id)
-    setState(cards[0].state)
+  const onGenerateTierBatch = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      let first = null
+      for (const path of PATH_NAMES) {
+        const cardState = { ...state, type: 'Tier', tierPath: path, tierText: '' }
+        const id = await session.createCard(cardState)
+        if (id && !first) first = { id, state: cardState }
+      }
+      if (first) {
+        setEditingId(first.id)
+        stateRef.current = first.state
+        setState(first.state)
+      }
+    } finally {
+      setBusy(false)
+    }
   }
 
   // ---- Derived values for rendering ----
@@ -555,9 +384,15 @@ export default function App() {
   const tierBackgroundImage = state.tierBackgroundImage || PATHWAY_BACKGROUNDS[tierPath] || null
   const pathwayCardBackgroundImage = state.pathwayCardBackgroundImage || PATHWAY_BACKGROUNDS[pathwayCardPath] || null
 
-  if (!loaded) {
+  if (!ready) {
     return <div className="app-loading">Loading your cards…</div>
   }
+
+  const filmstrip = cards.map((card) => ({
+    id: card.id,
+    label: card.id === editingId ? labelFor(state) : labelFor(card.state),
+    url: thumbs[card.id] ?? null,
+  }))
 
   return (
     <div className="app">
@@ -566,12 +401,17 @@ export default function App() {
           <div className="stage-nav">
             <button className="nav" onClick={() => onStep(-1)} aria-label="Previous">‹</button>
             <span className="pos">
-              {editingIndex >= 0 ? editingIndex + 1 : '–'} / {batch.length}
+              {editingIndex >= 0 ? editingIndex + 1 : '–'} / {cards.length}
             </span>
             <button className="nav" onClick={() => onStep(1)} aria-label="Next">›</button>
           </div>
-          <span className={'save-status ' + saveStatus}>
-            {saveStatus === 'saving' ? 'Saving…' : 'All changes saved'}
+          {/* Un guardado rechazado por el servidor tiene que verse: antes fallaba
+              en silencio y la edicion se perdia sin aviso. */}
+          <span
+            className={'save-status ' + (sessionError ? 'error' : saving ? 'saving' : 'saved')}
+            title={sessionError ?? undefined}
+          >
+            {sessionError ?? (saving ? 'Saving…' : 'All changes saved')}
           </span>
         </div>
 
@@ -651,7 +491,7 @@ export default function App() {
         </div>
 
         <Filmstrip
-          batch={batch}
+          batch={filmstrip}
           editingId={editingId}
           accent={accent}
           busy={busy}

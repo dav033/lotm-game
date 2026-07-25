@@ -14,6 +14,8 @@ type LiveCard = {
   title: string
   content: CardContent
   updatedAt: string
+  universe: { id: string; name: string }
+  part: { id: string; name: string; number: number | null }
 }
 
 type LivePart = {
@@ -27,6 +29,25 @@ type LiveUniverse = {
   id: string
   name: string
   parts: LivePart[]
+}
+
+// La sesion llega plana y ya ordenada; aqui solo se agrupa para mostrarla.
+function groupByUniverse(cards: LiveCard[]): LiveUniverse[] {
+  const universes = new Map<string, LiveUniverse>()
+  for (const card of cards) {
+    let universe = universes.get(card.universe.id)
+    if (!universe) {
+      universe = { id: card.universe.id, name: card.universe.name, parts: [] }
+      universes.set(card.universe.id, universe)
+    }
+    let part = universe.parts.find(({ id }) => id === card.part.id)
+    if (!part) {
+      part = { id: card.part.id, name: card.part.name, number: card.part.number, cards: [] }
+      universe.parts.push(part)
+    }
+    part.cards.push(card)
+  }
+  return [...universes.values()]
 }
 
 export default function CartasVivoPage() {
@@ -43,11 +64,11 @@ export default function CartasVivoPage() {
       // mas reciente puede pintar, para no volver a una version anterior.
       const requestId = ++pending
       try {
-        const response = await fetch('/api/cards/live', { cache: 'no-store' })
+        const response = await fetch('/api/cards/session', { cache: 'no-store' })
         if (!response.ok) throw new Error(String(response.status))
         const data = await response.json()
         if (cancelled || requestId !== pending) return
-        setUniverses(data.universes)
+        setUniverses(groupByUniverse(data.cards))
         setConnected(true)
       } catch {
         if (!cancelled && requestId === pending) setConnected(false)

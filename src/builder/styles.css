@@ -36,6 +36,9 @@
 .save-status.saved::before{background:#46c2a0}
 .save-status.saving{color:var(--tier)}
 .save-status.saving::before{background:var(--tier);animation:pulse 1s ease-in-out infinite}
+.save-status.error{color:#e0736b;text-transform:none;letter-spacing:0;max-width:46ch;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.save-status.error::before{background:#e0736b;flex:0 0 auto}
 @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
 
 .stage-canvas{flex:1 1 auto;display:flex;align-items:center;justify-content:center;

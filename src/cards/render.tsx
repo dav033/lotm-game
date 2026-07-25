@@ -20,6 +20,7 @@ import {
 import { PATHWAY_ICONS } from '../builder/data/pathwayIcons.js'
 import { PATHWAY_BACKGROUNDS } from '../builder/data/pathwayBackgrounds.js'
 import { type BuilderCardState, type CardContent, toBuilderCardState } from './schema'
+import { CARD_IMAGE_URL_PREFIX, isStoredCardImage, resolveCardImageFile } from './images'
 
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024
 const COVER_ACCENT = { c: '#d9b869', d: '#4a3a17', pct: 100 }
@@ -268,6 +269,14 @@ async function resolveStateImages(
 }
 
 async function resolveImageSource(source: string, publicDir: string): Promise<string> {
+  // Las imagenes subidas desde el editor viven junto a la base, no en /public.
+  if (isStoredCardImage(source)) {
+    const file = resolveCardImageFile(source.slice(CARD_IMAGE_URL_PREFIX.length))
+    const buffer = await fs.readFile(file)
+    if (buffer.byteLength > MAX_IMAGE_BYTES) throw new Error(`La imagen ${source} supera 15 MB.`)
+    return `data:${mimeFor(file)};base64,${buffer.toString('base64')}`
+  }
+
   if (/^https?:\/\//i.test(source)) {
     const response = await fetch(source, { signal: AbortSignal.timeout(15_000) })
     if (!response.ok) throw new Error(`No se pudo descargar la imagen ${source}: HTTP ${response.status}.`)
