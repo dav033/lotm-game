@@ -375,7 +375,13 @@ export default function App() {
   // la sesion, para que la miniatura siga lo que se escribe sin esperar al guardado.
   const filmstrip = cards.map((card) => {
     const cardState = card.id === editingId ? state : card.state
-    return { id: card.id, label: labelFor(cardState), state: cardState }
+    return {
+      id: card.id,
+      label: labelFor(cardState),
+      state: cardState,
+      universe: card.universe,
+      part: card.part,
+    }
   })
 
   return (

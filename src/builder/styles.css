@@ -51,8 +51,15 @@
 
 /* Bottom: filmstrip of saved cards */
 .filmstrip{width:100%;margin-top:16px;display:flex;align-items:center;gap:14px}
-.filmstrip-rail{flex:1 1 auto;display:flex;align-items:center;gap:10px;
+.filmstrip-rail{flex:1 1 auto;display:flex;align-items:flex-end;gap:10px;
   overflow-x:auto;padding:8px 2px 12px}
+/* Las cartas se agrupan por seccion, igual que en /cartas/vivo. */
+.film-group{flex:0 0 auto;display:flex;flex-direction:column;gap:5px;
+  padding-left:12px;border-left:1px solid var(--line)}
+.film-group:first-child{padding-left:0;border-left:none}
+.film-group-label{font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted2);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.film-group-cards{display:flex;align-items:center;gap:10px}
 .film-thumb{position:relative;flex:0 0 auto;width:78px;aspect-ratio:3/4;border-radius:7px;
   overflow:hidden;border:1px solid var(--line);background:#0a0a11;cursor:pointer;
   transition:border-color .15s,box-shadow .15s,transform .1s}
