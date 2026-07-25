@@ -74,6 +74,11 @@ export type StoredCard = {
   }
 }
 
+export type MoveCardsTarget = {
+  universe?: SaveCardBatchInput['universe']
+  part: SaveCardBatchInput['part']
+}
+
 export type CardLibrary = Array<{
   id: string
   slug: string
@@ -117,61 +122,69 @@ export class CardRepository {
     return `${this.db.pragma('data_version', { simple: true }) as number}.${this.localWrites}`
   }
 
+  // Crea o reutiliza el universo y la parte indicados. Lo comparten saveBatch y
+  // moveCards, que necesitan exactamente la misma resolucion por slug.
+  private resolvePart(
+    universe: SaveCardBatchInput['universe'],
+    part: SaveCardBatchInput['part'],
+    now: string,
+  ): PartRow {
+    const universeSlug = slugify(universe.name)
+    this.db
+      .prepare(`
+        INSERT INTO universes (id, slug, name, description, created_at, updated_at)
+        VALUES (@id, @slug, @name, @description, @now, @now)
+        ON CONFLICT(slug) DO UPDATE SET
+          name = excluded.name,
+          description = CASE WHEN @hasDescription = 1 THEN excluded.description ELSE universes.description END,
+          updated_at = excluded.updated_at
+      `)
+      .run({
+        id: randomUUID(),
+        slug: universeSlug,
+        name: universe.name,
+        description: universe.description ?? '',
+        hasDescription: universe.description === undefined ? 0 : 1,
+        now,
+      })
+
+    const universeRow = this.db
+      .prepare('SELECT * FROM universes WHERE slug = ?')
+      .get(universeSlug) as UniverseRow
+    const partSlug = slugify(part.name)
+
+    this.db
+      .prepare(`
+        INSERT INTO parts (id, universe_id, slug, name, number, description, created_at, updated_at)
+        VALUES (@id, @universeId, @slug, @name, @number, @description, @now, @now)
+        ON CONFLICT(universe_id, slug) DO UPDATE SET
+          name = excluded.name,
+          number = CASE WHEN @hasNumber = 1 THEN excluded.number ELSE parts.number END,
+          description = CASE WHEN @hasDescription = 1 THEN excluded.description ELSE parts.description END,
+          updated_at = excluded.updated_at
+      `)
+      .run({
+        id: randomUUID(),
+        universeId: universeRow.id,
+        slug: partSlug,
+        name: part.name,
+        number: part.number ?? null,
+        hasNumber: part.number === undefined ? 0 : 1,
+        description: part.description ?? '',
+        hasDescription: part.description === undefined ? 0 : 1,
+        now,
+      })
+
+    return this.db
+      .prepare('SELECT * FROM parts WHERE universe_id = ? AND slug = ?')
+      .get(universeRow.id, partSlug) as PartRow
+  }
+
   saveBatch(rawInput: SaveCardBatchInput): StoredCard[] {
     const input = SaveCardBatchSchema.parse(rawInput)
     const save = this.db.transaction(() => {
       const now = new Date().toISOString()
-      const universeSlug = slugify(input.universe.name)
-      const universeId = randomUUID()
-
-      this.db
-        .prepare(`
-          INSERT INTO universes (id, slug, name, description, created_at, updated_at)
-          VALUES (@id, @slug, @name, @description, @now, @now)
-          ON CONFLICT(slug) DO UPDATE SET
-            name = excluded.name,
-            description = CASE WHEN @hasDescription = 1 THEN excluded.description ELSE universes.description END,
-            updated_at = excluded.updated_at
-        `)
-        .run({
-          id: universeId,
-          slug: universeSlug,
-          name: input.universe.name,
-          description: input.universe.description ?? '',
-          hasDescription: input.universe.description === undefined ? 0 : 1,
-          now,
-        })
-
-      const universe = this.db
-        .prepare('SELECT * FROM universes WHERE slug = ?')
-        .get(universeSlug) as UniverseRow
-      const partSlug = slugify(input.part.name)
-
-      this.db
-        .prepare(`
-          INSERT INTO parts (id, universe_id, slug, name, number, description, created_at, updated_at)
-          VALUES (@id, @universeId, @slug, @name, @number, @description, @now, @now)
-          ON CONFLICT(universe_id, slug) DO UPDATE SET
-            name = excluded.name,
-            number = CASE WHEN @hasNumber = 1 THEN excluded.number ELSE parts.number END,
-            description = CASE WHEN @hasDescription = 1 THEN excluded.description ELSE parts.description END,
-            updated_at = excluded.updated_at
-        `)
-        .run({
-          id: randomUUID(),
-          universeId: universe.id,
-          slug: partSlug,
-          name: input.part.name,
-          number: input.part.number ?? null,
-          hasNumber: input.part.number === undefined ? 0 : 1,
-          description: input.part.description ?? '',
-          hasDescription: input.part.description === undefined ? 0 : 1,
-          now,
-        })
-
-      const part = this.db
-        .prepare('SELECT * FROM parts WHERE universe_id = ? AND slug = ?')
-        .get(universe.id, partSlug) as PartRow
+      const part = this.resolvePart(input.universe, input.part, now)
       const maxPosition = this.db
         .prepare('SELECT COALESCE(MAX(position), 0) AS value FROM cards WHERE part_id = ?')
         .get(part.id) as { value: number }
@@ -264,6 +277,42 @@ export class CardRepository {
     const deleted = this.db.prepare(`DELETE FROM cards WHERE id IN (${placeholders})`).run(...ids).changes
     if (deleted) this.localWrites += 1
     return deleted
+  }
+
+  // Reagrupa cartas ya guardadas en otra seccion, creandola si hace falta. Es lo
+  // que permite dividir una parte grande en varias sin borrar y recrear: las
+  // cartas conservan su id, su contenido y su fecha de creacion.
+  moveCards(cardIds: string[], target: MoveCardsTarget): StoredCard[] {
+    const move = this.db.transaction(() => {
+      const cards = cardIds
+        .map((id) => this.getCard(id))
+        .filter((card): card is StoredCard => card !== null)
+      if (!cards.length) throw new Error('No existe ninguna de las cartas indicadas.')
+
+      const now = new Date().toISOString()
+      // Sin universo explicito se queda donde ya estaba la primera carta.
+      const universe = target.universe ?? { name: cards[0].universe.name }
+      const part = this.resolvePart(universe, target.part, now)
+
+      // Las cartas salen de en medio antes de reubicarse: si alguna ya estaba en
+      // la parte destino, su posicion actual chocaria con UNIQUE al reasignarlas.
+      const park = this.db.prepare('UPDATE cards SET position = position + 1000000 WHERE id = ?')
+      for (const card of cards) park.run(card.id)
+
+      const maxPosition = this.db
+        .prepare('SELECT COALESCE(MAX(position), 0) AS value FROM cards WHERE part_id = ? AND position < 1000000')
+        .get(part.id) as { value: number }
+      const update = this.db.prepare(
+        'UPDATE cards SET part_id = ?, position = ?, updated_at = ? WHERE id = ?',
+      )
+      cards.forEach((card, index) => update.run(part.id, maxPosition.value + index + 1, now, card.id))
+
+      return cards.map(({ id }) => id)
+    })
+
+    const moved = move()
+    this.localWrites += 1
+    return moved.map((id) => this.getCard(id) as StoredCard)
   }
 
   // Reordena una parte completa. Las posiciones se desplazan primero fuera de

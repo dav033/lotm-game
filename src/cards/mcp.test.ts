@@ -25,7 +25,7 @@ test('expone herramientas MCP para guardar y consultar cartas', async (t) => {
   const tools = await client.listTools()
   assert.deepEqual(
     tools.tools.map(({ name }) => name).sort(),
-    ['delete_cards', 'export_cards_zip', 'list_card_library', 'save_card_batch', 'update_card'],
+    ['delete_cards', 'export_cards_zip', 'list_card_library', 'move_cards', 'save_card_batch', 'update_card'],
   )
 
   const saved = await client.callTool({
@@ -51,8 +51,31 @@ test('expone herramientas MCP para guardar y consultar cartas', async (t) => {
     name: 'list_card_library',
     arguments: { universe: 'fate', includeContent: true },
   })
-  const content = (listed as { content: Array<{ type: string; text?: string }> }).content
-  const text = content.find((item) => item.type === 'text')?.text
-  assert.ok(text)
-  assert.equal(JSON.parse(text).universes[0].parts[0].cards.length, 3)
+  const readText = (result: unknown) => {
+    const content = (result as { content: Array<{ type: string; text?: string }> }).content
+    const text = content.find((item) => item.type === 'text')?.text
+    assert.ok(text)
+    return JSON.parse(text)
+  }
+
+  const library = readText(listed)
+  assert.equal(library.universes[0].parts[0].cards.length, 3)
+
+  // Dividir una seccion ya guardada, sin borrar ni recrear.
+  const ids = library.universes[0].parts[0].cards.map(({ id }: { id: string }) => id)
+  const moved = await client.callTool({
+    name: 'move_cards',
+    arguments: { cardIds: ids.slice(1), part: { name: 'Parte 2', number: 2 } },
+  })
+  assert.equal(moved.isError, undefined)
+  assert.equal(readText(moved).moved, 2)
+
+  const regrouped = readText(await client.callTool({
+    name: 'list_card_library',
+    arguments: { universe: 'fate', includeContent: false },
+  })).universes[0]
+  assert.deepEqual(
+    regrouped.parts.map(({ name, cards }: { name: string; cards: unknown[] }) => [name, cards.length]),
+    [['Parte 1', 1], ['Parte 2', 2]],
+  )
 })

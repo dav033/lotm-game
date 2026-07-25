@@ -191,6 +191,20 @@ export const UpdateCardSchema = z
   })
   .strict()
 
+export const MoveCardsSchema = z
+  .object({
+    cardIds: z
+      .array(z.uuid())
+      .min(1)
+      .max(100)
+      .describe('IDs de las cartas que se moveran, en el orden que tendran dentro de la seccion.'),
+    universe: UniverseInputSchema.optional().describe(
+      'Universo destino. Si se omite, las cartas se quedan en el universo que ya tenian.',
+    ),
+    part: PartInputSchema.describe('Seccion destino. Se crea si no existe.'),
+  })
+  .strict()
+
 export const DeleteCardsSchema = z
   .object({
     cardIds: z.array(z.uuid()).min(1).max(100).describe('IDs de las cartas que se eliminaran.'),

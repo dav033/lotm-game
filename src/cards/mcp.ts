@@ -4,6 +4,7 @@ import {
   DeleteCardsSchema,
   ExportCardsSchema,
   ListCardLibrarySchema,
+  MoveCardsSchema,
   SaveCardBatchSchema,
   UpdateCardSchema,
 } from './schema'
@@ -31,9 +32,12 @@ export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl 
     { name: 'lotm-card-studio', version: '1.2.0' },
     {
       instructions:
-        'Este servidor solo administra y exporta cartas. Organiza cada lote por anime/universo y parte. ' +
+        'Este servidor solo administra y exporta cartas. Organiza cada lote por anime/universo y por secciones ' +
+        '(las "partes"), que son los grupos en que se divide un universo. ' +
         'Guarda contenido textual y referencias de imagen en un SQLite separado; nunca guarda binarios en la base. ' +
-        'Flujo recomendado: save_card_batch, list_card_library y export_cards_zip.',
+        'Flujo recomendado: save_card_batch, list_card_library y export_cards_zip. ' +
+        'Para dividir o reagrupar cartas que ya existen usa move_cards: crea la seccion destino si hace falta y ' +
+        'conserva los ids, asi que nunca hay que borrar y volver a crear para reorganizar.',
     },
   )
 
@@ -111,6 +115,29 @@ export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl 
       if (!updated) throw new Error(`No existe la carta ${cardId}.`)
       openLiveViewOnce()
       return { card: updated }
+    }),
+  )
+
+  server.registerTool(
+    'move_cards',
+    {
+      title: 'Mover cartas a otra seccion',
+      description:
+        'Reagrupa cartas ya guardadas en otra seccion (parte) del mismo universo o de otro, creandola si no existe. ' +
+        'Sirve para dividir una seccion grande en varias o para reordenarlas, sin borrar ni recrear: ' +
+        'las cartas conservan su id y su contenido. El orden de cardIds es el que tendran dentro de la seccion.',
+      inputSchema: MoveCardsSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ cardIds, ...target }) => runTool(() => {
+      const moved = repository.moveCards(cardIds, target)
+      openLiveViewOnce()
+      return { moved: moved.length, cards: moved.map(cardSummary) }
     }),
   )
 

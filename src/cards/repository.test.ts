@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
@@ -180,6 +181,51 @@ test('migra cards.db v3 a v4 sin perder cartas y acepta cartas Pathway', async (
   })
   assert.equal(saved[0].content.type, 'Pathway')
   assert.equal(repository.listCards().length, 2)
+})
+
+test('divide una seccion en varias conservando las cartas', async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-cards-'))
+  const repository = new CardRepository(path.join(directory, 'cards.db'))
+  t.after(async () => {
+    repository.close()
+    await fs.rm(directory, { recursive: true, force: true })
+  })
+
+  const saved = repository.saveBatch({
+    universe: { name: 'LOTM' },
+    part: { name: 'Todo junto', number: 1 },
+    cards: (['Fool', 'Moon', 'Sun', 'Door'] as const).map((pathway) => ({
+      type: 'Pathway' as const,
+      pathway,
+      points: [pathway],
+    })),
+  })
+  const [fool, moon, sun, door] = saved
+
+  const moved = repository.moveCards([sun.id, door.id], { part: { name: 'Segunda mitad', number: 2 } })
+
+  assert.deepEqual(moved.map(({ position }) => position), [1, 2])
+  assert.equal(moved[0].id, sun.id, 'conserva el id, no recrea la carta')
+  assert.equal(moved[0].createdAt, sun.createdAt, 'conserva la fecha de creacion')
+  assert.deepEqual(moved[0].content, sun.content, 'conserva el contenido')
+  assert.equal(moved[0].universe.slug, 'lotm', 'sin universo explicito se queda en el suyo')
+
+  const library = repository.listLibrary()[0]
+  assert.deepEqual(
+    library.parts.map(({ name, cards }) => [name, cards.length]),
+    [['Todo junto', 2], ['Segunda mitad', 2]],
+  )
+  assert.equal(repository.listCards().length, 4, 'no se pierde ni se duplica ninguna carta')
+
+  // Mover dentro de la misma seccion reordena sin chocar con UNIQUE.
+  const reordered = repository.moveCards([moon.id, fool.id], { part: { name: 'Todo junto' } })
+  assert.deepEqual(reordered.map(({ id }) => id), [moon.id, fool.id])
+  assert.deepEqual(reordered.map(({ position }) => position), [1, 2])
+
+  assert.throws(
+    () => repository.moveCards([randomUUID()], { part: { name: 'Otra' } }),
+    /No existe ninguna de las cartas/,
+  )
 })
 
 test('reordena una parte sin romper la unicidad de posiciones', async (t) => {

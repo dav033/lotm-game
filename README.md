@@ -101,9 +101,21 @@ npm run cards:browser
 ```
 
 `opencode.json` registra automáticamente el servidor local por `stdio`. Cierra
-y vuelve a abrir OpenCode después de instalarlo. Las herramientas disponibles
-permiten guardar lotes, consultar la biblioteca, actualizar/eliminar cartas y
-exportar todas las seleccionadas.
+y vuelve a abrir OpenCode después de instalarlo.
+
+| Herramienta | Qué hace |
+| --- | --- |
+| `save_card_batch` | Crea o reutiliza un universo y una sección, y añade hasta 100 cartas |
+| `list_card_library` | Lista la biblioteca agrupada por universo y sección |
+| `update_card` | Reemplaza el contenido de una carta, sin moverla |
+| `move_cards` | Reagrupa cartas ya guardadas en otra sección, creándola si hace falta |
+| `delete_cards` | Elimina cartas definitivamente |
+| `export_cards_zip` | Renderiza a PNG 960×1280 y genera el ZIP |
+
+Las **secciones** son las "partes" en que se divide un universo. `move_cards`
+es lo que permite dividir una sección grande en varias, o reordenarla, sin
+borrar y volver a crear: las cartas conservan su id, su contenido y su fecha de
+creación, y el orden de `cardIds` es el que tendrán dentro de la sección.
 
 Los lotes admiten `Character`, `Artifact`, `Cover`, `Full Image Cover`, `Tier`,
 `Tier Explanation` y `General Explanation`. Las cartas `Tier` pueden evaluar
