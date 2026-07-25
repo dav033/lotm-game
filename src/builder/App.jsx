@@ -113,10 +113,8 @@ export default function App() {
 
   const [editingId, setEditingId] = useState(null)
   const [state, setState] = useState(DEFAULT_STATE)
-  const [thumbs, setThumbs] = useState({})
   const [busy, setBusy] = useState(false)
 
-  const thumbTimer = useRef(null)
   const stateRef = useRef(state)
   const editingIdRef = useRef(editingId)
   stateRef.current = state
@@ -170,21 +168,6 @@ export default function App() {
     })
     return canvas.toDataURL('image/png')
   }
-
-  // ---- Debounced thumbnail refresh for the filmstrip preview only — this is
-  // just a UI preview, so it's fine for it to lag; the real export always
-  // re-captures each card fresh (see onDownloadZip / onDownload). ----
-  useEffect(() => {
-    if (!ready || !editingId) return
-    clearTimeout(thumbTimer.current)
-    thumbTimer.current = setTimeout(async () => {
-      let url = null
-      try { url = await captureCard() } catch { /* keep previous thumbnail */ }
-      if (url) setThumbs((previous) => ({ ...previous, [editingId]: url }))
-    }, 500)
-    return () => clearTimeout(thumbTimer.current)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, editingId, ready])
 
   // ---- Card operations ----
 
@@ -388,11 +371,12 @@ export default function App() {
     return <div className="app-loading">Loading your cards…</div>
   }
 
-  const filmstrip = cards.map((card) => ({
-    id: card.id,
-    label: card.id === editingId ? labelFor(state) : labelFor(card.state),
-    url: thumbs[card.id] ?? null,
-  }))
+  // La carta activa se pinta con el estado vivo del editor, no con la copia de
+  // la sesion, para que la miniatura siga lo que se escribe sin esperar al guardado.
+  const filmstrip = cards.map((card) => {
+    const cardState = card.id === editingId ? state : card.state
+    return { id: card.id, label: labelFor(cardState), state: cardState }
+  })
 
   return (
     <div className="app">

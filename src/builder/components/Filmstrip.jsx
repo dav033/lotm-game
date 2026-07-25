@@ -1,7 +1,11 @@
 import { useState } from 'react'
+import LiveCardPreview from '../LiveCardPreview.jsx'
 
 // Horizontal strip of saved cards (Canva-style "pages"). Click to edit, drag a
 // thumbnail onto another to reorder, "+" to add a new card.
+//
+// Cada miniatura es la carta de verdad pintada a escala, no una captura: se ve
+// sin haberla abierto y sigue al dia sola, incluso si la edita el MCP.
 export default function Filmstrip({
   batch, editingId, accent, busy,
   onLoadCard, onNewCard, onRemoveFromBatch, onReorder, onDownloadZip,
@@ -36,11 +40,9 @@ export default function Filmstrip({
             onDragEnd={() => { setDragIndex(null); setOverIndex(null) }}
           >
             <span className="film-no">{i + 1}</span>
-            {item.url ? (
-              <img src={item.url} alt={item.label} draggable={false} />
-            ) : (
-              <span className="film-empty">…</span>
-            )}
+            <div className="film-preview">
+              <LiveCardPreview state={item.state} />
+            </div>
             <button
               className="film-rm"
               onClick={(e) => { e.stopPropagation(); onRemoveFromBatch(item.id) }}

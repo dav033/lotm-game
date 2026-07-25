@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import '@/builder/styles.css'
 import LiveCardPreview from '@/builder/LiveCardPreview.jsx'
-import type { CardContent } from '@/cards/schema'
+import { toBuilderCardState, type CardContent } from '@/cards/schema'
 
 const POLL_MS = 1_000
 const FLASH_MS = 4_000
@@ -132,7 +132,7 @@ export default function CartasVivoPage() {
                       return (
                         <div key={card.id} className={'live-tile' + (isRecent ? ' flash' : '')}>
                           <div className="live-tile-inner">
-                            <LiveCardPreview content={card.content} />
+                            <LiveCardPreview state={toBuilderCardState(card.content)} />
                           </div>
                           <span className="live-tile-title">{card.title}</span>
                         </div>

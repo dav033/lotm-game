@@ -9,12 +9,13 @@ import GeneralExplanationCard from './components/GeneralExplanationCard.jsx'
 import { PATHWAYS, PATHWAY_COLORS, TIER_RANKS, tierColor, powerTier } from './data/pathways.js'
 import { PATHWAY_ICONS } from './data/pathwayIcons.js'
 import { PATHWAY_BACKGROUNDS } from './data/pathwayBackgrounds.js'
-import { toBuilderCardState } from '../cards/schema'
 
-// Vista de solo lectura para /cartas/vivo: mismos componentes de carta que usa
-// el builder interactivo, sin handlers de upload/drag y sin ref (no hay export a PNG acá).
-export default function LiveCardPreview({ content }) {
-  const state = toBuilderCardState(content)
+// Vista de solo lectura: mismos componentes de carta que usa el builder
+// interactivo, sin handlers de upload/drag y sin ref (no hay export a PNG acá).
+// La usan /cartas/vivo y las miniaturas del filmstrip, que la pintan a escala en
+// vez de capturar un bitmap: asi una carta se ve sin tener que abrirla y nunca
+// queda desactualizada.
+export default function LiveCardPreview({ state }) {
   const isCover = state.type === 'Cover'
   const isFullImageCover = state.type === 'Full Image Cover'
   const isTier = state.type === 'Tier'
