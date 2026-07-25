@@ -9,7 +9,10 @@ ARG DATABASE_URL
 ENV DATABASE_URL=$DATABASE_URL
 
 COPY package.json package-lock.json* ./
-RUN npm ci
+# El npm que trae node:22 (10.x) poda el arbol distinto al que genera el
+# lockfile y da EUSAGE en npm ci. Se fija la misma version con la que se
+# escribe package-lock.json; hay que moverla si cambia la de desarrollo.
+RUN npm i -g npm@11.6.2 && npm ci
 
 COPY . .
 # Las rutas son dinámicas: el build genera el cliente sin consultar PostgreSQL.
