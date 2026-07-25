@@ -52,6 +52,7 @@ function SectionLabel({ text, name, editing, draft, onStart, onDraft, onCommit, 
 export default function Filmstrip({
   batch, editingId, accent, busy,
   onLoadCard, onNewCard, onRemoveFromBatch, onReorder, onDownloadZip, onRenameSection,
+  onDownloadSection,
 }) {
   const [dragIndex, setDragIndex] = useState(null)
   const [overIndex, setOverIndex] = useState(null)
@@ -78,6 +79,7 @@ export default function Filmstrip({
       <div className="filmstrip-rail">
         {groups.map((group) => (
           <div className="film-group" key={group.partId}>
+            <div className="film-group-head">
             <SectionLabel
               name={group.part.name}
               text={
@@ -92,6 +94,13 @@ export default function Filmstrip({
               onCommit={commitRename}
               onCancel={() => setRenaming(null)}
             />
+              <button
+                className="film-group-zip"
+                title={`Descargar "${group.part.name}" en ZIP (${group.items.length} cartas)`}
+                disabled={busy}
+                onClick={() => onDownloadSection(group.partId)}
+              >↓</button>
+            </div>
             <div className="film-group-cards">
               {group.items.map(({ item, index: i }) => (
                 <div
@@ -134,7 +143,7 @@ export default function Filmstrip({
         className="btn-zip"
         style={{ background: accent.c }}
         disabled={batch.length === 0 || busy}
-        onClick={onDownloadZip}
+        onClick={() => onDownloadZip()}
       >
         Download all ({batch.length})
       </button>

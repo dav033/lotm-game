@@ -18,6 +18,7 @@ import { PATHWAYS, PATH_NAMES, tierColor, powerTier, TIER_RANKS, PATHWAY_COLORS 
 import { PATHWAY_ICONS } from './data/pathwayIcons.js'
 import { PATHWAY_BACKGROUNDS } from './data/pathwayBackgrounds.js'
 import { sameCardState, useCardSession } from './useCardSession.js'
+import { slugify } from '../cards/schema'
 
 const COVER_ACCENT = { c: '#d9b869', d: '#4a3a17', pct: 100 }
 
@@ -255,37 +256,44 @@ export default function App() {
   const onDownload = async () => {
     const url = await captureCard()
     const a = document.createElement('a')
-    a.download = `${labelFor(state)}.png`
+    a.download = `${fileSafe(labelFor(state))}.png`
     a.href = url
     a.click()
   }
 
-  const onDownloadZip = async () => {
-    if (!cards.length || busy) return
+  // Exporta las cartas indicadas. Sin argumentos, el lote entero; con una
+  // seccion, solo la suya, y entonces el ZIP se agrupa en carpeta por seccion
+  // igual que hace el export del MCP.
+  const onDownloadZip = async (subset = null, zipName = 'lotm-cards') => {
+    // Si llega el evento de un onClick en vez de una lista, se exporta todo.
+    const chosen = Array.isArray(subset) ? subset : cards
+    if (!chosen.length || busy) return
     setBusy(true)
     const previousState = state
     const previousEditingId = editingId
     try {
       const zip = new JSZip()
+      const grouped = new Set(chosen.map((card) => card.part.id)).size > 1
       // Render every card fresh instead of trusting each item's auto-saved
       // thumbnail — that thumbnail is captured on a debounce while editing,
       // so switching cards quickly can leave it stale or mid-transition
       // (wrong background, clipped text). Loading each card into the live
       // editor and re-capturing guarantees the export matches its final state.
-      for (let i = 0; i < cards.length; i++) {
-        const item = cards[i]
+      for (let i = 0; i < chosen.length; i++) {
+        const item = chosen[i]
         flushSync(() => {
           setState(item.state)
           setEditingId(item.id)
         })
         const data = await captureCard()
         const base64 = data.split(',')[1]
-        zip.file(`${String(i + 1).padStart(2, '0')}_${labelFor(item.state)}.png`, base64, { base64: true })
+        const name = `${String(i + 1).padStart(2, '0')}_${fileSafe(labelFor(item.state))}.png`
+        zip.file(grouped ? `${slugify(item.part.name)}/${name}` : name, base64, { base64: true })
       }
       const blob = await zip.generateAsync({ type: 'blob' })
       const a = document.createElement('a')
       a.href = URL.createObjectURL(blob)
-      a.download = 'lotm-cards.zip'
+      a.download = `${zipName}.zip`
       a.click()
       URL.revokeObjectURL(a.href)
     } finally {
@@ -505,6 +513,10 @@ export default function App() {
           onReorder={onReorder}
           onDownloadZip={onDownloadZip}
           onRenameSection={(partId, name) => session.renameSection(partId, { name })}
+          onDownloadSection={(partId) => {
+            const seccion = cards.filter((card) => card.part.id === partId)
+            if (seccion.length) void onDownloadZip(seccion, slugify(seccion[0].part.name))
+          }}
         />
       </section>
 
@@ -518,6 +530,13 @@ export default function App() {
       />
     </div>
   )
+}
+
+// labelFor puede traer caracteres que no valen en un nombre de archivo. Una
+// barra ademas crea una carpeta dentro del ZIP: un titulo como "Part 2/3"
+// acababa como carpeta "Part_2" con un "3.png" dentro.
+function fileSafe(label) {
+  return label.replace(/[/\\:*?"<>|]+/g, '-').replace(/\.+$/, '').trim() || 'carta'
 }
 
 // Filename-friendly label for a card's current state.

@@ -113,6 +113,11 @@ y vuelve a abrir OpenCode después de instalarlo.
 | `delete_cards` | Elimina cartas definitivamente |
 | `export_cards_zip` | Renderiza a PNG 960×1280 y genera el ZIP |
 
+`export_cards_zip` acepta los mismos filtros: `{ part: "nombre-o-slug" }` exporta
+una sola sección, y sin filtro exporta todo agrupado en carpetas
+`universo/NN-seccion/`. En el editor, cada sección del carrusel tiene su propio
+botón de descarga, y el botón general agrupa por carpeta cuando hay más de una.
+
 Las **secciones** son las "partes" en que se divide un universo. `move_cards`
 es lo que permite dividir una sección grande en varias, o reordenarla, sin
 borrar y volver a crear: las cartas conservan su id, su contenido y su fecha de
