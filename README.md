@@ -49,6 +49,7 @@ Variables:
 | `CARDS_MCP_PUBLIC_URL` | URL base publica para construir enlaces de descarga |
 | `CARDS_MCP_ALLOWED_HOSTS` | Hostnames publicos del MCP, separados por comas |
 | `CARDS_LIVE_VIEW_URL` | Pagina que se abre en el navegador al primer guardado/edicion de la sesion; por defecto `http://localhost:3000/cartas/vivo` (requiere `npm run dev` activo) |
+| `NEXT_PUBLIC_CARDS_MCP_EVENTS_URL` | URL del stream en tiempo real para `/cartas/vivo`; por defecto `http://127.0.0.1:3101/events` |
 
 ## 3 · Crear la base de datos
 
@@ -120,6 +121,10 @@ npm run cards:mcp:http
 El endpoint queda en `http://127.0.0.1:3101/mcp`. Cada exportación crea un ZIP
 en `data/card-exports` con PNG de 960x1280 ordenados por universo y parte, y un
 `manifest.json` v3. El servidor HTTP también devuelve una URL `/downloads/...`.
+La vista `http://localhost:3000/cartas/vivo` mantiene un stream SSE con
+`/events`: cada guardado, edición o borrado hecho desde el MCP se refleja de
+inmediato. Si el MCP no está disponible, la vista intenta reconectar y conserva
+una actualización de respaldo cada 15 segundos.
 Si se enlaza a una interfaz no local, es obligatorio definir
 `CARDS_MCP_TOKEN`; el cliente debe enviarlo como `Authorization: Bearer ...`.
 

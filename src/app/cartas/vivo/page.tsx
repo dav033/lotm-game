@@ -5,8 +5,9 @@ import '@/builder/styles.css'
 import LiveCardPreview from '@/builder/LiveCardPreview.jsx'
 import type { CardContent } from '@/cards/schema'
 
-const POLL_MS = 1_500
+const FALLBACK_POLL_MS = 15_000
 const FLASH_MS = 4_000
+const EVENTS_URL = process.env.NEXT_PUBLIC_CARDS_MCP_EVENTS_URL || 'http://127.0.0.1:3101/events'
 
 type LiveCard = {
   id: string
@@ -36,7 +37,7 @@ export default function CartasVivoPage() {
   useEffect(() => {
     let cancelled = false
 
-    async function poll() {
+    async function refresh() {
       try {
         const response = await fetch('/api/cards/live', { cache: 'no-store' })
         if (!response.ok) throw new Error(String(response.status))
@@ -51,10 +52,22 @@ export default function CartasVivoPage() {
       if (!cancelled) setNow(Date.now())
     }
 
-    poll()
-    const interval = setInterval(poll, POLL_MS)
+    refresh()
+    const events = new EventSource(EVENTS_URL)
+    events.addEventListener('connected', () => {
+      if (!cancelled) setConnected(true)
+    })
+    events.addEventListener('library-change', () => void refresh())
+    events.onerror = () => {
+      if (!cancelled) setConnected(false)
+    }
+
+    // Si el MCP no esta disponible todavia, conservamos una comprobacion lenta
+    // de respaldo. EventSource se reconecta automaticamente al aparecer.
+    const interval = setInterval(refresh, FALLBACK_POLL_MS)
     return () => {
       cancelled = true
+      events.close()
       clearInterval(interval)
     }
   }, [])
