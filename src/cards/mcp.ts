@@ -14,18 +14,17 @@ import type { CardRepository, StoredCard } from './repository'
 type McpOptions = {
   repository: CardRepository
   downloadBaseUrl?: string
-  onLibraryChange?: (change: { type: 'saved' | 'updated' | 'deleted'; at: string }) => void
   // Si se define, la primera vez que se guarde o edite una carta en este
   // proceso se abre esta URL en el navegador del usuario (ver openBrowser.ts).
   liveViewUrl?: string
 }
 
-export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl, onLibraryChange }: McpOptions): McpServer {
+// Este servidor no avisa de los cambios: la app observa cards.db directamente
+// (src/server/cardsLive.ts), asi que la vista en vivo refleja por igual lo que
+// escriba este proceso, otro servidor MCP o el propio editor.
+export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl }: McpOptions): McpServer {
   const openLiveViewOnce = () => {
     if (liveViewUrl) openBrowserOnce(liveViewUrl)
-  }
-  const notifyLibraryChange = (type: 'saved' | 'updated' | 'deleted') => {
-    onLibraryChange?.({ type, at: new Date().toISOString() })
   }
 
   const server = new McpServer(
@@ -58,7 +57,6 @@ export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl,
     async (input) => runTool(() => {
       const cards = repository.saveBatch(input)
       openLiveViewOnce()
-      notifyLibraryChange('saved')
       return {
         saved: cards.length,
         cards: cards.map(cardSummary),
@@ -112,7 +110,6 @@ export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl,
       const updated = repository.updateCard(cardId, card)
       if (!updated) throw new Error(`No existe la carta ${cardId}.`)
       openLiveViewOnce()
-      notifyLibraryChange('updated')
       return { card: updated }
     }),
   )
@@ -130,11 +127,7 @@ export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl,
         openWorldHint: false,
       },
     },
-    async ({ cardIds }) => runTool(() => {
-      const deleted = repository.deleteCards(cardIds)
-      if (deleted) notifyLibraryChange('deleted')
-      return { deleted }
-    }),
+    async ({ cardIds }) => runTool(() => ({ deleted: repository.deleteCards(cardIds) })),
   )
 
   server.registerTool(

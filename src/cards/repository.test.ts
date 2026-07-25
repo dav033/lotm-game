@@ -181,3 +181,35 @@ test('migra cards.db v3 a v4 sin perder cartas y acepta cartas Pathway', async (
   assert.equal(saved[0].content.type, 'Pathway')
   assert.equal(repository.listCards().length, 2)
 })
+
+test('la revision cambia con las escrituras propias y con las de otra conexion', async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-cards-'))
+  const dbPath = path.join(directory, 'cards.db')
+  const reader = new CardRepository(dbPath)
+  const writer = new CardRepository(dbPath)
+  t.after(async () => {
+    reader.close()
+    writer.close()
+    await fs.rm(directory, { recursive: true, force: true })
+  })
+
+  const batch = {
+    universe: { name: 'LOTM' },
+    part: { name: 'Tiers', number: 1 },
+    cards: [{ type: 'Pathway' as const, pathway: 'Moon' as const, points: ['Magia vivificante'] }],
+  }
+
+  const initial = reader.revision()
+  assert.equal(reader.revision(), initial, 'sin escrituras la revision es estable')
+
+  // Escritura propia: solo la detecta el contador local.
+  reader.saveBatch(batch)
+  const afterOwnWrite = reader.revision()
+  assert.notEqual(afterOwnWrite, initial)
+
+  // Escritura de otro proceso (otra conexion sobre el mismo archivo): la
+  // detecta data_version, que es lo que sostiene la vista en vivo.
+  const [card] = writer.listCards()
+  writer.updateCard(card.id, { type: 'Pathway', pathway: 'Sun', points: ['Luz'] })
+  assert.notEqual(reader.revision(), afterOwnWrite)
+})

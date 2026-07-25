@@ -20,7 +20,7 @@ import { loadData, saveData } from './storage.js'
 import { fromBuilderCardState, toBuilderCardState } from '../cards/schema'
 import { discardCachedRemoteCards, localEditorSnapshot, mergeRemoteCards } from './remoteSync'
 
-const EVENTS_URL = process.env.NEXT_PUBLIC_CARDS_MCP_EVENTS_URL || 'http://127.0.0.1:3101/events'
+const EVENTS_URL = '/api/cards/live/stream'
 
 const COVER_ACCENT = { c: '#d9b869', d: '#4a3a17', pct: 100 }
 
@@ -153,7 +153,10 @@ export default function App() {
         next = next.map((card) => card.id === activeId
           ? { ...card, state: editor.current.state, label: labelFor(editor.current.state) }
           : card)
-      } else if (active?.source === 'mcp') {
+      } else if (active?.source === 'mcp' && JSON.stringify(active.state) !== JSON.stringify(editor.current.state)) {
+        // Guardar tambien dispara el stream, asi que la carta activa vuelve por
+        // aca enseguida: adoptarla solo cuando trae algo distinto evita pisar lo
+        // que se esta escribiendo con la version que acabamos de enviar.
         setState(active.state)
       }
 
@@ -236,8 +239,14 @@ export default function App() {
     if (!loaded) return
     syncMcpCards()
     const events = new EventSource(EVENTS_URL)
+    // Al (re)conectar recuperamos lo que haya cambiado mientras no hubo stream.
+    events.addEventListener('connected', () => void syncMcpCards())
     events.addEventListener('library-change', () => void syncMcpCards())
-    const fallback = setInterval(syncMcpCards, 15_000)
+    // Con el stream abierto los avisos ya son inmediatos: sondear ademas solo
+    // repintaria el lote entero cada 15 s mientras se edita.
+    const fallback = setInterval(() => {
+      if (events.readyState !== EventSource.OPEN) void syncMcpCards()
+    }, 15_000)
     return () => {
       events.close()
       clearInterval(fallback)

@@ -29,13 +29,6 @@ const app = createMcpExpressApp({ host, allowedHosts })
 const repository = new CardRepository()
 const publicHost = host === '0.0.0.0' || host === '::' ? 'localhost' : host
 const publicBaseUrl = process.env.CARDS_MCP_PUBLIC_URL || `http://${publicHost}:${port}`
-type LiveListener = { write: (chunk: string) => boolean }
-const liveListeners = new Set<LiveListener>()
-
-function notifyLiveListeners(change: { type: 'saved' | 'updated' | 'deleted'; at: string }) {
-  const message = `event: library-change\ndata: ${JSON.stringify(change)}\n\n`
-  for (const listener of liveListeners) listener.write(message)
-}
 // Solo tiene sentido abrir un navegador en la maquina donde corre este proceso
 // si ese proceso efectivamente corre en la maquina del usuario (host local).
 const liveViewUrl = localHosts.has(host)
@@ -44,24 +37,6 @@ const liveViewUrl = localHosts.has(host)
 
 app.get('/health', (_request, response) => {
   response.json({ ok: true, service: 'lotm-card-studio' })
-})
-
-// Stream persistente MCP -> navegador. Solo avisa que hubo un cambio; el
-// contenido se vuelve a leer desde el sitio para no exponerlo por este canal.
-app.get('/events', (_request, response) => {
-  response.setHeader('Access-Control-Allow-Origin', '*')
-  response.setHeader('Cache-Control', 'no-cache, no-transform')
-  response.setHeader('Content-Type', 'text/event-stream')
-  response.setHeader('Connection', 'keep-alive')
-  response.flushHeaders()
-  response.write('event: connected\ndata: {}\n\n')
-  liveListeners.add(response)
-
-  const keepAlive = setInterval(() => response.write(': keep-alive\n\n'), 25_000)
-  response.on('close', () => {
-    clearInterval(keepAlive)
-    liveListeners.delete(response)
-  })
 })
 
 app.use('/mcp', (request, response, next) => {
@@ -78,7 +53,6 @@ app.post('/mcp', async (request, response) => {
     repository,
     downloadBaseUrl: publicBaseUrl,
     liveViewUrl,
-    onLibraryChange: notifyLiveListeners,
   })
   response.on('close', () => void Promise.all([transport.close(), mcp.close()]))
 

@@ -7,7 +7,7 @@ import type { CardContent } from '@/cards/schema'
 
 const FALLBACK_POLL_MS = 15_000
 const FLASH_MS = 4_000
-const EVENTS_URL = process.env.NEXT_PUBLIC_CARDS_MCP_EVENTS_URL || 'http://127.0.0.1:3101/events'
+const EVENTS_URL = '/api/cards/live/stream'
 
 type LiveCard = {
   id: string
@@ -36,35 +36,36 @@ export default function CartasVivoPage() {
 
   useEffect(() => {
     let cancelled = false
+    let pending = 0
 
     async function refresh() {
+      // Varios avisos seguidos pueden dejar respuestas en vuelo: solo la lectura
+      // mas reciente puede pintar, para no volver a una version anterior.
+      const requestId = ++pending
       try {
         const response = await fetch('/api/cards/live', { cache: 'no-store' })
         if (!response.ok) throw new Error(String(response.status))
         const data = await response.json()
-        if (!cancelled) {
-          setUniverses(data.universes)
-          setConnected(true)
-        }
+        if (cancelled || requestId !== pending) return
+        setUniverses(data.universes)
+        setConnected(true)
       } catch {
-        if (!cancelled) setConnected(false)
+        if (!cancelled && requestId === pending) setConnected(false)
       }
       if (!cancelled) setNow(Date.now())
     }
 
     refresh()
     const events = new EventSource(EVENTS_URL)
-    events.addEventListener('connected', () => {
-      if (!cancelled) setConnected(true)
-    })
+    // Al (re)conectar recuperamos lo que haya cambiado mientras no hubo stream.
+    events.addEventListener('connected', () => void refresh())
     events.addEventListener('library-change', () => void refresh())
-    events.onerror = () => {
-      if (!cancelled) setConnected(false)
-    }
 
-    // Si el MCP no esta disponible todavia, conservamos una comprobacion lenta
-    // de respaldo. EventSource se reconecta automaticamente al aparecer.
-    const interval = setInterval(refresh, FALLBACK_POLL_MS)
+    // El estado depende de si la biblioteca se puede leer, no del stream: este
+    // se reconecta solo y quedarse sin el solo significa volver al respaldo lento.
+    const interval = setInterval(() => {
+      if (events.readyState !== EventSource.OPEN) void refresh()
+    }, FALLBACK_POLL_MS)
     return () => {
       cancelled = true
       events.close()

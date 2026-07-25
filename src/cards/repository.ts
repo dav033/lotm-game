@@ -95,6 +95,7 @@ export function resolveCardsDbPath(): string {
 
 export class CardRepository {
   private readonly db: Database.Database
+  private localWrites = 0
 
   constructor(dbPath = resolveCardsDbPath()) {
     if (dbPath !== ':memory:') fs.mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true })
@@ -106,6 +107,14 @@ export class CardRepository {
 
   close(): void {
     this.db.close()
+  }
+
+  // Identifica el estado actual de la biblioteca sin leerla entera. `data_version`
+  // solo cambia con los commits de otras conexiones (el MCP stdio, el MCP HTTP u
+  // otro contenedor sobre el mismo volumen), asi que el contador local cubre las
+  // escrituras hechas por esta misma conexion.
+  revision(): string {
+    return `${this.db.pragma('data_version', { simple: true }) as number}.${this.localWrites}`
   }
 
   saveBatch(rawInput: SaveCardBatchInput): StoredCard[] {
@@ -190,7 +199,9 @@ export class CardRepository {
       return ids
     })
 
-    return save().map((id) => this.getCard(id) as StoredCard)
+    const ids = save()
+    this.localWrites += 1
+    return ids.map((id) => this.getCard(id) as StoredCard)
   }
 
   getCard(id: string): StoredCard | null {
@@ -243,12 +254,16 @@ export class CardRepository {
         WHERE id = ?
       `)
       .run(content.type, titleForCard(content), JSON.stringify(content), new Date().toISOString(), id)
-    return result.changes ? this.getCard(id) : null
+    if (!result.changes) return null
+    this.localWrites += 1
+    return this.getCard(id)
   }
 
   deleteCards(ids: string[]): number {
     const placeholders = ids.map(() => '?').join(', ')
-    return this.db.prepare(`DELETE FROM cards WHERE id IN (${placeholders})`).run(...ids).changes
+    const deleted = this.db.prepare(`DELETE FROM cards WHERE id IN (${placeholders})`).run(...ids).changes
+    if (deleted) this.localWrites += 1
+    return deleted
   }
 
   private migrate(): void {
