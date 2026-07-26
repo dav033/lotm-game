@@ -135,11 +135,14 @@ export default function LiveCardPreview({ state }) {
   }
 
   if (state.type === 'Map') {
+    const mapPathway = PATHWAYS[state.mapPathway] ? state.mapPathway : null
     return (
       <MapCard
         title={state.mapTitle}
         entriesText={state.mapEntriesText}
         footerText={state.mapFooterText}
+        tier={mapPathway ? PATHWAY_COLORS[mapPathway] : null}
+        backgroundImage={mapPathway ? PATHWAY_BACKGROUNDS[mapPathway] ?? null : null}
       />
     )
   }

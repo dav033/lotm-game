@@ -133,7 +133,10 @@ export class CardPngRenderer {
 
 // El fondo de una explicacion de pathway no es un campo de la carta: sale de
 // PATHWAY_BACKGROUNDS, asi que se resuelve aparte y se pasa ya como data URL.
-type RenderState = BuilderCardState & { generalExplanationBackground: string | null }
+type RenderState = BuilderCardState & {
+  generalExplanationBackground: string | null
+  mapBackground: string | null
+}
 
 function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string, string> }) {
   const isCharacter = state.type === 'Character'
@@ -166,6 +169,8 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
       ? { ...TIER_DATA[tierRank], pct: 100 }
       : isPathwayCard
         ? { ...PATHWAY_COLOR_DATA[state.pathwayCardPath], pct: 100 }
+      : isMap && state.mapPathway
+        ? { ...PATHWAY_COLOR_DATA[state.mapPathway], pct: 100 }
       : isGeneralExplanation || isPathwayExplanation || isBreakdown || isMap
         ? COVER_ACCENT
       : powerTier(state.type, state.power, state.grade)
@@ -252,6 +257,8 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
           title={state.mapTitle}
           entriesText={state.mapEntriesText}
           footerText={state.mapFooterText}
+          tier={state.mapPathway ? PATHWAY_COLOR_DATA[state.mapPathway] : null}
+          backgroundImage={state.mapBackground}
         />
       ) : (
         <StaticCard
@@ -278,6 +285,9 @@ async function resolveStateImages(
 ): Promise<RenderState> {
   const generalExplanationSource = state.type === 'General Explanation' && state.explanationPath
     ? (PATHWAY_BACKGROUNDS as Record<string, string>)[state.explanationPath] ?? null
+    : null
+  const mapSource = state.type === 'Map' && state.mapPathway
+    ? (PATHWAY_BACKGROUNDS as Record<string, string>)[state.mapPathway] ?? null
     : null
   const tierBackgroundSource = state.tierBackgroundImage
     ?? (state.type === 'Tier'
@@ -311,6 +321,7 @@ async function resolveStateImages(
     generalExplanationBackground: generalExplanationSource
       ? await resolveImageSource(generalExplanationSource, publicDir)
       : null,
+    mapBackground: mapSource ? await resolveImageSource(mapSource, publicDir) : null,
   }
 }
 

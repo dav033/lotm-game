@@ -99,12 +99,25 @@ test('Map muestra el título, las filas con y sin etiquetas, y el footer opciona
   assert.match(html, /map-footer-text">Three roots\. Seven powers\./)
 })
 
-test('Map sin footer no muestra la regla final', () => {
+test('Map sin footer no muestra la regla final ni fondo de pathway', () => {
   const html = renderToStaticMarkup(React.createElement(Map_, {
     title: 'Sin footer',
     entriesText: 'Tags -> Value',
   }))
   assert.doesNotMatch(html, /map-footer/)
+  assert.doesNotMatch(html, /tier-background/)
+})
+
+test('Map con pathway toma su color y su fondo', () => {
+  const html = renderToStaticMarkup(React.createElement(Map_, {
+    title: 'Where the powers come from',
+    entriesText: 'Door -> Replication',
+    tier: { c: '#6a5acd', d: '#241c4a' },
+    backgroundImage: '/backgrounds/door.jpg',
+  }))
+  assert.match(html, /--tier:#6a5acd/)
+  assert.match(html, /--tier-deep:#241c4a/)
+  assert.match(html, /tier-background[\s\S]*?backgrounds\/door\.jpg/)
 })
 
 test('Full Image Cover muestra la imagen a cuerpo completo y el título al pie', () => {

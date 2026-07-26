@@ -626,6 +626,35 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
       ) : isMap ? (
         <div key="map-fields">
           <div className="field">
+            <label>Theme</label>
+            <div className="toggle">
+              <button
+                className={'seg' + (!state.mapPathway ? ' sel' : '')}
+                onClick={() => set({ mapPathway: null })}
+              >
+                Neutral
+              </button>
+              <button
+                className={'seg' + (state.mapPathway ? ' sel' : '')}
+                onClick={() => set({ mapPathway: state.mapPathway || 'Fool' })}
+              >
+                Pathway
+              </button>
+            </div>
+            <p className="field-help">A pathway tints the card and adds its background art.</p>
+          </div>
+
+          {state.mapPathway && (
+            <div className="field">
+              <label>Pathway (search all 22)</label>
+              <PathwayCombo
+                value={PATHWAYS[state.mapPathway] ? state.mapPathway : 'Fool'}
+                onPick={(n) => set({ mapPathway: n })}
+              />
+            </div>
+          )}
+
+          <div className="field">
             <label htmlFor="map-title">Title</label>
             <input
               id="map-title"

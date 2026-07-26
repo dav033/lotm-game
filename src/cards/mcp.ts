@@ -62,7 +62,8 @@ export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl 
         'titulo y tres secciones: does, doesNot y una tercera con etiqueta libre (edgeLabel, ' +
         'p. ej. "Edge" o "Caps at") resaltada en color tier. ' +
         'Map es una carta resumen: titulo, hasta 8 filas (entries) con etiquetas opcionales ' +
-        '(tags, unidas por " · ") y un valor en negrita, mas un footerText opcional bajo una regla. ' +
+        '(tags, unidas por " · ") y un valor en negrita, mas un footerText opcional bajo una regla; ' +
+        'con un pathway opcional toma el color y el fondo de ese camino. ' +
         'Las imagenes son solo URLs o rutas de /public.',
       inputSchema: SaveCardBatchSchema,
       annotations: {

@@ -148,9 +148,23 @@ test('valida una Map con filas "tags -> value" y footer opcional', () => {
   assert.equal(toBuilderCardState(map).mapFooterText, 'Three roots. Seven powers.')
   assert.equal(toBuilderCardState(mapSinFooter).mapEntriesText, 'Solo un valor')
   assert.equal(toBuilderCardState(mapSinFooter).mapFooterText, '')
+  assert.equal(toBuilderCardState(map).mapPathway, null, 'sin pathway el tema es neutro')
   const roundTripped = fromBuilderCardState(toBuilderCardState(map))
   assert.equal(roundTripped.type === 'Map' && roundTripped.entries.length, 2)
   assert.equal(filenameForCard(map), 'map_where-the-powers-come-from')
+})
+
+test('una Map con pathway conserva el tema al ida y vuelta', () => {
+  const tematica = CardContentSchema.parse({
+    type: 'Map',
+    title: 'Where the powers come from',
+    entries: [{ tags: 'Door', value: 'Replication' }],
+    pathway: 'Door',
+  })
+
+  assert.equal(toBuilderCardState(tematica).mapPathway, 'Door')
+  const roundTripped = fromBuilderCardState(toBuilderCardState(tematica))
+  assert.equal(roundTripped.type === 'Map' && roundTripped.pathway, 'Door')
 })
 
 test('valida un cover de imagen completa con título al pie', () => {

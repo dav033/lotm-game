@@ -403,12 +403,15 @@ export default function App() {
   const pathwayCardSeq = Number.isInteger(state.pathwayCardSeq) && state.pathwayCardSeq >= 0 && state.pathwayCardSeq <= 9
     ? state.pathwayCardSeq
     : null
+  const mapPathway = PATHWAYS[state.mapPathway] ? state.mapPathway : null
   const accent = isCover || isFullImageCover
     ? COVER_ACCENT
     : isTier || isTierExplanation
       ? { ...TIER_RANKS[tierRank], pct: 100 }
       : isPathwayCard
         ? { ...PATHWAY_COLORS[pathwayCardPath], pct: 100 }
+      : isMap && mapPathway
+        ? { ...PATHWAY_COLORS[mapPathway], pct: 100 }
       : isGeneralExplanation || isPathwayExplanation || isBreakdown || isMap
         ? COVER_ACCENT
       : powerTier(state.type, state.power, state.grade)
@@ -556,6 +559,8 @@ export default function App() {
               title={state.mapTitle ?? ''}
               entriesText={state.mapEntriesText ?? ''}
               footerText={state.mapFooterText ?? ''}
+              tier={mapPathway ? PATHWAY_COLORS[mapPathway] : null}
+              backgroundImage={mapPathway ? PATHWAY_BACKGROUNDS[mapPathway] ?? null : null}
             />
           ) : (
             <Card

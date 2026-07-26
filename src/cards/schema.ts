@@ -186,6 +186,9 @@ export const MapCardSchema = z
     footerText: z.string().trim().max(160).optional().describe(
       'Texto final opcional bajo una regla, p. ej. "Three roots. Seven powers."',
     ),
+    pathway: PathwayNameSchema.optional().describe(
+      'Pathway opcional del que la carta toma su color y su imagen de fondo. Si se omite, usa el dorado neutro.',
+    ),
   })
   .strict()
 
@@ -341,6 +344,7 @@ export type BuilderCardState = {
   mapTitle: string
   mapEntriesText: string
   mapFooterText: string
+  mapPathway: string | null
 }
 
 const DEFAULT_BUILDER_STATE: BuilderCardState = {
@@ -390,6 +394,7 @@ const DEFAULT_BUILDER_STATE: BuilderCardState = {
   mapTitle: '',
   mapEntriesText: '',
   mapFooterText: '',
+  mapPathway: null,
 }
 
 export function toBuilderCardState(content: CardContent): BuilderCardState {
@@ -483,6 +488,7 @@ export function toBuilderCardState(content: CardContent): BuilderCardState {
         .map(({ tags, value }) => (tags ? `${tags} -> ${value}` : value))
         .join('\n'),
       mapFooterText: content.footerText ?? '',
+      mapPathway: content.pathway ?? null,
     }
   }
 
@@ -578,6 +584,7 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
       title: state.mapTitle.trim(),
       entries: parseMapEntries(state.mapEntriesText),
       ...(state.mapFooterText.trim() ? { footerText: state.mapFooterText.trim() } : {}),
+      ...(state.mapPathway ? { pathway: state.mapPathway } : {}),
     }
   }
   const standard = {
