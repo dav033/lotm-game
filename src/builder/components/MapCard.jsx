@@ -1,18 +1,19 @@
 import React, { forwardRef } from 'react'
 import { parseMapEntries } from '../mapEntries'
+import { titleSizeClass } from '../titleFit'
 
 const MapCard = forwardRef(function MapCard(
-  { title, entriesText, footerText, tier = null, backgroundImage = null },
+  { title, entriesText, footerText, pathway = null, tier = null, backgroundImage = null },
   ref,
 ) {
   const entries = parseMapEntries(entriesText || '')
-  const dense = entries.length > 4 || entries.some((entry) => entry.value.length > 40)
-  // Sin pathway la carta se queda con el dorado neutro del CSS.
+  const dense = entries.length > 3 || entries.some((entry) => entry.value.length > 44)
+  // Sin pathway la ficha se queda con el dorado que trae .ficha por defecto.
   const cardStyle = tier ? { '--tier': tier.c, '--tier-deep': tier.d } : undefined
 
   return (
     <article
-      className={'map-card' + (dense ? ' dense' : '')}
+      className={'ficha map-card' + (dense ? ' dense' : '')}
       id="card"
       ref={ref}
       style={cardStyle}
@@ -28,11 +29,11 @@ const MapCard = forwardRef(function MapCard(
           <div className="tier-background-overlay" aria-hidden="true" />
         </>
       )}
-      <div className="frame" aria-hidden="true" />
-      <div className="scanlines" aria-hidden="true" />
       <div className="map-content">
-        <h2 className="map-title">{title || 'Map title'}</h2>
-        <div className="map-rule" aria-hidden="true" />
+        {pathway && <span className="map-chip">{pathway}</span>}
+        <h2 className={`ficha-name map-title ${titleSizeClass(title || 'Map title')}`}>
+          {title || 'Map title'}
+        </h2>
         {entries.length ? (
           <div className="map-entries">
             {entries.map((entry, index) => (
@@ -45,12 +46,7 @@ const MapCard = forwardRef(function MapCard(
         ) : (
           <p className="map-empty">Add one row per line as "tags -&gt; value" in the editor panel.</p>
         )}
-        {footerText && (
-          <>
-            <div className="map-footer-rule" aria-hidden="true" />
-            <p className="map-footer-text">{footerText}</p>
-          </>
-        )}
+        {footerText && <p className="map-footer-text">{footerText}</p>}
       </div>
     </article>
   )

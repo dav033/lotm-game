@@ -96,7 +96,7 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
       <h1>Card builder</h1>
       <p className="sub">
         Search a pathway, pick the sequence (auto-colors by tier), and your work
-        saves automatically. Export at 960×1280.
+        saves automatically. Export at 1080×1920.
       </p>
 
       <div className="field">
@@ -849,7 +849,7 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
 
           <p className="hint">
             Every change auto-saves. Use the strip below the card to switch, reorder
-            (drag), or add cards. PNG exports at 960×1280.
+            (drag), or add cards. PNG exports at 1080×1920.
           </p>
         </div>
       )}

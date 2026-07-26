@@ -559,6 +559,7 @@ export default function App() {
               title={state.mapTitle ?? ''}
               entriesText={state.mapEntriesText ?? ''}
               footerText={state.mapFooterText ?? ''}
+              pathway={mapPathway}
               tier={mapPathway ? PATHWAY_COLORS[mapPathway] : null}
               backgroundImage={mapPathway ? PATHWAY_BACKGROUNDS[mapPathway] ?? null : null}
             />

@@ -67,11 +67,31 @@ test('Breakdown muestra el kicker, el título y las tres secciones con la etique
     edgeLabel: 'Edge',
     edgeText: 'Needs understanding, not storage.',
   }))
-  assert.match(html, /breakdown-kicker">Authority</)
-  assert.match(html, /breakdown-title">Replication</)
+  assert.match(html, /breakdown-chip[^"]*">Authority</)
+  assert.match(html, /breakdown-title[^"]*">Replication</)
   assert.match(html, /Recreates powers, scenes and instances it has understood\./)
   assert.match(html, /Copy the person\. Only the power\./)
   assert.match(html, /breakdown-edge">[\s\S]*?Edge[\s\S]*?Needs understanding, not storage\./)
+})
+
+test('Breakdown deriva los pips de la secuencia escrita en el kicker', () => {
+  const conRango = renderToStaticMarkup(React.createElement(Breakdown, {
+    kicker: 'Authority · Seq 1→0', title: 'Seals',
+    does: 'a', doesNot: 'b', edgeLabel: 'Edge', edgeText: 'c',
+  }))
+  const sinSecuencia = renderToStaticMarkup(React.createElement(Breakdown, {
+    kicker: 'Authority · From Bizarreness', title: 'Concealment',
+    does: 'a', doesNot: 'b', edgeLabel: 'Edge', edgeText: 'c',
+  }))
+
+  // [ "] evita contar el contenedor .breakdown-pips como si fuera un pip.
+  assert.equal((conRango.match(/breakdown-pip[ "]/g) ?? []).length, 10, 'una fila de 10 secuencias')
+  assert.match(conRango, /breakdown-pip full/, 'Seq 0 con control completo')
+  assert.match(conRango, /breakdown-pip partial/, 'Seq 1 con control parcial')
+  assert.match(conRango, /breakdown-ghost[^>]*>0</, 'la cifra fantasma repite la secuencia')
+  // Sin secuencia en el texto no hay nada que dibujar.
+  assert.doesNotMatch(sinSecuencia, /breakdown-pip/)
+  assert.doesNotMatch(sinSecuencia, /breakdown-ghost/)
 })
 
 test('Breakdown sin kicker no reserva espacio para él', () => {
@@ -92,7 +112,7 @@ test('Map muestra el título, las filas con y sin etiquetas, y el footer opciona
     entriesText: 'Door · Change · King of Space-Time -> Door, Space, Seals, Alternate Worlds\nSolo un valor',
     footerText: 'Three roots. Seven powers.',
   }))
-  assert.match(html, /map-title">Where the powers come from/)
+  assert.match(html, /map-title[^"]*">Where the powers come from/)
   assert.match(html, /map-entry-tags">Door · Change · King of Space-Time/)
   assert.match(html, /map-entry-value">Door, Space, Seals, Alternate Worlds/)
   assert.match(html, /map-entry-value">Solo un valor/)

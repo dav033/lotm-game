@@ -42,7 +42,8 @@ const StaticPathwayExplanationCard = PathwayExplanationCard as unknown as Compon
 const StaticBreakdownCard = BreakdownCard as unknown as ComponentType<Record<string, unknown>>
 const StaticMapCard = MapCard as unknown as ComponentType<Record<string, unknown>>
 const FONT_STYLESHEET =
-  'https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Space+Grotesk:wght@400;500;700&display=swap'
+  'https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Space+Grotesk:wght@400;500;700' +
+  '&family=Playfair+Display:wght@700;900&family=Archivo:wght@400;500;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap'
 
 type RenderAssets = {
   css: string
@@ -89,7 +90,8 @@ export class CardPngRenderer {
     }
 
     const context = await browser.newContext({
-      viewport: { width: 1_200, height: 900 },
+      // Mas alto que la carta (960) para que quepa entera sin recorte.
+      viewport: { width: 1_200, height: 1_100 },
       deviceScaleFactor: 2,
     })
     const page = await context.newPage()
@@ -257,6 +259,7 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
           title={state.mapTitle}
           entriesText={state.mapEntriesText}
           footerText={state.mapFooterText}
+          pathway={state.mapPathway}
           tier={state.mapPathway ? PATHWAY_COLOR_DATA[state.mapPathway] : null}
           backgroundImage={state.mapBackground}
         />

@@ -203,7 +203,7 @@ export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl 
     {
       title: 'Exportar cartas a ZIP',
       description:
-        'Renderiza todas las cartas que coincidan con el filtro y genera un ZIP con PNG de 960x1280 ' +
+        'Renderiza todas las cartas que coincidan con el filtro y genera un ZIP con PNG de 1080x1920 (9:16) ' +
         'organizados por universo/parte, mas manifest.json.',
       inputSchema: ExportCardsSchema,
       annotations: {
