@@ -97,6 +97,9 @@ export default function LiveCardPreview({ state }) {
         title={state.generalExplanationTitle}
         description={state.generalExplanationText}
         scope={state.explanationPath ?? 'All pathways'}
+        pathway={state.explanationPath}
+        icon={state.explanationPath ? PATHWAY_ICONS[state.explanationPath] : null}
+        backgroundImage={state.explanationPath ? PATHWAY_BACKGROUNDS[state.explanationPath] ?? null : null}
       />
     )
   }

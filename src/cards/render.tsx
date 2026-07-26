@@ -124,7 +124,11 @@ export class CardPngRenderer {
   }
 }
 
-function CardMarkup({ state, icons }: { state: BuilderCardState; icons: Record<string, string> }) {
+// El fondo de una explicacion de pathway no es un campo de la carta: sale de
+// PATHWAY_BACKGROUNDS, asi que se resuelve aparte y se pasa ya como data URL.
+type RenderState = BuilderCardState & { generalExplanationBackground: string | null }
+
+function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string, string> }) {
   const isCharacter = state.type === 'Character'
   const isCover = state.type === 'Cover'
   const isFullImageCover = state.type === 'Full Image Cover'
@@ -212,6 +216,9 @@ function CardMarkup({ state, icons }: { state: BuilderCardState; icons: Record<s
           title={state.generalExplanationTitle}
           description={state.generalExplanationText}
           scope={explanationScope}
+          pathway={state.explanationPath}
+          icon={state.explanationPath ? icons[state.explanationPath] : null}
+          backgroundImage={state.generalExplanationBackground}
         />
       ) : (
         <StaticCard
@@ -235,7 +242,10 @@ async function resolveStateImages(
   state: BuilderCardState,
   publicDir: string,
   defaultCover: string,
-): Promise<BuilderCardState> {
+): Promise<RenderState> {
+  const generalExplanationSource = state.type === 'General Explanation' && state.explanationPath
+    ? (PATHWAY_BACKGROUNDS as Record<string, string>)[state.explanationPath] ?? null
+    : null
   const tierBackgroundSource = state.tierBackgroundImage
     ?? (state.type === 'Tier'
       ? (PATHWAY_BACKGROUNDS as Record<string, string>)[state.tierPath] ?? null
@@ -264,6 +274,9 @@ async function resolveStateImages(
       : null,
     pathwayCardBackgroundImage: pathwayCardBackgroundSource
       ? await resolveImageSource(pathwayCardBackgroundSource, publicDir)
+      : null,
+    generalExplanationBackground: generalExplanationSource
+      ? await resolveImageSource(generalExplanationSource, publicDir)
       : null,
   }
 }

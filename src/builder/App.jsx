@@ -484,6 +484,9 @@ export default function App() {
               title={state.generalExplanationTitle ?? ''}
               description={state.generalExplanationText ?? ''}
               scope={explanationScope}
+              pathway={explanationPath}
+              icon={explanationPath ? PATHWAY_ICONS[explanationPath] : null}
+              backgroundImage={explanationPath ? PATHWAY_BACKGROUNDS[explanationPath] ?? null : null}
             />
           ) : (
             <Card

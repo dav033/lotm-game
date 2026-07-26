@@ -326,6 +326,14 @@
    comparte con la carta de Tier Explanation. */
 .general-explanation-content{padding:54px 34px 30px;align-items:flex-start;
   justify-content:flex-start;text-align:left}
+/* Cabecera con el simbolo del pathway, solo en explicaciones de uno concreto. */
+.general-explanation-pathway{flex:0 0 auto;display:flex;align-items:center;gap:12px;
+  margin-bottom:18px}
+.general-explanation-icon{width:44px;height:44px;object-fit:contain;
+  filter:drop-shadow(0 0 12px var(--tier-deep))}
+.general-explanation-pathname{font-family:'Cinzel',serif;font-size:15px;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--tier)}
+
 /* El titulo ocupa el ancho de la carta: antes un max-width de 10ch lo partia en
    varias lineas aunque cupiera de sobra. */
 .general-explanation-title{font-family:'Cinzel',serif;font-size:34px;font-weight:900;
@@ -340,6 +348,9 @@
 /* ponytail: dos tamanos fijos, no ajuste automatico. Cubre el rango util; con
    mucho mas texto del que cabe, la carta recorta (overflow:hidden). */
 .general-explanation-card.dense .general-explanation-content{padding:38px 34px 26px}
+.general-explanation-card.dense .general-explanation-pathway{gap:10px;margin-bottom:12px}
+.general-explanation-card.dense .general-explanation-icon{width:34px;height:34px}
+.general-explanation-card.dense .general-explanation-pathname{font-size:13px}
 .general-explanation-card.dense .general-explanation-title{font-size:26px;line-height:1.16}
 .general-explanation-card.dense .general-explanation-rule{margin:12px 0 20px;width:80px;height:2px}
 .general-explanation-card.dense .general-explanation-body{gap:13px}
