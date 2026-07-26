@@ -1,10 +1,14 @@
 import React, { forwardRef } from 'react'
 
 const TierExplanationCard = forwardRef(function TierExplanationCard(
-  { rank, tier, description, scope, backgroundImage = null },
+  { rank, tier, description, scope, backgroundImage = null, backgroundOpacity = 65 },
   ref,
 ) {
-  const cardStyle = { '--tier': tier.c, '--tier-deep': tier.d }
+  const cardStyle = {
+    '--tier': tier.c,
+    '--tier-deep': tier.d,
+    '--background-opacity': backgroundOpacity / 100,
+  }
   return (
     <article
       className="explanation-card tier-explanation-card"

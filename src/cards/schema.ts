@@ -30,6 +30,13 @@ const ImageSourceSchema = z
     'URL http(s) o ruta publica de la imagen. SQLite guarda solo esta referencia textual, nunca el binario.',
   )
 
+const BackgroundOpacitySchema = z
+  .int()
+  .min(0)
+  .max(100)
+  .optional()
+  .describe('Visibilidad de la imagen de fondo, de 0 (oculta) a 100 (maxima). Por defecto, 65.')
+
 const SequenceSchema = z.object({
   pathway: PathwayNameSchema,
   sequence: z.int().min(0).max(9).describe('Secuencia entre 0 y 9.'),
@@ -93,6 +100,7 @@ export const TierCardSchema = z
     backgroundImageUrl: ImageSourceSchema.optional().describe(
       'Imagen de fondo opcional, mostrada bajo un overlay oscuro.',
     ),
+    backgroundOpacity: BackgroundOpacitySchema,
   })
   .strict()
 
@@ -113,6 +121,7 @@ export const PathwayCardSchema = z
     backgroundImageUrl: ImageSourceSchema.optional().describe(
       'Imagen de fondo opcional, mostrada bajo un overlay oscuro.',
     ),
+    backgroundOpacity: BackgroundOpacitySchema,
   })
   .strict()
 
@@ -124,6 +133,7 @@ export const TierExplanationCardSchema = z
     backgroundImageUrl: ImageSourceSchema.optional().describe(
       'Imagen de fondo opcional, mostrada bajo un overlay oscuro.',
     ),
+    backgroundOpacity: BackgroundOpacitySchema,
   })
   .strict()
 
@@ -135,6 +145,7 @@ export const GeneralExplanationCardSchema = z
     pathway: PathwayNameSchema.optional().describe(
       'Pathway concreto opcional. Si se omite, la explicacion es general.',
     ),
+    backgroundOpacity: BackgroundOpacitySchema,
   })
   .strict()
 
@@ -149,6 +160,7 @@ export const PathwayExplanationCardSchema = z
     backgroundImageUrl: ImageSourceSchema.optional().describe(
       'Imagen de fondo propia. Si se omite, la carta usa el arte de su pathway.',
     ),
+    backgroundOpacity: BackgroundOpacitySchema,
   })
   .strict()
 
@@ -170,6 +182,7 @@ export const BreakdownCardSchema = z
     backgroundImageUrl: ImageSourceSchema.optional().describe(
       'Imagen de fondo opcional, mostrada bajo un velo oscuro.',
     ),
+    backgroundOpacity: BackgroundOpacitySchema,
   })
   .strict()
 
@@ -198,6 +211,7 @@ export const MapCardSchema = z
     backgroundImageUrl: ImageSourceSchema.optional().describe(
       'Imagen de fondo propia. Tiene prioridad sobre el fondo que aporta el pathway.',
     ),
+    backgroundOpacity: BackgroundOpacitySchema,
   })
   .strict()
 
@@ -357,6 +371,7 @@ export type BuilderCardState = {
   mapFooterText: string
   mapPathway: string | null
   mapBackgroundImage: string | null
+  backgroundOpacity: number
 }
 
 const DEFAULT_BUILDER_STATE: BuilderCardState = {
@@ -410,10 +425,15 @@ const DEFAULT_BUILDER_STATE: BuilderCardState = {
   mapFooterText: '',
   mapPathway: null,
   mapBackgroundImage: null,
+  backgroundOpacity: 65,
 }
 
 export function toBuilderCardState(content: CardContent): BuilderCardState {
-  const state = { ...DEFAULT_BUILDER_STATE, type: content.type }
+  const state = {
+    ...DEFAULT_BUILDER_STATE,
+    type: content.type,
+    backgroundOpacity: 'backgroundOpacity' in content ? content.backgroundOpacity ?? 65 : 65,
+  }
 
   if (content.type === 'Cover') {
     return {
@@ -552,6 +572,7 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
       points: state.tierText.split('\n').map((point) => point.trim()).filter(Boolean),
       ...(state.tierFooterText.trim() ? { footerText: state.tierFooterText.trim() } : {}),
       ...(state.tierBackgroundImage ? { backgroundImageUrl: state.tierBackgroundImage } : {}),
+      backgroundOpacity: state.backgroundOpacity,
     }
   }
   if (state.type === 'Pathway') {
@@ -561,6 +582,7 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
       points: state.pathwayCardText.split('\n').map((point) => point.trim()).filter(Boolean),
       ...(state.pathwayCardFooterText.trim() ? { footerText: state.pathwayCardFooterText.trim() } : {}),
       ...(state.pathwayCardBackgroundImage ? { backgroundImageUrl: state.pathwayCardBackgroundImage } : {}),
+      backgroundOpacity: state.backgroundOpacity,
     }
   }
   if (state.type === 'Tier Explanation') {
@@ -568,6 +590,7 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
       type: 'Tier Explanation', rank: state.tierRank as CardContent & { rank: string }['rank'],
       description: state.tierExplanationText.trim(),
       ...(state.tierExplanationBackgroundImage ? { backgroundImageUrl: state.tierExplanationBackgroundImage } : {}),
+      backgroundOpacity: state.backgroundOpacity,
     }
   }
   if (state.type === 'General Explanation') {
@@ -575,6 +598,7 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
       type: 'General Explanation', title: state.generalExplanationTitle.trim(),
       description: state.generalExplanationText.trim(),
       ...(state.explanationPath ? { pathway: state.explanationPath } : {}),
+      backgroundOpacity: state.backgroundOpacity,
     }
   }
   if (state.type === 'Pathway Explanation') {
@@ -586,6 +610,7 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
       ...(state.pathwayExplanationBackgroundImage
         ? { backgroundImageUrl: state.pathwayExplanationBackgroundImage }
         : {}),
+      backgroundOpacity: state.backgroundOpacity,
     }
   }
   if (state.type === 'Breakdown') {
@@ -598,6 +623,7 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
       edgeLabel: state.breakdownEdgeLabel.trim() || 'Edge',
       edgeText: state.breakdownEdgeText.trim(),
       ...(state.breakdownBackgroundImage ? { backgroundImageUrl: state.breakdownBackgroundImage } : {}),
+      backgroundOpacity: state.backgroundOpacity,
     }
   }
   if (state.type === 'Map') {
@@ -608,6 +634,7 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
       ...(state.mapFooterText.trim() ? { footerText: state.mapFooterText.trim() } : {}),
       ...(state.mapPathway ? { pathway: state.mapPathway } : {}),
       ...(state.mapBackgroundImage ? { backgroundImageUrl: state.mapBackgroundImage } : {}),
+      backgroundOpacity: state.backgroundOpacity,
     }
   }
   const standard = {

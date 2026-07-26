@@ -160,11 +160,35 @@ test('una Map con pathway conserva el tema al ida y vuelta', () => {
     title: 'Where the powers come from',
     entries: [{ tags: 'Door', value: 'Replication' }],
     pathway: 'Door',
+    backgroundOpacity: 45,
   })
 
   assert.equal(toBuilderCardState(tematica).mapPathway, 'Door')
+  assert.equal(toBuilderCardState(tematica).backgroundOpacity, 45)
   const roundTripped = fromBuilderCardState(toBuilderCardState(tematica))
   assert.equal(roundTripped.type === 'Map' && roundTripped.pathway, 'Door')
+  assert.equal(roundTripped.type === 'Map' && roundTripped.backgroundOpacity, 45)
+  assert.throws(() => CardContentSchema.parse({ ...tematica, backgroundOpacity: 101 }))
+})
+
+test('todas las cartas con fondo heredan 65 y conservan una opacidad propia', () => {
+  const cards = [
+    { type: 'Tier', pathway: 'Fool', rank: 'S', points: [] },
+    { type: 'Pathway', pathway: 'Door', points: [] },
+    { type: 'Tier Explanation', rank: 'A', description: 'Text' },
+    { type: 'General Explanation', title: 'Title', description: 'Text', pathway: 'Door' },
+    { type: 'Pathway Explanation', pathway: 'Door', title: 'Title', description: 'Text' },
+    { type: 'Breakdown', title: 'Door', does: 'a', doesNot: 'b', edgeText: 'c' },
+    { type: 'Map', title: 'Map', entries: [{ tags: 'Door', value: 'Space' }], pathway: 'Door' },
+  ]
+
+  for (const raw of cards) {
+    const legacy = CardContentSchema.parse(raw)
+    assert.equal(toBuilderCardState(legacy).backgroundOpacity, 65)
+    const custom = CardContentSchema.parse({ ...raw, backgroundOpacity: 25 })
+    const roundTripped = fromBuilderCardState(toBuilderCardState(custom))
+    assert.equal('backgroundOpacity' in roundTripped && roundTripped.backgroundOpacity, 25)
+  }
 })
 
 test('las tres cartas nuevas aceptan una imagen de fondo propia', () => {

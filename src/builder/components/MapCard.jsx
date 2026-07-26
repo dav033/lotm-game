@@ -4,14 +4,17 @@ import { titleSizeClass } from '../titleFit'
 import { useBackgroundDrop } from '../useBackgroundDrop'
 
 const MapCard = forwardRef(function MapCard(
-  { title, entriesText, footerText, pathway = null, tier = null, backgroundImage = null, onDropBackground },
+  { title, entriesText, footerText, pathway = null, tier = null, backgroundImage = null, backgroundOpacity = 65, onDropBackground },
   ref,
 ) {
   const { dragging, dropProps } = useBackgroundDrop(onDropBackground)
   const entries = parseMapEntries(entriesText || '')
   const dense = entries.length > 3 || entries.some((entry) => entry.value.length > 44)
   // Sin pathway la ficha se queda con el dorado que trae .ficha por defecto.
-  const cardStyle = tier ? { '--tier': tier.c, '--tier-deep': tier.d } : undefined
+  const cardStyle = {
+    ...(tier ? { '--tier': tier.c, '--tier-deep': tier.d } : {}),
+    '--background-opacity': backgroundOpacity / 100,
+  }
 
   return (
     <article

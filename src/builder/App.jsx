@@ -106,6 +106,7 @@ const DEFAULT_STATE = {
   mapEntriesText: '',
   mapFooterText: '',
   mapBackgroundImage: null,
+  backgroundOpacity: 65,
 }
 
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
@@ -516,6 +517,7 @@ export default function App() {
               text={state.tierText ?? ''}
               footerText={state.tierFooterText ?? ''}
               backgroundImage={tierBackgroundImage}
+              backgroundOpacity={state.backgroundOpacity}
             />
           ) : isPathwayCard ? (
             <PathwayCard
@@ -528,6 +530,7 @@ export default function App() {
               text={state.pathwayCardText ?? ''}
               footerText={state.pathwayCardFooterText ?? ''}
               backgroundImage={pathwayCardBackgroundImage}
+              backgroundOpacity={state.backgroundOpacity}
             />
           ) : isTierExplanation ? (
             <TierExplanationCard
@@ -536,6 +539,7 @@ export default function App() {
               tier={TIER_RANKS[tierRank]}
               description={state.tierExplanationText ?? ''}
               backgroundImage={state.tierExplanationBackgroundImage}
+              backgroundOpacity={state.backgroundOpacity}
               scope={explanationScope}
             />
           ) : isGeneralExplanation ? (
@@ -547,6 +551,7 @@ export default function App() {
               pathway={explanationPath}
               icon={explanationPath ? PATHWAY_ICONS[explanationPath] : null}
               backgroundImage={explanationPath ? PATHWAY_BACKGROUNDS[explanationPath] ?? null : null}
+              backgroundOpacity={state.backgroundOpacity}
             />
           ) : isPathwayExplanation ? (
             <PathwayExplanationCard
@@ -557,6 +562,7 @@ export default function App() {
               title={state.pathwayExplanationTitle ?? ''}
               description={state.pathwayExplanationText ?? ''}
               backgroundImage={pathwayExplanationBackground}
+              backgroundOpacity={state.backgroundOpacity}
               tier={PATHWAY_COLORS[pathwayExplanationPath]}
               onDropBackground={(file) => onUploadImage(file, 'pathwayExplanationBackgroundImage')}
             />
@@ -570,6 +576,7 @@ export default function App() {
               edgeLabel={state.breakdownEdgeLabel ?? 'Edge'}
               edgeText={state.breakdownEdgeText ?? ''}
               backgroundImage={state.breakdownBackgroundImage}
+              backgroundOpacity={state.backgroundOpacity}
               onDropBackground={(file) => onUploadImage(file, 'breakdownBackgroundImage')}
             />
           ) : isMap ? (
@@ -581,6 +588,7 @@ export default function App() {
               pathway={mapPathway}
               tier={mapPathway ? PATHWAY_COLORS[mapPathway] : null}
               backgroundImage={mapBackgroundImage}
+              backgroundOpacity={state.backgroundOpacity}
               onDropBackground={(file) => onUploadImage(file, 'mapBackgroundImage')}
             />
           ) : (

@@ -1,6 +1,13 @@
-import { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { PATHWAYS, PATH_NAMES, TIER_RANKS, TIER_RANK_NAMES } from '../data/pathways.js'
 import { PATHWAY_BACKGROUNDS } from '../data/pathwayBackgrounds.js'
+
+const BACKGROUND_OPACITY_PRESETS = [
+  ['Low', 25],
+  ['Medium', 45],
+  ['High', 65],
+  ['Very high', 85],
+]
 
 // Searchable pathway combobox. Focusing clears the field so you can type a new
 // search instantly; Enter commits the first match; Escape/blur restores the
@@ -79,7 +86,43 @@ function SeqSelect({ path, value, onChange }) {
 // Campo de imagen de fondo. Cada carta guarda la suya en un campo distinto del
 // estado, asi que el nombre llega por prop y el input vive aqui dentro para no
 // compartir un unico ref entre secciones.
-function BackgroundField({ value, field, set, onUploadImage, help }) {
+function BackgroundOpacityField({ value = 65, set }) {
+  const opacity = Math.max(0, Math.min(100, value))
+  return (
+    <div className="background-opacity-control">
+      <div className="background-opacity-head">
+        <label htmlFor="background-opacity">Background visibility</label>
+        <output htmlFor="background-opacity">{opacity}%</output>
+      </div>
+      <input
+        className="background-opacity-range"
+        id="background-opacity"
+        name="backgroundOpacity"
+        type="range"
+        min="0"
+        max="100"
+        step="1"
+        value={opacity}
+        onChange={(event) => set({ backgroundOpacity: Number(event.target.value) })}
+      />
+      <div className="toggle background-opacity-presets" role="group" aria-label="Background visibility presets">
+        {BACKGROUND_OPACITY_PRESETS.map(([label, preset]) => (
+          <button
+            type="button"
+            className={'seg' + (opacity === preset ? ' sel' : '')}
+            aria-pressed={opacity === preset}
+            key={label}
+            onClick={() => set({ backgroundOpacity: preset })}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function BackgroundField({ value, field, opacity, set, onUploadImage, help }) {
   const inputRef = useRef(null)
   return (
     <div className="field">
@@ -91,8 +134,9 @@ function BackgroundField({ value, field, set, onUploadImage, help }) {
         {value && <button className="btn-img" onClick={() => set({ [field]: null })}>Remove</button>}
       </div>
       <p className="field-help">
-        {value ? 'Dark overlay applied.' : help} You can also drop an image straight onto the card.
+        {value ? 'Using a custom background.' : help}
       </p>
+      <BackgroundOpacityField value={opacity} set={set} />
       <input
         ref={inputRef}
         type="file"
@@ -180,43 +224,23 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
                   />
                 </div>
               )}
+
+              {state.explanationPath && (
+                <BackgroundOpacityField value={state.backgroundOpacity} set={set} />
+              )}
             </>
           )}
 
           {isTierExplanation ? (
             <>
-              <div className="field">
-                <label>Background image (optional)</label>
-                <div className="actions tier-background-actions">
-                  <button className="btn-img" onClick={() => fileRef.current?.click()}>
-                    {state.tierExplanationBackgroundImage ? 'Replace image' : 'Upload image'}
-                  </button>
-                  {state.tierExplanationBackgroundImage && (
-                    <button
-                      className="btn-img"
-                      onClick={() => set({ tierExplanationBackgroundImage: null })}
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-                <p className="field-help">
-                  {state.tierExplanationBackgroundImage
-                    ? 'Dark overlay applied.'
-                    : 'No background image selected.'}
-                </p>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  aria-label="Choose Tier Explanation background image"
-                  hidden
-                  onChange={(event) => {
-                    onUploadImage(event.target.files[0], 'tierExplanationBackgroundImage')
-                    event.target.value = ''
-                  }}
-                />
-              </div>
+              <BackgroundField
+                value={state.tierExplanationBackgroundImage}
+                field="tierExplanationBackgroundImage"
+                opacity={state.backgroundOpacity}
+                set={set}
+                onUploadImage={onUploadImage}
+                help="No background image selected."
+              />
 
               <div className="field">
                 <label>Tier</label>
@@ -339,35 +363,16 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
             </div>
           </div>
 
-          <div className="field">
-            <label>Background image (optional)</label>
-            <div className="actions tier-background-actions">
-              <button className="btn-img" onClick={() => fileRef.current?.click()}>
-                {state.tierBackgroundImage ? 'Replace image' : defaultTierBackground ? 'Override image' : 'Upload image'}
-              </button>
-              {state.tierBackgroundImage && (
-                <button className="btn-img" onClick={() => set({ tierBackgroundImage: null })}>Remove</button>
-              )}
-            </div>
-            <p className="field-help">
-              {state.tierBackgroundImage
-                ? 'Using custom image with dark overlay.'
-                : defaultTierBackground
-                  ? `Using the default ${state.tierPath} background with dark overlay.`
-                  : `No default background exists for ${state.tierPath}.`}
-            </p>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              aria-label="Choose Tier background image"
-              hidden
-              onChange={(event) => {
-                onUploadImage(event.target.files[0], 'tierBackgroundImage')
-                event.target.value = ''
-              }}
-            />
-          </div>
+          <BackgroundField
+            value={state.tierBackgroundImage}
+            field="tierBackgroundImage"
+            opacity={state.backgroundOpacity}
+            set={set}
+            onUploadImage={onUploadImage}
+            help={defaultTierBackground
+              ? `Using the default ${state.tierPath} background.`
+              : `No default background exists for ${state.tierPath}.`}
+          />
 
           <div className="field">
             <label htmlFor="tier-explanation">Explanation points (one per line)</label>
@@ -455,35 +460,16 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
             </div>
           )}
 
-          <div className="field">
-            <label>Background image (optional)</label>
-            <div className="actions tier-background-actions">
-              <button className="btn-img" onClick={() => fileRef.current?.click()}>
-                {state.pathwayCardBackgroundImage ? 'Replace image' : defaultPathwayCardBackground ? 'Override image' : 'Upload image'}
-              </button>
-              {state.pathwayCardBackgroundImage && (
-                <button className="btn-img" onClick={() => set({ pathwayCardBackgroundImage: null })}>Remove</button>
-              )}
-            </div>
-            <p className="field-help">
-              {state.pathwayCardBackgroundImage
-                ? 'Using custom image with dark overlay.'
-                : defaultPathwayCardBackground
-                  ? `Using the default ${state.pathwayCardPath} background with dark overlay.`
-                  : `No default background exists for ${state.pathwayCardPath}.`}
-            </p>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              aria-label="Choose Pathway background image"
-              hidden
-              onChange={(event) => {
-                onUploadImage(event.target.files[0], 'pathwayCardBackgroundImage')
-                event.target.value = ''
-              }}
-            />
-          </div>
+          <BackgroundField
+            value={state.pathwayCardBackgroundImage}
+            field="pathwayCardBackgroundImage"
+            opacity={state.backgroundOpacity}
+            set={set}
+            onUploadImage={onUploadImage}
+            help={defaultPathwayCardBackground
+              ? `Using the default ${state.pathwayCardPath} background.`
+              : `No default background exists for ${state.pathwayCardPath}.`}
+          />
 
           <div className="field">
             <label htmlFor="pathway-card-explanation">Explanation points (one per line)</label>
@@ -567,6 +553,7 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
           <BackgroundField
             value={state.pathwayExplanationBackgroundImage}
             field="pathwayExplanationBackgroundImage"
+            opacity={state.backgroundOpacity}
             set={set}
             onUploadImage={onUploadImage}
             help={`Using the default ${state.pathwayExplanationPath || 'pathway'} background. Upload one to override it.`}
@@ -662,6 +649,7 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
           <BackgroundField
             value={state.breakdownBackgroundImage}
             field="breakdownBackgroundImage"
+            opacity={state.backgroundOpacity}
             set={set}
             onUploadImage={onUploadImage}
             help="No background image selected."
@@ -747,6 +735,7 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
           <BackgroundField
             value={state.mapBackgroundImage}
             field="mapBackgroundImage"
+            opacity={state.backgroundOpacity}
             set={set}
             onUploadImage={onUploadImage}
             help={state.mapPathway

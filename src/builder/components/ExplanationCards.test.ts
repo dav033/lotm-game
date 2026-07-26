@@ -9,6 +9,9 @@ import BreakdownCard from './BreakdownCard.jsx'
 import MapCard from './MapCard.jsx'
 import FullImageCoverCard from './FullImageCoverCard.jsx'
 import TierCard from './TierCard.jsx'
+import PathwayCard from './PathwayCard.jsx'
+import Panel from './Panel.jsx'
+import { CardContentSchema, toBuilderCardState } from '../../cards/schema'
 
 const TierExplanation = TierExplanationCard as ComponentType<Record<string, unknown>>
 const GeneralExplanation = GeneralExplanationCard as ComponentType<Record<string, unknown>>
@@ -17,6 +20,8 @@ const Breakdown = BreakdownCard as ComponentType<Record<string, unknown>>
 const Map_ = MapCard as ComponentType<Record<string, unknown>>
 const FullImageCover = FullImageCoverCard as ComponentType<Record<string, unknown>>
 const Tier = TierCard as ComponentType<Record<string, unknown>>
+const Pathway = PathwayCard as ComponentType<Record<string, unknown>>
+const Panel_ = Panel as unknown as ComponentType<Record<string, unknown>>
 
 test('Tier Explanation muestra solo tier y descripción general', () => {
   const html = renderToStaticMarkup(React.createElement(TierExplanation, {
@@ -154,10 +159,59 @@ test('Map con pathway toma su color y su fondo', () => {
     entriesText: 'Door -> Replication',
     tier: { c: '#6a5acd', d: '#241c4a' },
     backgroundImage: '/backgrounds/door.jpg',
+    backgroundOpacity: 45,
   }))
   assert.match(html, /--tier:#6a5acd/)
   assert.match(html, /--tier-deep:#241c4a/)
   assert.match(html, /tier-background[\s\S]*?backgrounds\/door\.jpg/)
+  assert.match(html, /--background-opacity:0\.45/)
+})
+
+test('todas las familias de fondo usan el mismo porcentaje y el panel ofrece presets', () => {
+  const common = { backgroundImage: '/background.jpg', backgroundOpacity: 45 }
+  const cards = [
+    React.createElement(Tier, {
+      path: 'Fool', icon: '/fool.png', sequence: null, sequenceName: null,
+      rank: 'S', tier: { c: '#fff', d: '#333' }, text: '', ...common,
+    }),
+    React.createElement(Pathway, {
+      path: 'Door', icon: '/door.png', sequence: null, sequenceName: null,
+      tier: { c: '#fff', d: '#333' }, text: '', ...common,
+    }),
+    React.createElement(TierExplanation, {
+      rank: 'S', tier: { c: '#fff', d: '#333' }, description: 'Text', scope: 'All', ...common,
+    }),
+    React.createElement(GeneralExplanation, {
+      title: 'Title', description: 'Text', scope: 'Door', pathway: 'Door', ...common,
+    }),
+    React.createElement(PathwayExplanation, {
+      pathway: 'Door', index: 2, total: 22, title: 'Title', description: 'Text', ...common,
+    }),
+    React.createElement(Breakdown, {
+      title: 'Door', does: 'a', doesNot: 'b', edgeLabel: 'Edge', edgeText: 'c', ...common,
+    }),
+    React.createElement(Map_, { title: 'Map', entriesText: 'Door -> Space', ...common }),
+  ]
+  const state = toBuilderCardState(CardContentSchema.parse({
+    type: 'Map', title: 'The chain', entries: [{ tags: 'Means', value: 'Door' }],
+    pathway: 'Door', backgroundOpacity: 45,
+  }))
+  const panel = renderToStaticMarkup(React.createElement(Panel_, {
+    state,
+    set: () => undefined,
+    accent: { c: '#fff' },
+    onUploadImage: () => undefined,
+    onDownload: () => undefined,
+    onGenerateTierBatch: () => undefined,
+  }))
+
+  for (const card of cards) {
+    assert.match(renderToStaticMarkup(card), /--background-opacity:0\.45/)
+  }
+  assert.match(panel, /type="range"[^>]*value="45"/)
+  for (const preset of ['Low', 'Medium', 'High', 'Very high']) {
+    assert.match(panel, new RegExp(`aria-pressed="(?:true|false)"[^>]*>${preset}<`))
+  }
 })
 
 test('Full Image Cover muestra la imagen a cuerpo completo y el título al pie', () => {

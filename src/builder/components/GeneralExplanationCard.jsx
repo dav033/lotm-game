@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react'
 
 const GeneralExplanationCard = forwardRef(function GeneralExplanationCard(
-  { title, description, scope, pathway = null, icon = null, backgroundImage = null },
+  { title, description, scope, pathway = null, icon = null, backgroundImage = null, backgroundOpacity = 65 },
   ref,
 ) {
   const dense = title.length > 38 || description.length > 500
@@ -17,6 +17,7 @@ const GeneralExplanationCard = forwardRef(function GeneralExplanationCard(
       className={'explanation-card general-explanation-card' + (dense ? ' dense' : '')}
       id="card"
       ref={ref}
+      style={{ '--background-opacity': backgroundOpacity / 100 }}
       aria-label={`${title || 'General explanation'} for ${scope}`}
     >
       {/* Solo cuando la explicacion es de un pathway concreto: si es general no

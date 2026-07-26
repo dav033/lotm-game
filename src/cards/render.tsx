@@ -207,6 +207,7 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
           text={state.tierText}
           footerText={state.tierFooterText}
           backgroundImage={state.tierBackgroundImage}
+          backgroundOpacity={state.backgroundOpacity}
         />
       ) : isPathwayCard ? (
         <StaticPathwayCard
@@ -218,6 +219,7 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
           text={state.pathwayCardText}
           footerText={state.pathwayCardFooterText}
           backgroundImage={state.pathwayCardBackgroundImage}
+          backgroundOpacity={state.backgroundOpacity}
         />
       ) : isTierExplanation ? (
         <StaticTierExplanationCard
@@ -225,6 +227,7 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
           tier={TIER_DATA[tierRank]}
           description={state.tierExplanationText}
           backgroundImage={state.tierExplanationBackgroundImage}
+          backgroundOpacity={state.backgroundOpacity}
           scope={explanationScope}
         />
       ) : isGeneralExplanation ? (
@@ -235,6 +238,7 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
           pathway={state.explanationPath}
           icon={state.explanationPath ? icons[state.explanationPath] : null}
           backgroundImage={state.generalExplanationBackground}
+          backgroundOpacity={state.backgroundOpacity}
         />
       ) : isPathwayExplanation ? (
         <StaticPathwayExplanationCard
@@ -244,6 +248,7 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
           title={state.pathwayExplanationTitle}
           description={state.pathwayExplanationText}
           backgroundImage={state.pathwayExplanationBackgroundImage}
+          backgroundOpacity={state.backgroundOpacity}
           tier={PATHWAY_COLOR_DATA[state.pathwayExplanationPath]}
         />
       ) : isBreakdown ? (
@@ -255,6 +260,7 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
           edgeLabel={state.breakdownEdgeLabel}
           edgeText={state.breakdownEdgeText}
           backgroundImage={state.breakdownBackgroundImage}
+          backgroundOpacity={state.backgroundOpacity}
         />
       ) : isMap ? (
         <StaticMapCard
@@ -264,6 +270,7 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
           pathway={state.mapPathway}
           tier={state.mapPathway ? PATHWAY_COLOR_DATA[state.mapPathway] : null}
           backgroundImage={state.mapBackground}
+          backgroundOpacity={state.backgroundOpacity}
         />
       ) : (
         <StaticCard

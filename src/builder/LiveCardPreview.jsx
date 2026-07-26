@@ -63,6 +63,7 @@ export default function LiveCardPreview({ state }) {
         text={state.tierText}
         footerText={state.tierFooterText}
         backgroundImage={tierBackgroundImage}
+        backgroundOpacity={state.backgroundOpacity}
       />
     )
   }
@@ -79,6 +80,7 @@ export default function LiveCardPreview({ state }) {
         text={state.pathwayCardText}
         footerText={state.pathwayCardFooterText}
         backgroundImage={pathwayCardBackgroundImage}
+        backgroundOpacity={state.backgroundOpacity}
       />
     )
   }
@@ -90,6 +92,7 @@ export default function LiveCardPreview({ state }) {
         tier={TIER_RANKS[state.tierRank]}
         description={state.tierExplanationText}
         backgroundImage={state.tierExplanationBackgroundImage}
+        backgroundOpacity={state.backgroundOpacity}
         scope={state.explanationPath ?? 'All pathways'}
       />
     )
@@ -104,6 +107,7 @@ export default function LiveCardPreview({ state }) {
         pathway={state.explanationPath}
         icon={state.explanationPath ? PATHWAY_ICONS[state.explanationPath] : null}
         backgroundImage={state.explanationPath ? PATHWAY_BACKGROUNDS[state.explanationPath] ?? null : null}
+        backgroundOpacity={state.backgroundOpacity}
       />
     )
   }
@@ -120,6 +124,7 @@ export default function LiveCardPreview({ state }) {
         backgroundImage={state.pathwayExplanationBackgroundImage
           || PATHWAY_BACKGROUNDS[pathwayExplanationPath]
           || null}
+        backgroundOpacity={state.backgroundOpacity}
         tier={PATHWAY_COLORS[pathwayExplanationPath]}
       />
     )
@@ -135,6 +140,7 @@ export default function LiveCardPreview({ state }) {
         edgeLabel={state.breakdownEdgeLabel}
         edgeText={state.breakdownEdgeText}
         backgroundImage={state.breakdownBackgroundImage}
+        backgroundOpacity={state.backgroundOpacity}
       />
     )
   }
@@ -150,6 +156,7 @@ export default function LiveCardPreview({ state }) {
         tier={mapPathway ? PATHWAY_COLORS[mapPathway] : null}
         backgroundImage={state.mapBackgroundImage
           || (mapPathway ? PATHWAY_BACKGROUNDS[mapPathway] ?? null : null)}
+        backgroundOpacity={state.backgroundOpacity}
       />
     )
   }

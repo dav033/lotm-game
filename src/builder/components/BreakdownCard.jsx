@@ -23,7 +23,7 @@ function Section({ label, text, highlight }) {
 }
 
 const BreakdownCard = forwardRef(function BreakdownCard(
-  { kicker, title, does, doesNot, edgeLabel, edgeText, backgroundImage = null, onDropBackground },
+  { kicker, title, does, doesNot, edgeLabel, edgeText, backgroundImage = null, backgroundOpacity = 65, onDropBackground },
   ref,
 ) {
   const { dragging, dropProps } = useBackgroundDrop(onDropBackground)
@@ -37,6 +37,7 @@ const BreakdownCard = forwardRef(function BreakdownCard(
       className={'ficha breakdown-card' + (dense ? ' dense' : '') + (dragging ? ' dragover' : '')}
       id="card"
       ref={ref}
+      style={{ '--background-opacity': backgroundOpacity / 100 }}
       aria-label={`${title || 'Breakdown'} concept card`}
       {...dropProps}
     >

@@ -4,7 +4,7 @@ import { parseTierText } from '../tierText'
 // Tierlist slide: one pathway per slide, with a compact identity summary and
 // the remaining space reserved for explanation points.
 const TierCard = forwardRef(function TierCard(
-  { path, icon, sequence, sequenceName, rank, tier, text, footerText = '', backgroundImage = null },
+  { path, icon, sequence, sequenceName, rank, tier, text, footerText = '', backgroundImage = null, backgroundOpacity = 65 },
   ref,
 ) {
   const points = parseTierText(text)
@@ -14,6 +14,7 @@ const TierCard = forwardRef(function TierCard(
   const cardStyle = {
     '--tier': tier.c,
     '--tier-deep': tier.d,
+    '--background-opacity': backgroundOpacity / 100,
   }
 
   return (

@@ -13,7 +13,7 @@ function renderHighlightedTitle(title) {
 }
 
 const PathwayExplanationCard = forwardRef(function PathwayExplanationCard(
-  { pathway, index, total, title, description, backgroundImage = null, tier = null, onDropBackground },
+  { pathway, index, total, title, description, backgroundImage = null, backgroundOpacity = 65, tier = null, onDropBackground },
   ref,
 ) {
   const { dragging, dropProps } = useBackgroundDrop(onDropBackground)
@@ -26,7 +26,10 @@ const PathwayExplanationCard = forwardRef(function PathwayExplanationCard(
       className={'ficha pathway-explanation-card' + (dragging ? ' dragover' : '')}
       id="card"
       ref={ref}
-      style={tier ? { '--tier': tier.c, '--tier-deep': tier.d } : undefined}
+      style={{
+        ...(tier ? { '--tier': tier.c, '--tier-deep': tier.d } : {}),
+        '--background-opacity': backgroundOpacity / 100,
+      }}
       aria-label={`${pathway} pathway explanation`}
       {...dropProps}
     >
