@@ -6,7 +6,10 @@ import TierCard from './components/TierCard.jsx'
 import PathwayCard from './components/PathwayCard.jsx'
 import TierExplanationCard from './components/TierExplanationCard.jsx'
 import GeneralExplanationCard from './components/GeneralExplanationCard.jsx'
-import { PATHWAYS, PATHWAY_COLORS, TIER_RANKS, tierColor, powerTier } from './data/pathways.js'
+import PathwayExplanationCard from './components/PathwayExplanationCard.jsx'
+import BreakdownCard from './components/BreakdownCard.jsx'
+import MapCard from './components/MapCard.jsx'
+import { PATHWAYS, PATH_NAMES, PATHWAY_COLORS, TIER_RANKS, tierColor, powerTier } from './data/pathways.js'
 import { PATHWAY_ICONS } from './data/pathwayIcons.js'
 import { PATHWAY_BACKGROUNDS } from './data/pathwayBackgrounds.js'
 
@@ -22,6 +25,7 @@ export default function LiveCardPreview({ state }) {
   const isPathwayCard = state.type === 'Pathway'
   const isTierExplanation = state.type === 'Tier Explanation'
   const isGeneralExplanation = state.type === 'General Explanation'
+  const isPathwayExplanation = state.type === 'Pathway Explanation'
   const isCharacter = state.type === 'Character'
 
   if (isCover) {
@@ -100,6 +104,42 @@ export default function LiveCardPreview({ state }) {
         pathway={state.explanationPath}
         icon={state.explanationPath ? PATHWAY_ICONS[state.explanationPath] : null}
         backgroundImage={state.explanationPath ? PATHWAY_BACKGROUNDS[state.explanationPath] ?? null : null}
+      />
+    )
+  }
+
+  if (isPathwayExplanation) {
+    const pathwayExplanationPath = PATHWAYS[state.pathwayExplanationPath] ? state.pathwayExplanationPath : 'Fool'
+    return (
+      <PathwayExplanationCard
+        pathway={pathwayExplanationPath}
+        index={PATH_NAMES.indexOf(pathwayExplanationPath) + 1}
+        total={PATH_NAMES.length}
+        title={state.pathwayExplanationTitle}
+        description={state.pathwayExplanationText}
+      />
+    )
+  }
+
+  if (state.type === 'Breakdown') {
+    return (
+      <BreakdownCard
+        kicker={state.breakdownKicker}
+        title={state.breakdownTitle}
+        does={state.breakdownDoes}
+        doesNot={state.breakdownDoesNot}
+        edgeLabel={state.breakdownEdgeLabel}
+        edgeText={state.breakdownEdgeText}
+      />
+    )
+  }
+
+  if (state.type === 'Map') {
+    return (
+      <MapCard
+        title={state.mapTitle}
+        entriesText={state.mapEntriesText}
+        footerText={state.mapFooterText}
       />
     )
   }

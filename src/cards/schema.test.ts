@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { CardContentSchema, filenameForCard, toBuilderCardState } from './schema'
+import { CardContentSchema, filenameForCard, fromBuilderCardState, toBuilderCardState } from './schema'
 
 test('convierte una carta Tier al estado que consume el renderer actual', () => {
   const content = CardContentSchema.parse({
@@ -84,6 +84,73 @@ test('valida Tier Explanation general y General Explanation con pathway opcional
   assert.equal(toBuilderCardState(general).generalExplanationTitle, 'Los caminos Beyonder')
   assert.equal(filenameForCard(tierGeneral), 'tier-explanation-a')
   assert.equal(filenameForCard(general), 'general-explanation_los-caminos-beyonder_door')
+})
+
+test('valida una Pathway Explanation con titulo resaltado entre asteriscos', () => {
+  const explanation = CardContentSchema.parse({
+    type: 'Pathway Explanation',
+    pathway: 'Door',
+    title: "Door isn't a *teleport* pathway.",
+    description: "It's access and exclusion.",
+  })
+
+  assert.equal(toBuilderCardState(explanation).pathwayExplanationPath, 'Door')
+  assert.equal(toBuilderCardState(explanation).pathwayExplanationTitle, "Door isn't a *teleport* pathway.")
+  assert.equal(toBuilderCardState(explanation).pathwayExplanationText, "It's access and exclusion.")
+  assert.equal(filenameForCard(explanation), 'pathway-explanation_door')
+})
+
+test('valida una Breakdown con kicker opcional y etiqueta libre de la tercera seccion', () => {
+  const withKicker = CardContentSchema.parse({
+    type: 'Breakdown',
+    kicker: 'Authority',
+    title: 'Replication',
+    does: 'Recreates powers, scenes and instances it has understood.',
+    doesNot: 'Copy the person. Only the power.',
+    edgeLabel: 'Edge',
+    edgeText: 'Needs understanding, not storage.',
+  })
+  const withoutKickerOrLabel = CardContentSchema.parse({
+    type: 'Breakdown',
+    title: 'Door',
+    does: 'Opens or closes access.',
+    doesNot: 'Move you. It grants the passage.',
+    edgeText: 'Sequence 0. Space, Seals and Alternate Worlds sit under it.',
+  })
+
+  assert.equal(toBuilderCardState(withKicker).breakdownKicker, 'Authority')
+  assert.equal(toBuilderCardState(withKicker).breakdownEdgeLabel, 'Edge')
+  assert.equal(toBuilderCardState(withoutKickerOrLabel).breakdownKicker, '')
+  assert.equal(toBuilderCardState(withoutKickerOrLabel).breakdownEdgeLabel, 'Edge')
+  assert.equal(filenameForCard(withKicker), 'breakdown_replication')
+})
+
+test('valida una Map con filas "tags -> value" y footer opcional', () => {
+  const map = CardContentSchema.parse({
+    type: 'Map',
+    title: 'Where the powers come from',
+    entries: [
+      { tags: 'Door · Change · King of Space-Time', value: 'Door, Space, Seals, Alternate Worlds' },
+      { tags: 'Bizarreness · Spirit World', value: 'Replication' },
+    ],
+    footerText: 'Three roots. Seven powers.',
+  })
+  const mapSinFooter = CardContentSchema.parse({
+    type: 'Map',
+    title: 'Sin footer',
+    entries: [{ tags: '', value: 'Solo un valor' }],
+  })
+
+  assert.equal(
+    toBuilderCardState(map).mapEntriesText,
+    'Door · Change · King of Space-Time -> Door, Space, Seals, Alternate Worlds\nBizarreness · Spirit World -> Replication',
+  )
+  assert.equal(toBuilderCardState(map).mapFooterText, 'Three roots. Seven powers.')
+  assert.equal(toBuilderCardState(mapSinFooter).mapEntriesText, 'Solo un valor')
+  assert.equal(toBuilderCardState(mapSinFooter).mapFooterText, '')
+  const roundTripped = fromBuilderCardState(toBuilderCardState(map))
+  assert.equal(roundTripped.type === 'Map' && roundTripped.entries.length, 2)
+  assert.equal(filenameForCard(map), 'map_where-the-powers-come-from')
 })
 
 test('valida un cover de imagen completa con título al pie', () => {

@@ -183,6 +183,66 @@ test('migra cards.db v3 a v4 sin perder cartas y acepta cartas Pathway', async (
   assert.equal(repository.listCards().length, 2)
 })
 
+test('migra cards.db v4 a v5 sin perder cartas y acepta Pathway Explanation y Breakdown', async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-cards-v4-'))
+  const dbPath = path.join(directory, 'cards.db')
+  const legacy = new Database(dbPath)
+  legacy.exec(`
+    CREATE TABLE universes (
+      id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
+    CREATE TABLE parts (
+      id TEXT PRIMARY KEY, universe_id TEXT NOT NULL REFERENCES universes(id) ON DELETE CASCADE,
+      slug TEXT NOT NULL COLLATE NOCASE, name TEXT NOT NULL, number INTEGER,
+      description TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      UNIQUE (universe_id, slug)
+    );
+    CREATE TABLE cards (
+      id TEXT PRIMARY KEY, part_id TEXT NOT NULL REFERENCES parts(id) ON DELETE CASCADE,
+      position INTEGER NOT NULL CHECK (position > 0),
+      type TEXT NOT NULL CHECK (type IN (
+        'Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Pathway',
+        'Tier Explanation', 'General Explanation'
+      )),
+      title TEXT NOT NULL, data_json TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      UNIQUE (part_id, position)
+    );
+    CREATE INDEX cards_part_id_idx ON cards(part_id);
+    CREATE INDEX parts_universe_id_idx ON parts(universe_id);
+    INSERT INTO universes VALUES ('u', 'lotm', 'LOTM', '', 'now', 'now');
+    INSERT INTO parts VALUES ('p', 'u', 'tiers', 'Tiers', 1, '', 'now', 'now');
+    INSERT INTO cards VALUES (
+      'c', 'p', 1, 'Tier', 'Fool - Tier S',
+      '{"type":"Tier","pathway":"Fool","rank":"S","points":["Versátil"]}',
+      'now', 'now'
+    );
+    PRAGMA user_version = 4;
+  `)
+  legacy.close()
+
+  const repository = new CardRepository(dbPath)
+  t.after(async () => {
+    repository.close()
+    await fs.rm(directory, { recursive: true, force: true })
+  })
+  assert.equal(repository.listCards()[0].content.type, 'Tier')
+  const saved = repository.saveBatch({
+    universe: { name: 'LOTM' },
+    part: { name: 'Tiers', number: 1 },
+    cards: [
+      { type: 'Pathway Explanation', pathway: 'Door', title: "Door isn't a *teleport* pathway.", description: "It's access and exclusion." },
+      { type: 'Breakdown', title: 'Replication', does: 'Recreates powers.', doesNot: 'Copy the person.', edgeLabel: 'Edge', edgeText: 'Needs understanding.' },
+      { type: 'Map', title: 'Where the powers come from', entries: [{ tags: 'Door · Change', value: 'Replication' }] },
+    ],
+  })
+  assert.equal(saved[0].content.type, 'Pathway Explanation')
+  assert.equal(saved[1].content.type, 'Breakdown')
+  assert.equal(saved[2].content.type, 'Map')
+  assert.equal(repository.listCards().length, 4)
+})
+
 test('divide una seccion en varias conservando las cartas', async (t) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-cards-'))
   const repository = new CardRepository(path.join(directory, 'cards.db'))

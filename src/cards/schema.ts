@@ -4,6 +4,7 @@ import {
   POWER_LEVELS,
   TIER_RANK_NAMES,
 } from '../builder/data/pathways.js'
+import { parseMapEntries } from '../builder/mapEntries'
 
 const enumFrom = (values: string[]) => z.enum(values as [string, ...string[]])
 
@@ -137,6 +138,57 @@ export const GeneralExplanationCardSchema = z
   })
   .strict()
 
+export const PathwayExplanationCardSchema = z
+  .object({
+    type: z.literal('Pathway Explanation'),
+    pathway: PathwayNameSchema,
+    title: z.string().trim().min(1).max(100).describe(
+      'Titulo de la carta. Envuelve la palabra o frase clave en *asteriscos* para resaltarla en color tier.',
+    ),
+    description: z.string().trim().min(1).max(240).describe('Texto breve mostrado bajo la regla.'),
+  })
+  .strict()
+
+export const BreakdownCardSchema = z
+  .object({
+    type: z.literal('Breakdown'),
+    kicker: z.string().trim().max(40).optional().describe(
+      'Etiqueta opcional sobre el titulo para agrupar cartas, p. ej. "Authority".',
+    ),
+    title: z.string().trim().min(1).max(60).describe('Nombre del concepto o autoridad explicada.'),
+    does: z.string().trim().min(1).max(240).describe('Que hace este concepto (seccion DOES).'),
+    doesNot: z.string().trim().min(1).max(240).describe('Que no hace, para evitar confusiones (seccion DOESN\'T).'),
+    edgeLabel: z.string().trim().min(1).max(20).default('Edge').describe(
+      'Etiqueta de la tercera seccion, p. ej. "Edge" o "Caps at".',
+    ),
+    edgeText: z.string().trim().min(1).max(240).describe(
+      'Limite, matiz o dato clave de la tercera seccion, resaltado en color tier.',
+    ),
+  })
+  .strict()
+
+const MapEntrySchema = z
+  .object({
+    tags: z.string().trim().max(120).describe(
+      'Etiquetas de la fila unidas por " · ", p. ej. "Door · Change · King of Space-Time". Puede ir vacio.',
+    ),
+    value: z.string().trim().min(1).max(120).describe('El valor o resultado que corresponde a esas etiquetas.'),
+  })
+  .strict()
+
+export const MapCardSchema = z
+  .object({
+    type: z.literal('Map'),
+    title: z.string().trim().min(1).max(100).describe('Titulo de la carta, p. ej. "Where the powers come from".'),
+    entries: z.array(MapEntrySchema).min(1).max(8).describe(
+      'Filas de la carta, cada una con su etiqueta opcional y su valor.',
+    ),
+    footerText: z.string().trim().max(160).optional().describe(
+      'Texto final opcional bajo una regla, p. ej. "Three roots. Seven powers."',
+    ),
+  })
+  .strict()
+
 export const CardContentSchema = z.discriminatedUnion('type', [
   CharacterCardSchema,
   ArtifactCardSchema,
@@ -146,6 +198,9 @@ export const CardContentSchema = z.discriminatedUnion('type', [
   PathwayCardSchema,
   TierExplanationCardSchema,
   GeneralExplanationCardSchema,
+  PathwayExplanationCardSchema,
+  BreakdownCardSchema,
+  MapCardSchema,
 ])
 
 export type CardContent = z.infer<typeof CardContentSchema>
@@ -240,7 +295,7 @@ export type SaveCardBatchInput = z.infer<typeof SaveCardBatchSchema>
 export type CardFilter = z.infer<typeof CardFilterSchema>
 
 export type BuilderCardState = {
-  type: 'Character' | 'Artifact' | 'Cover' | 'Full Image Cover' | 'Tier' | 'Pathway' | 'Tier Explanation' | 'General Explanation'
+  type: 'Character' | 'Artifact' | 'Cover' | 'Full Image Cover' | 'Tier' | 'Pathway' | 'Tier Explanation' | 'General Explanation' | 'Pathway Explanation' | 'Breakdown' | 'Map'
   name: string
   path: string
   seq: number
@@ -274,6 +329,18 @@ export type BuilderCardState = {
   tierExplanationBackgroundImage: string | null
   generalExplanationTitle: string
   generalExplanationText: string
+  pathwayExplanationPath: string
+  pathwayExplanationTitle: string
+  pathwayExplanationText: string
+  breakdownKicker: string
+  breakdownTitle: string
+  breakdownDoes: string
+  breakdownDoesNot: string
+  breakdownEdgeLabel: string
+  breakdownEdgeText: string
+  mapTitle: string
+  mapEntriesText: string
+  mapFooterText: string
 }
 
 const DEFAULT_BUILDER_STATE: BuilderCardState = {
@@ -311,6 +378,18 @@ const DEFAULT_BUILDER_STATE: BuilderCardState = {
   tierExplanationBackgroundImage: null,
   generalExplanationTitle: '',
   generalExplanationText: '',
+  pathwayExplanationPath: 'Fool',
+  pathwayExplanationTitle: '',
+  pathwayExplanationText: '',
+  breakdownKicker: '',
+  breakdownTitle: '',
+  breakdownDoes: '',
+  breakdownDoesNot: '',
+  breakdownEdgeLabel: 'Edge',
+  breakdownEdgeText: '',
+  mapTitle: '',
+  mapEntriesText: '',
+  mapFooterText: '',
 }
 
 export function toBuilderCardState(content: CardContent): BuilderCardState {
@@ -372,6 +451,38 @@ export function toBuilderCardState(content: CardContent): BuilderCardState {
       explanationPath: content.pathway ?? null,
       generalExplanationTitle: content.title,
       generalExplanationText: content.description,
+    }
+  }
+
+  if (content.type === 'Pathway Explanation') {
+    return {
+      ...state,
+      pathwayExplanationPath: content.pathway,
+      pathwayExplanationTitle: content.title,
+      pathwayExplanationText: content.description,
+    }
+  }
+
+  if (content.type === 'Breakdown') {
+    return {
+      ...state,
+      breakdownKicker: content.kicker ?? '',
+      breakdownTitle: content.title,
+      breakdownDoes: content.does,
+      breakdownDoesNot: content.doesNot,
+      breakdownEdgeLabel: content.edgeLabel,
+      breakdownEdgeText: content.edgeText,
+    }
+  }
+
+  if (content.type === 'Map') {
+    return {
+      ...state,
+      mapTitle: content.title,
+      mapEntriesText: content.entries
+        .map(({ tags, value }) => (tags ? `${tags} -> ${value}` : value))
+        .join('\n'),
+      mapFooterText: content.footerText ?? '',
     }
   }
 
@@ -442,6 +553,33 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
       ...(state.explanationPath ? { pathway: state.explanationPath } : {}),
     }
   }
+  if (state.type === 'Pathway Explanation') {
+    return {
+      type: 'Pathway Explanation',
+      pathway: state.pathwayExplanationPath,
+      title: state.pathwayExplanationTitle.trim(),
+      description: state.pathwayExplanationText.trim(),
+    }
+  }
+  if (state.type === 'Breakdown') {
+    return {
+      type: 'Breakdown',
+      ...(state.breakdownKicker.trim() ? { kicker: state.breakdownKicker.trim() } : {}),
+      title: state.breakdownTitle.trim(),
+      does: state.breakdownDoes.trim(),
+      doesNot: state.breakdownDoesNot.trim(),
+      edgeLabel: state.breakdownEdgeLabel.trim() || 'Edge',
+      edgeText: state.breakdownEdgeText.trim(),
+    }
+  }
+  if (state.type === 'Map') {
+    return {
+      type: 'Map',
+      title: state.mapTitle.trim(),
+      entries: parseMapEntries(state.mapEntriesText),
+      ...(state.mapFooterText.trim() ? { footerText: state.mapFooterText.trim() } : {}),
+    }
+  }
   const standard = {
     name: state.name.trim(),
     pathway: state.path,
@@ -469,6 +607,15 @@ export function titleForCard(content: CardContent): string {
   }
   if (content.type === 'General Explanation') {
     return content.pathway ? `${content.title} - ${content.pathway}` : content.title
+  }
+  if (content.type === 'Pathway Explanation') {
+    return `${content.pathway} - ${content.title.replace(/\*/g, '')}`
+  }
+  if (content.type === 'Breakdown') {
+    return content.kicker ? `${content.kicker}: ${content.title}` : content.title
+  }
+  if (content.type === 'Map') {
+    return content.title
   }
   return content.name
 }
@@ -500,6 +647,15 @@ export function filenameForCard(content: CardContent): string {
   if (content.type === 'General Explanation') {
     const base = `general-explanation_${slugify(content.title)}`
     return content.pathway ? `${base}_${slugify(content.pathway)}` : base
+  }
+  if (content.type === 'Pathway Explanation') {
+    return `pathway-explanation_${slugify(content.pathway)}`
+  }
+  if (content.type === 'Breakdown') {
+    return `breakdown_${slugify(content.title)}`
+  }
+  if (content.type === 'Map') {
+    return `map_${slugify(content.title)}`
   }
   return `${slugify(content.name)}_seq-${content.sequence}`
 }

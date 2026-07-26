@@ -51,8 +51,18 @@ export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl 
       title: 'Guardar lote de cartas',
       description:
         'Crea o reutiliza un anime/universo y una parte, y agrega hasta 100 cartas. ' +
-        'Acepta Character, Artifact, Cover, Full Image Cover, Tier, Pathway, Tier Explanation y General Explanation. ' +
+        'Acepta Character, Artifact, Cover, Full Image Cover, Tier, Pathway, Tier Explanation, ' +
+        'General Explanation, Pathway Explanation, Breakdown y Map. ' +
         'Las explicaciones pueden ser generales o asociarse a uno de los 22 pathways. ' +
+        'Pathway Explanation es una carta corta por pathway: titulo con una palabra ' +
+        'resaltada entre *asteriscos*, regla y descripcion breve; el contador "N / 22 PATHWAYS" ' +
+        'se calcula solo a partir del pathway, no se guarda. ' +
+        'Breakdown es una carta de concepto o autoridad con kicker opcional (p. ej. "Authority", ' +
+        'o compuesto como "Authority · From Bizarreness" ya que es texto libre), ' +
+        'titulo y tres secciones: does, doesNot y una tercera con etiqueta libre (edgeLabel, ' +
+        'p. ej. "Edge" o "Caps at") resaltada en color tier. ' +
+        'Map es una carta resumen: titulo, hasta 8 filas (entries) con etiquetas opcionales ' +
+        '(tags, unidas por " · ") y un valor en negrita, mas un footerText opcional bajo una regla. ' +
         'Las imagenes son solo URLs o rutas de /public.',
       inputSchema: SaveCardBatchSchema,
       annotations: {

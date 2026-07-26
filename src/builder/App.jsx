@@ -11,6 +11,9 @@ import TierCard from './components/TierCard.jsx'
 import PathwayCard from './components/PathwayCard.jsx'
 import TierExplanationCard from './components/TierExplanationCard.jsx'
 import GeneralExplanationCard from './components/GeneralExplanationCard.jsx'
+import PathwayExplanationCard from './components/PathwayExplanationCard.jsx'
+import BreakdownCard from './components/BreakdownCard.jsx'
+import MapCard from './components/MapCard.jsx'
 import Panel from './components/Panel.jsx'
 import Filmstrip from './components/Filmstrip.jsx'
 import SectionField from './components/SectionField.jsx'
@@ -36,6 +39,20 @@ const NEW_CARD_SEEDS = {
   'General Explanation': {
     generalExplanationTitle: 'Nueva explicacion',
     generalExplanationText: 'Nueva explicacion',
+  },
+  'Pathway Explanation': {
+    pathwayExplanationTitle: 'Nueva explicacion',
+    pathwayExplanationText: 'Nueva explicacion',
+  },
+  Breakdown: {
+    breakdownTitle: 'Nuevo concepto',
+    breakdownDoes: 'Que hace.',
+    breakdownDoesNot: 'Que no hace.',
+    breakdownEdgeText: 'El matiz clave.',
+  },
+  Map: {
+    mapTitle: 'Nuevo mapa',
+    mapEntriesText: 'Etiqueta -> Valor',
   },
 }
 
@@ -74,6 +91,18 @@ const DEFAULT_STATE = {
   tierExplanationBackgroundImage: null,
   generalExplanationTitle: '',
   generalExplanationText: '',
+  pathwayExplanationPath: 'Fool',
+  pathwayExplanationTitle: '',
+  pathwayExplanationText: '',
+  breakdownKicker: '',
+  breakdownTitle: '',
+  breakdownDoes: '',
+  breakdownDoesNot: '',
+  breakdownEdgeLabel: 'Edge',
+  breakdownEdgeText: '',
+  mapTitle: '',
+  mapEntriesText: '',
+  mapFooterText: '',
 }
 
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
@@ -193,6 +222,16 @@ export default function App() {
       tierExplanationBackgroundImage: null,
       generalExplanationTitle: '',
       generalExplanationText: '',
+      pathwayExplanationTitle: '',
+      pathwayExplanationText: '',
+      breakdownKicker: '',
+      breakdownTitle: '',
+      breakdownDoes: '',
+      breakdownDoesNot: '',
+      breakdownEdgeText: '',
+      mapTitle: '',
+      mapEntriesText: '',
+      mapFooterText: '',
       ...(NEW_CARD_SEEDS[state.type] ?? {}),
     }
     const id = await session.createCard(fresh)
@@ -351,6 +390,9 @@ export default function App() {
   const isPathwayCard = state.type === 'Pathway'
   const isTierExplanation = state.type === 'Tier Explanation'
   const isGeneralExplanation = state.type === 'General Explanation'
+  const isPathwayExplanation = state.type === 'Pathway Explanation'
+  const isBreakdown = state.type === 'Breakdown'
+  const isMap = state.type === 'Map'
   // Older saved cards predate the tier fields — fall back to sane defaults.
   const tierPath = PATHWAYS[state.tierPath] ? state.tierPath : 'Fool'
   const tierSeq = Number.isInteger(state.tierSeq) && state.tierSeq >= 0 && state.tierSeq <= 9
@@ -367,7 +409,7 @@ export default function App() {
       ? { ...TIER_RANKS[tierRank], pct: 100 }
       : isPathwayCard
         ? { ...PATHWAY_COLORS[pathwayCardPath], pct: 100 }
-      : isGeneralExplanation
+      : isGeneralExplanation || isPathwayExplanation || isBreakdown || isMap
         ? COVER_ACCENT
       : powerTier(state.type, state.power, state.grade)
   const pathLabel = [...new Set(sequences.map((s) => s.path))].join(' · ')
@@ -375,6 +417,7 @@ export default function App() {
   const explanationScope = isTierExplanation ? 'All pathways' : explanationPath ?? 'All pathways'
   const tierBackgroundImage = state.tierBackgroundImage || PATHWAY_BACKGROUNDS[tierPath] || null
   const pathwayCardBackgroundImage = state.pathwayCardBackgroundImage || PATHWAY_BACKGROUNDS[pathwayCardPath] || null
+  const pathwayExplanationPath = PATHWAYS[state.pathwayExplanationPath] ? state.pathwayExplanationPath : 'Fool'
 
   if (!ready) {
     return <div className="app-loading">Loading your cards…</div>
@@ -488,6 +531,32 @@ export default function App() {
               icon={explanationPath ? PATHWAY_ICONS[explanationPath] : null}
               backgroundImage={explanationPath ? PATHWAY_BACKGROUNDS[explanationPath] ?? null : null}
             />
+          ) : isPathwayExplanation ? (
+            <PathwayExplanationCard
+              ref={cardRef}
+              pathway={pathwayExplanationPath}
+              index={PATH_NAMES.indexOf(pathwayExplanationPath) + 1}
+              total={PATH_NAMES.length}
+              title={state.pathwayExplanationTitle ?? ''}
+              description={state.pathwayExplanationText ?? ''}
+            />
+          ) : isBreakdown ? (
+            <BreakdownCard
+              ref={cardRef}
+              kicker={state.breakdownKicker ?? ''}
+              title={state.breakdownTitle ?? ''}
+              does={state.breakdownDoes ?? ''}
+              doesNot={state.breakdownDoesNot ?? ''}
+              edgeLabel={state.breakdownEdgeLabel ?? 'Edge'}
+              edgeText={state.breakdownEdgeText ?? ''}
+            />
+          ) : isMap ? (
+            <MapCard
+              ref={cardRef}
+              title={state.mapTitle ?? ''}
+              entriesText={state.mapEntriesText ?? ''}
+              footerText={state.mapFooterText ?? ''}
+            />
           ) : (
             <Card
               ref={cardRef}
@@ -557,6 +626,15 @@ function labelFor(s) {
   }
   if (s.type === 'General Explanation') {
     return `general_explanation_${s.generalExplanationTitle || 'untitled'}${s.explanationPath ? `_${s.explanationPath}` : ''}`.replace(/\s+/g, '_')
+  }
+  if (s.type === 'Pathway Explanation') {
+    return `pathway_explanation_${s.pathwayExplanationPath || 'pathway'}`.replace(/\s+/g, '_')
+  }
+  if (s.type === 'Breakdown') {
+    return `breakdown_${s.breakdownTitle || 'untitled'}`.replace(/\s+/g, '_')
+  }
+  if (s.type === 'Map') {
+    return `map_${s.mapTitle || 'untitled'}`.replace(/\s+/g, '_')
   }
   return `${s.name || 'card'}_seq${s.seq}`
 }

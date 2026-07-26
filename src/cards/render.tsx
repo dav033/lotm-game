@@ -10,8 +10,12 @@ import TierCard from '../builder/components/TierCard.jsx'
 import PathwayCard from '../builder/components/PathwayCard.jsx'
 import TierExplanationCard from '../builder/components/TierExplanationCard.jsx'
 import GeneralExplanationCard from '../builder/components/GeneralExplanationCard.jsx'
+import PathwayExplanationCard from '../builder/components/PathwayExplanationCard.jsx'
+import BreakdownCard from '../builder/components/BreakdownCard.jsx'
+import MapCard from '../builder/components/MapCard.jsx'
 import {
   PATHWAYS,
+  PATH_NAMES,
   TIER_RANKS,
   PATHWAY_COLORS,
   powerTier,
@@ -34,6 +38,9 @@ const StaticTierCard = TierCard as unknown as ComponentType<Record<string, unkno
 const StaticPathwayCard = PathwayCard as unknown as ComponentType<Record<string, unknown>>
 const StaticTierExplanationCard = TierExplanationCard as unknown as ComponentType<Record<string, unknown>>
 const StaticGeneralExplanationCard = GeneralExplanationCard as unknown as ComponentType<Record<string, unknown>>
+const StaticPathwayExplanationCard = PathwayExplanationCard as unknown as ComponentType<Record<string, unknown>>
+const StaticBreakdownCard = BreakdownCard as unknown as ComponentType<Record<string, unknown>>
+const StaticMapCard = MapCard as unknown as ComponentType<Record<string, unknown>>
 const FONT_STYLESHEET =
   'https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Space+Grotesk:wght@400;500;700&display=swap'
 
@@ -136,6 +143,9 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
   const isPathwayCard = state.type === 'Pathway'
   const isTierExplanation = state.type === 'Tier Explanation'
   const isGeneralExplanation = state.type === 'General Explanation'
+  const isPathwayExplanation = state.type === 'Pathway Explanation'
+  const isBreakdown = state.type === 'Breakdown'
+  const isMap = state.type === 'Map'
   const rawSequences = [
     { path: state.path, seq: state.seq },
     ...(state.hasSecond ? [{ path: state.path2, seq: state.seq2 }] : []),
@@ -156,7 +166,7 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
       ? { ...TIER_DATA[tierRank], pct: 100 }
       : isPathwayCard
         ? { ...PATHWAY_COLOR_DATA[state.pathwayCardPath], pct: 100 }
-      : isGeneralExplanation
+      : isGeneralExplanation || isPathwayExplanation || isBreakdown || isMap
         ? COVER_ACCENT
       : powerTier(state.type, state.power, state.grade)
   const baseValue = isCharacter ? state.power : state.grade
@@ -219,6 +229,29 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
           pathway={state.explanationPath}
           icon={state.explanationPath ? icons[state.explanationPath] : null}
           backgroundImage={state.generalExplanationBackground}
+        />
+      ) : isPathwayExplanation ? (
+        <StaticPathwayExplanationCard
+          pathway={state.pathwayExplanationPath}
+          index={PATHWAY_DATA[state.pathwayExplanationPath] ? PATH_NAMES.indexOf(state.pathwayExplanationPath) + 1 : 1}
+          total={PATH_NAMES.length}
+          title={state.pathwayExplanationTitle}
+          description={state.pathwayExplanationText}
+        />
+      ) : isBreakdown ? (
+        <StaticBreakdownCard
+          kicker={state.breakdownKicker}
+          title={state.breakdownTitle}
+          does={state.breakdownDoes}
+          doesNot={state.breakdownDoesNot}
+          edgeLabel={state.breakdownEdgeLabel}
+          edgeText={state.breakdownEdgeText}
+        />
+      ) : isMap ? (
+        <StaticMapCard
+          title={state.mapTitle}
+          entriesText={state.mapEntriesText}
+          footerText={state.mapFooterText}
         />
       ) : (
         <StaticCard

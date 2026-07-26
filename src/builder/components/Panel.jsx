@@ -84,6 +84,9 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
   const isPathwayCard = state.type === 'Pathway'
   const isTierExplanation = state.type === 'Tier Explanation'
   const isGeneralExplanation = state.type === 'General Explanation'
+  const isPathwayExplanation = state.type === 'Pathway Explanation'
+  const isBreakdown = state.type === 'Breakdown'
+  const isMap = state.type === 'Map'
   const isExplanation = isTierExplanation || isGeneralExplanation
   const defaultTierBackground = PATHWAY_BACKGROUNDS[state.tierPath] ?? null
   const defaultPathwayCardBackground = PATHWAY_BACKGROUNDS[state.pathwayCardPath] ?? null
@@ -99,7 +102,7 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
       <div className="field">
         <label>Type</label>
         <div className="toggle">
-          {['Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Pathway', 'Tier Explanation', 'General Explanation'].map((t) => (
+          {['Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Pathway', 'Tier Explanation', 'General Explanation', 'Pathway Explanation', 'Breakdown', 'Map'].map((t) => (
             <button
               key={t}
               className={'seg' + (state.type === t ? ' sel' : '')}
@@ -491,6 +494,182 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
             Same layout as a Tier slide, without the rank badge — the pathway's own
             color tints the whole card instead.
           </p>
+        </div>
+      ) : isPathwayExplanation ? (
+        <div key="pathway-explanation-fields">
+          <div className="field">
+            <label>Pathway (search all 22)</label>
+            <PathwayCombo
+              value={PATHWAYS[state.pathwayExplanationPath] ? state.pathwayExplanationPath : 'Fool'}
+              onPick={(n) => set({ pathwayExplanationPath: n })}
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="pathway-explanation-title">Title</label>
+            <input
+              id="pathway-explanation-title"
+              maxLength={100}
+              value={state.pathwayExplanationTitle ?? ''}
+              placeholder="Door isn't a *teleport* pathway."
+              autoComplete="off"
+              onChange={(e) => set({ pathwayExplanationTitle: e.target.value })}
+            />
+            <p className="field-help">Wrap a word or phrase in *asterisks* to highlight it in the tier color.</p>
+          </div>
+
+          <div className="field">
+            <label htmlFor="pathway-explanation-text">Description</label>
+            <textarea
+              id="pathway-explanation-text"
+              rows={5}
+              maxLength={240}
+              value={state.pathwayExplanationText ?? ''}
+              placeholder="It's access and exclusion."
+              autoComplete="off"
+              onChange={(e) => set({ pathwayExplanationText: e.target.value })}
+            />
+            <p className="field-help">{(state.pathwayExplanationText ?? '').length}/240 characters</p>
+          </div>
+
+          <div className="actions">
+            <button className="btn-dl" style={{ background: accent.c }} onClick={onDownload}>Download PNG</button>
+          </div>
+
+          <p className="hint">
+            The "N / 22 PATHWAYS" counter is automatic — it's the pathway's position
+            in canon order, not something you set.
+          </p>
+        </div>
+      ) : isBreakdown ? (
+        <div key="breakdown-fields">
+          <div className="field">
+            <label htmlFor="breakdown-kicker">Kicker (optional)</label>
+            <input
+              id="breakdown-kicker"
+              maxLength={40}
+              value={state.breakdownKicker ?? ''}
+              placeholder="e.g. Authority"
+              autoComplete="off"
+              onChange={(e) => set({ breakdownKicker: e.target.value })}
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="breakdown-title">Title</label>
+            <input
+              id="breakdown-title"
+              maxLength={60}
+              value={state.breakdownTitle ?? ''}
+              placeholder="e.g. Replication"
+              autoComplete="off"
+              onChange={(e) => set({ breakdownTitle: e.target.value })}
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="breakdown-does">Does</label>
+            <textarea
+              id="breakdown-does"
+              rows={3}
+              maxLength={240}
+              value={state.breakdownDoes ?? ''}
+              placeholder="What this does…"
+              autoComplete="off"
+              onChange={(e) => set({ breakdownDoes: e.target.value })}
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="breakdown-doesnot">Doesn't</label>
+            <textarea
+              id="breakdown-doesnot"
+              rows={3}
+              maxLength={240}
+              value={state.breakdownDoesNot ?? ''}
+              placeholder="What it doesn't do…"
+              autoComplete="off"
+              onChange={(e) => set({ breakdownDoesNot: e.target.value })}
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="breakdown-edge-label">Third section label</label>
+            <input
+              id="breakdown-edge-label"
+              maxLength={20}
+              value={state.breakdownEdgeLabel ?? 'Edge'}
+              placeholder="Edge"
+              autoComplete="off"
+              onChange={(e) => set({ breakdownEdgeLabel: e.target.value })}
+            />
+            <p className="field-help">e.g. "Edge" or "Caps at" — shown highlighted in the tier color.</p>
+          </div>
+
+          <div className="field">
+            <label htmlFor="breakdown-edge-text">Third section text</label>
+            <textarea
+              id="breakdown-edge-text"
+              rows={3}
+              maxLength={240}
+              value={state.breakdownEdgeText ?? ''}
+              placeholder="The key nuance…"
+              autoComplete="off"
+              onChange={(e) => set({ breakdownEdgeText: e.target.value })}
+            />
+          </div>
+
+          <div className="actions">
+            <button className="btn-dl" style={{ background: accent.c }} onClick={onDownload}>Download PNG</button>
+          </div>
+        </div>
+      ) : isMap ? (
+        <div key="map-fields">
+          <div className="field">
+            <label htmlFor="map-title">Title</label>
+            <input
+              id="map-title"
+              maxLength={100}
+              value={state.mapTitle ?? ''}
+              placeholder="e.g. Where the powers come from"
+              autoComplete="off"
+              onChange={(e) => set({ mapTitle: e.target.value })}
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="map-entries">Rows (one per line, up to 8)</label>
+            <p className="field-help" id="map-entries-help">
+              Format: "tags -&gt; value". The arrow is optional — without it, the whole line becomes the value.
+            </p>
+            <textarea
+              className="tier-textarea"
+              id="map-entries"
+              rows={8}
+              value={state.mapEntriesText ?? ''}
+              placeholder={'Door · Change · King of Space-Time -> Door, Space, Seals, Alternate Worlds\nBizarreness · Spirit World -> Replication'}
+              aria-describedby="map-entries-help"
+              autoComplete="off"
+              onChange={(e) => set({ mapEntriesText: e.target.value })}
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="map-footer-text">Footer tagline (optional)</label>
+            <textarea
+              id="map-footer-text"
+              rows={2}
+              maxLength={160}
+              value={state.mapFooterText ?? ''}
+              placeholder="e.g. Three roots. Seven powers."
+              autoComplete="off"
+              onChange={(e) => set({ mapFooterText: e.target.value })}
+            />
+          </div>
+
+          <div className="actions">
+            <button className="btn-dl" style={{ background: accent.c }} onClick={onDownload}>Download PNG</button>
+          </div>
         </div>
       ) : isCover ? (
         <div key="cover-fields">

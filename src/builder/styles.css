@@ -356,6 +356,85 @@
 .general-explanation-card.dense .general-explanation-body{gap:13px}
 .general-explanation-card.dense .general-explanation-description{font-size:14px;line-height:1.5}
 
+/* Misma disposicion que General Explanation, pero con contador de pathway en
+   vez de icono, y una palabra del titulo resaltada inline en vez de todo el
+   titulo en un solo color. */
+.pathway-explanation-content{padding:54px 34px 30px;align-items:flex-start;
+  justify-content:flex-start;text-align:left}
+.pathway-explanation-counter{display:block;margin-bottom:18px;font-size:13px;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--tier);font-variant-numeric:tabular-nums}
+.pathway-explanation-title{font-family:'Cinzel',serif;font-size:34px;font-weight:900;
+  line-height:1.14;color:#fff;overflow-wrap:anywhere}
+.pathway-explanation-highlight{color:var(--tier)}
+.pathway-explanation-rule{flex:0 0 auto;width:96px;height:3px;margin:14px 0 26px;
+  background:var(--tier);box-shadow:0 0 14px var(--tier-deep)}
+.pathway-explanation-description{max-width:32ch;font-size:17px;line-height:1.62;color:var(--muted2);
+  white-space:pre-line;overflow-wrap:anywhere}
+.pathway-explanation-card.dense .pathway-explanation-content{padding:38px 34px 26px}
+.pathway-explanation-card.dense .pathway-explanation-counter{margin-bottom:12px;font-size:11px}
+.pathway-explanation-card.dense .pathway-explanation-title{font-size:26px;line-height:1.16}
+.pathway-explanation-card.dense .pathway-explanation-rule{margin:12px 0 20px;width:80px;height:2px}
+.pathway-explanation-card.dense .pathway-explanation-description{font-size:14px;line-height:1.5}
+
+/* ================= BREAKDOWN CARD (concept/authority: DOES / DOESN'T / edge) ================= */
+.breakdown-card{
+  position:relative;width:480px;height:640px;flex:0 0 auto;overflow:hidden;
+  border:1px solid var(--line2);padding:40px 34px;display:flex;flex-direction:column;
+  background:
+    radial-gradient(110% 70% at 50% -5%,rgba(255,255,255,.055),transparent 62%),
+    radial-gradient(130% 85% at 50% 112%,var(--tier-deep,#3f351d),transparent 58%),
+    #0a0a11;
+  box-shadow:0 0 0 1px rgba(0,0,0,.6),0 30px 70px -30px rgba(0,0,0,.9);
+}
+.breakdown-content{position:relative;z-index:3;display:flex;flex-direction:column;
+  height:100%;min-height:0;text-align:left}
+.breakdown-kicker{flex:0 0 auto;display:block;margin-bottom:8px;font-size:12px;font-weight:700;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--tier)}
+.breakdown-title{flex:0 0 auto;margin-bottom:26px;font-family:'Cinzel',serif;font-size:38px;
+  font-weight:900;line-height:1.08;color:#fff;overflow-wrap:anywhere}
+.breakdown-sections{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
+  gap:22px;overflow:hidden}
+.breakdown-section{flex:0 0 auto}
+.breakdown-label{display:block;margin-bottom:6px;font-size:11px;font-weight:700;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--muted2)}
+.breakdown-text{font-size:17px;line-height:1.48;color:var(--text);
+  white-space:pre-line;overflow-wrap:anywhere}
+.breakdown-edge .breakdown-text{color:var(--tier)}
+.breakdown-card.dense .breakdown-title{font-size:30px;margin-bottom:20px}
+.breakdown-card.dense .breakdown-sections{gap:15px}
+.breakdown-card.dense .breakdown-label{font-size:10px}
+.breakdown-card.dense .breakdown-text{font-size:14px;line-height:1.42}
+
+/* ================= MAP CARD (title + tagged entry list + optional footer) ================= */
+.map-card{
+  position:relative;width:480px;height:640px;flex:0 0 auto;overflow:hidden;
+  border:1px solid var(--line2);padding:40px 34px;display:flex;flex-direction:column;
+  background:
+    radial-gradient(110% 70% at 50% -5%,rgba(255,255,255,.055),transparent 62%),
+    radial-gradient(130% 85% at 50% 112%,var(--tier-deep,#3f351d),transparent 58%),
+    #0a0a11;
+  box-shadow:0 0 0 1px rgba(0,0,0,.6),0 30px 70px -30px rgba(0,0,0,.9);
+}
+.map-content{position:relative;z-index:3;display:flex;flex-direction:column;
+  height:100%;min-height:0;text-align:left}
+.map-title{flex:0 0 auto;font-family:'Cinzel',serif;font-size:32px;font-weight:900;
+  line-height:1.16;color:#fff;overflow-wrap:anywhere}
+.map-rule{flex:0 0 auto;width:96px;height:3px;margin:14px 0 26px;
+  background:var(--tier);box-shadow:0 0 14px var(--tier-deep)}
+.map-entries{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:20px;overflow:hidden}
+.map-entry{flex:0 0 auto}
+.map-entry-tags{display:block;margin-bottom:5px;font-size:14px;font-weight:600;color:var(--tier)}
+.map-entry-value{font-size:18px;font-weight:700;line-height:1.3;color:#fff;overflow-wrap:anywhere}
+.map-empty{flex:1 1 auto;display:flex;align-items:center;max-width:30ch;color:var(--muted2);
+  font-size:12px;line-height:1.5}
+.map-footer-rule{flex:0 0 auto;width:34px;height:1.5px;margin:18px 0 12px;background:var(--line2)}
+.map-footer-text{flex:0 0 auto;font-size:15px;line-height:1.5;color:var(--muted2);
+  white-space:pre-line;overflow-wrap:anywhere}
+.map-card.dense .map-title{font-size:26px}
+.map-card.dense .map-entries{gap:14px}
+.map-card.dense .map-entry-tags{font-size:12px}
+.map-card.dense .map-entry-value{font-size:15px}
+
 /* ================= CONTROL PANEL ================= */
 .panel{width:360px;flex:0 0 auto;background:var(--panel);border-left:1px solid var(--line);
   padding:22px;height:100vh;position:sticky;top:0;overflow-y:auto;align-self:flex-start}
