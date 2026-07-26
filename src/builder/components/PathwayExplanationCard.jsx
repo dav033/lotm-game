@@ -12,7 +12,7 @@ function renderHighlightedTitle(title) {
 }
 
 const PathwayExplanationCard = forwardRef(function PathwayExplanationCard(
-  { pathway, index, total, title, description, backgroundImage = null },
+  { pathway, index, total, title, description, backgroundImage = null, tier = null },
   ref,
 ) {
   const shown = title || 'A title with a *highlighted* word.'
@@ -24,6 +24,7 @@ const PathwayExplanationCard = forwardRef(function PathwayExplanationCard(
       className="ficha pathway-explanation-card"
       id="card"
       ref={ref}
+      style={tier ? { '--tier': tier.c, '--tier-deep': tier.d } : undefined}
       aria-label={`${pathway} pathway explanation`}
     >
       {backgroundImage && (

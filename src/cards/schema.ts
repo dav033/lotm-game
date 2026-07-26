@@ -147,7 +147,7 @@ export const PathwayExplanationCardSchema = z
     ),
     description: z.string().trim().min(1).max(240).describe('Texto breve mostrado bajo la regla.'),
     backgroundImageUrl: ImageSourceSchema.optional().describe(
-      'Imagen de fondo opcional, mostrada bajo un velo oscuro.',
+      'Imagen de fondo propia. Si se omite, la carta usa el arte de su pathway.',
     ),
   })
   .strict()

@@ -430,6 +430,11 @@ export default function App() {
   const tierBackgroundImage = state.tierBackgroundImage || PATHWAY_BACKGROUNDS[tierPath] || null
   const pathwayCardBackgroundImage = state.pathwayCardBackgroundImage || PATHWAY_BACKGROUNDS[pathwayCardPath] || null
   const pathwayExplanationPath = PATHWAYS[state.pathwayExplanationPath] ? state.pathwayExplanationPath : 'Fool'
+  // Como el resto de la familia, hereda el arte de su pathway y la imagen
+  // propia solo lo sustituye.
+  const pathwayExplanationBackground = state.pathwayExplanationBackgroundImage
+    || PATHWAY_BACKGROUNDS[pathwayExplanationPath]
+    || null
 
   if (!ready) {
     return <div className="app-loading">Loading your cards…</div>
@@ -551,7 +556,8 @@ export default function App() {
               total={PATH_NAMES.length}
               title={state.pathwayExplanationTitle ?? ''}
               description={state.pathwayExplanationText ?? ''}
-              backgroundImage={state.pathwayExplanationBackgroundImage}
+              backgroundImage={pathwayExplanationBackground}
+              tier={PATHWAY_COLORS[pathwayExplanationPath]}
             />
           ) : isBreakdown ? (
             <BreakdownCard

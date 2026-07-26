@@ -117,7 +117,10 @@ export default function LiveCardPreview({ state }) {
         total={PATH_NAMES.length}
         title={state.pathwayExplanationTitle}
         description={state.pathwayExplanationText}
-        backgroundImage={state.pathwayExplanationBackgroundImage}
+        backgroundImage={state.pathwayExplanationBackgroundImage
+          || PATHWAY_BACKGROUNDS[pathwayExplanationPath]
+          || null}
+        tier={PATHWAY_COLORS[pathwayExplanationPath]}
       />
     )
   }

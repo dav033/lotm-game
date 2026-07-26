@@ -567,7 +567,7 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
             field="pathwayExplanationBackgroundImage"
             set={set}
             onUploadImage={onUploadImage}
-            help="No background image selected."
+            help={`Using the default ${state.pathwayExplanationPath || 'pathway'} background. Upload one to override it.`}
           />
 
           <div className="actions">

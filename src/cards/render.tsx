@@ -244,6 +244,7 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
           title={state.pathwayExplanationTitle}
           description={state.pathwayExplanationText}
           backgroundImage={state.pathwayExplanationBackgroundImage}
+          tier={PATHWAY_COLOR_DATA[state.pathwayExplanationPath]}
         />
       ) : isBreakdown ? (
         <StaticBreakdownCard
@@ -290,6 +291,10 @@ async function resolveStateImages(
   const generalExplanationSource = state.type === 'General Explanation' && state.explanationPath
     ? (PATHWAY_BACKGROUNDS as Record<string, string>)[state.explanationPath] ?? null
     : null
+  const pathwayExplanationSource = state.type === 'Pathway Explanation'
+    ? state.pathwayExplanationBackgroundImage
+      ?? (PATHWAY_BACKGROUNDS as Record<string, string>)[state.pathwayExplanationPath] ?? null
+    : null
   // En un Map la imagen propia manda sobre la que aporta el pathway.
   const mapSource = state.type === 'Map'
     ? state.mapBackgroundImage
@@ -328,8 +333,8 @@ async function resolveStateImages(
       ? await resolveImageSource(generalExplanationSource, publicDir)
       : null,
     mapBackground: mapSource ? await resolveImageSource(mapSource, publicDir) : null,
-    pathwayExplanationBackgroundImage: state.pathwayExplanationBackgroundImage
-      ? await resolveImageSource(state.pathwayExplanationBackgroundImage, publicDir)
+    pathwayExplanationBackgroundImage: pathwayExplanationSource
+      ? await resolveImageSource(pathwayExplanationSource, publicDir)
       : null,
     breakdownBackgroundImage: state.breakdownBackgroundImage
       ? await resolveImageSource(state.breakdownBackgroundImage, publicDir)
