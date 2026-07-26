@@ -400,11 +400,17 @@
 .ficha-name.lg{font-size:62px}
 .ficha-name.md{font-size:52px}
 .ficha-name.sm{font-size:42px}
-/* El arte del pathway va bajo un velo mucho mas denso que en las cartas
-   antiguas: sobre el negro plano de la ficha, a plena opacidad, compite con el
-   texto en vez de acompañarlo. */
-.ficha .tier-background{opacity:.32;filter:saturate(.55) contrast(1.04)}
-.ficha .tier-background-overlay{background:linear-gradient(180deg,rgba(10,10,11,.86),rgba(10,10,11,.94))}
+/* El velo se gradua por cuanto texto lleva encima cada carta: el mismo ajuste
+   que deja legible un Map de cuatro celdas dejaba la imagen casi invisible en
+   una explicacion, que solo tiene titulo y una linea. */
+.ficha .tier-background{opacity:.62;filter:saturate(.75) contrast(1.04)}
+.ficha .tier-background-overlay{background:linear-gradient(180deg,rgba(10,10,11,.5),rgba(10,10,11,.76))}
+/* Un Map apila celdas con filo y texto denso: necesita el velo mas cerrado. */
+.map-card .tier-background{opacity:.34}
+.map-card .tier-background-overlay{background:linear-gradient(180deg,rgba(10,10,11,.8),rgba(10,10,11,.9))}
+/* Al arrastrar una imagen encima, la carta entera se marca como zona de suelta. */
+.ficha.dragover::after{content:'';position:absolute;inset:10px;z-index:6;pointer-events:none;
+  border:3px dashed var(--tier);border-radius:10px;background:rgba(227,189,119,.08)}
 
 /* ================= BREAKDOWN CARD (ficha: DOES / DOESN'T / edge) ================= */
 .breakdown-card{padding:32px 30px 40px;display:flex;flex-direction:column}

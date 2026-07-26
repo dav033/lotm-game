@@ -1,11 +1,13 @@
 import React, { forwardRef } from 'react'
 import { parseMapEntries } from '../mapEntries'
 import { titleSizeClass } from '../titleFit'
+import { useBackgroundDrop } from '../useBackgroundDrop'
 
 const MapCard = forwardRef(function MapCard(
-  { title, entriesText, footerText, pathway = null, tier = null, backgroundImage = null },
+  { title, entriesText, footerText, pathway = null, tier = null, backgroundImage = null, onDropBackground },
   ref,
 ) {
+  const { dragging, dropProps } = useBackgroundDrop(onDropBackground)
   const entries = parseMapEntries(entriesText || '')
   const dense = entries.length > 3 || entries.some((entry) => entry.value.length > 44)
   // Sin pathway la ficha se queda con el dorado que trae .ficha por defecto.
@@ -13,11 +15,12 @@ const MapCard = forwardRef(function MapCard(
 
   return (
     <article
-      className={'ficha map-card' + (dense ? ' dense' : '')}
+      className={'ficha map-card' + (dense ? ' dense' : '') + (dragging ? ' dragover' : '')}
       id="card"
       ref={ref}
       style={cardStyle}
       aria-label={`${title || 'Map'} card`}
+      {...dropProps}
     >
       {backgroundImage && (
         <>

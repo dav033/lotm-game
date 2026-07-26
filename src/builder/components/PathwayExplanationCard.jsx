@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react'
 import { titleSizeClass } from '../titleFit'
+import { useBackgroundDrop } from '../useBackgroundDrop'
 
 // El texto entre *asteriscos* se resalta en el color del tier; el resto queda
 // en blanco. Solo una palabra o frase clave lleva color.
@@ -12,20 +13,22 @@ function renderHighlightedTitle(title) {
 }
 
 const PathwayExplanationCard = forwardRef(function PathwayExplanationCard(
-  { pathway, index, total, title, description, backgroundImage = null, tier = null },
+  { pathway, index, total, title, description, backgroundImage = null, tier = null, onDropBackground },
   ref,
 ) {
+  const { dragging, dropProps } = useBackgroundDrop(onDropBackground)
   const shown = title || 'A title with a *highlighted* word.'
   // La talla se mide sobre el texto ya sin asteriscos: son marcas, no letras.
   const size = titleSizeClass(shown.replace(/\*/g, ''))
 
   return (
     <article
-      className="ficha pathway-explanation-card"
+      className={'ficha pathway-explanation-card' + (dragging ? ' dragover' : '')}
       id="card"
       ref={ref}
       style={tier ? { '--tier': tier.c, '--tier-deep': tier.d } : undefined}
       aria-label={`${pathway} pathway explanation`}
+      {...dropProps}
     >
       {backgroundImage && (
         <>

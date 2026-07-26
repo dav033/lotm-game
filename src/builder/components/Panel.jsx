@@ -90,7 +90,9 @@ function BackgroundField({ value, field, set, onUploadImage, help }) {
         </button>
         {value && <button className="btn-img" onClick={() => set({ [field]: null })}>Remove</button>}
       </div>
-      <p className="field-help">{value ? 'Dark overlay applied.' : help}</p>
+      <p className="field-help">
+        {value ? 'Dark overlay applied.' : help} You can also drop an image straight onto the card.
+      </p>
       <input
         ref={inputRef}
         type="file"

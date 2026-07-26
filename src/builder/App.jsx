@@ -558,6 +558,7 @@ export default function App() {
               description={state.pathwayExplanationText ?? ''}
               backgroundImage={pathwayExplanationBackground}
               tier={PATHWAY_COLORS[pathwayExplanationPath]}
+              onDropBackground={(file) => onUploadImage(file, 'pathwayExplanationBackgroundImage')}
             />
           ) : isBreakdown ? (
             <BreakdownCard
@@ -569,6 +570,7 @@ export default function App() {
               edgeLabel={state.breakdownEdgeLabel ?? 'Edge'}
               edgeText={state.breakdownEdgeText ?? ''}
               backgroundImage={state.breakdownBackgroundImage}
+              onDropBackground={(file) => onUploadImage(file, 'breakdownBackgroundImage')}
             />
           ) : isMap ? (
             <MapCard
@@ -579,6 +581,7 @@ export default function App() {
               pathway={mapPathway}
               tier={mapPathway ? PATHWAY_COLORS[mapPathway] : null}
               backgroundImage={mapBackgroundImage}
+              onDropBackground={(file) => onUploadImage(file, 'mapBackgroundImage')}
             />
           ) : (
             <Card

@@ -1,6 +1,7 @@
 import React, { forwardRef } from 'react'
 import { parseSequenceReach } from '../sequencePips'
 import { titleSizeClass } from '../titleFit'
+import { useBackgroundDrop } from '../useBackgroundDrop'
 
 const SEQUENCES = 10
 
@@ -22,9 +23,10 @@ function Section({ label, text, highlight }) {
 }
 
 const BreakdownCard = forwardRef(function BreakdownCard(
-  { kicker, title, does, doesNot, edgeLabel, edgeText, backgroundImage = null },
+  { kicker, title, does, doesNot, edgeLabel, edgeText, backgroundImage = null, onDropBackground },
   ref,
 ) {
+  const { dragging, dropProps } = useBackgroundDrop(onDropBackground)
   const { chip, aside } = splitKicker(kicker)
   const reach = parseSequenceReach(kicker)
   const textLength = (does || '').length + (doesNot || '').length + (edgeText || '').length
@@ -32,10 +34,11 @@ const BreakdownCard = forwardRef(function BreakdownCard(
 
   return (
     <article
-      className={'ficha breakdown-card' + (dense ? ' dense' : '')}
+      className={'ficha breakdown-card' + (dense ? ' dense' : '') + (dragging ? ' dragover' : '')}
       id="card"
       ref={ref}
       aria-label={`${title || 'Breakdown'} concept card`}
+      {...dropProps}
     >
       {backgroundImage && (
         <>
