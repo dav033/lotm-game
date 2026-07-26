@@ -94,15 +94,18 @@ const DEFAULT_STATE = {
   pathwayExplanationPath: 'Fool',
   pathwayExplanationTitle: '',
   pathwayExplanationText: '',
+  pathwayExplanationBackgroundImage: null,
   breakdownKicker: '',
   breakdownTitle: '',
   breakdownDoes: '',
   breakdownDoesNot: '',
   breakdownEdgeLabel: 'Edge',
   breakdownEdgeText: '',
+  breakdownBackgroundImage: null,
   mapTitle: '',
   mapEntriesText: '',
   mapFooterText: '',
+  mapBackgroundImage: null,
 }
 
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
@@ -224,14 +227,17 @@ export default function App() {
       generalExplanationText: '',
       pathwayExplanationTitle: '',
       pathwayExplanationText: '',
+      pathwayExplanationBackgroundImage: null,
       breakdownKicker: '',
       breakdownTitle: '',
       breakdownDoes: '',
       breakdownDoesNot: '',
       breakdownEdgeText: '',
+      breakdownBackgroundImage: null,
       mapTitle: '',
       mapEntriesText: '',
       mapFooterText: '',
+      mapBackgroundImage: null,
       ...(NEW_CARD_SEEDS[state.type] ?? {}),
     }
     const id = await session.createCard(fresh)
@@ -404,6 +410,9 @@ export default function App() {
     ? state.pathwayCardSeq
     : null
   const mapPathway = PATHWAYS[state.mapPathway] ? state.mapPathway : null
+  // Una imagen propia manda sobre el fondo que aporta el pathway.
+  const mapBackgroundImage = state.mapBackgroundImage
+    || (mapPathway ? PATHWAY_BACKGROUNDS[mapPathway] ?? null : null)
   const accent = isCover || isFullImageCover
     ? COVER_ACCENT
     : isTier || isTierExplanation
@@ -542,6 +551,7 @@ export default function App() {
               total={PATH_NAMES.length}
               title={state.pathwayExplanationTitle ?? ''}
               description={state.pathwayExplanationText ?? ''}
+              backgroundImage={state.pathwayExplanationBackgroundImage}
             />
           ) : isBreakdown ? (
             <BreakdownCard
@@ -552,6 +562,7 @@ export default function App() {
               doesNot={state.breakdownDoesNot ?? ''}
               edgeLabel={state.breakdownEdgeLabel ?? 'Edge'}
               edgeText={state.breakdownEdgeText ?? ''}
+              backgroundImage={state.breakdownBackgroundImage}
             />
           ) : isMap ? (
             <MapCard
@@ -561,7 +572,7 @@ export default function App() {
               footerText={state.mapFooterText ?? ''}
               pathway={mapPathway}
               tier={mapPathway ? PATHWAY_COLORS[mapPathway] : null}
-              backgroundImage={mapPathway ? PATHWAY_BACKGROUNDS[mapPathway] ?? null : null}
+              backgroundImage={mapBackgroundImage}
             />
           ) : (
             <Card

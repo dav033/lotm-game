@@ -146,6 +146,9 @@ export const PathwayExplanationCardSchema = z
       'Titulo de la carta. Envuelve la palabra o frase clave en *asteriscos* para resaltarla en color tier.',
     ),
     description: z.string().trim().min(1).max(240).describe('Texto breve mostrado bajo la regla.'),
+    backgroundImageUrl: ImageSourceSchema.optional().describe(
+      'Imagen de fondo opcional, mostrada bajo un velo oscuro.',
+    ),
   })
   .strict()
 
@@ -163,6 +166,9 @@ export const BreakdownCardSchema = z
     ),
     edgeText: z.string().trim().min(1).max(240).describe(
       'Limite, matiz o dato clave de la tercera seccion, resaltado en color tier.',
+    ),
+    backgroundImageUrl: ImageSourceSchema.optional().describe(
+      'Imagen de fondo opcional, mostrada bajo un velo oscuro.',
     ),
   })
   .strict()
@@ -188,6 +194,9 @@ export const MapCardSchema = z
     ),
     pathway: PathwayNameSchema.optional().describe(
       'Pathway opcional del que la carta toma su color y su imagen de fondo. Si se omite, usa el dorado neutro.',
+    ),
+    backgroundImageUrl: ImageSourceSchema.optional().describe(
+      'Imagen de fondo propia. Tiene prioridad sobre el fondo que aporta el pathway.',
     ),
   })
   .strict()
@@ -335,16 +344,19 @@ export type BuilderCardState = {
   pathwayExplanationPath: string
   pathwayExplanationTitle: string
   pathwayExplanationText: string
+  pathwayExplanationBackgroundImage: string | null
   breakdownKicker: string
   breakdownTitle: string
   breakdownDoes: string
   breakdownDoesNot: string
   breakdownEdgeLabel: string
   breakdownEdgeText: string
+  breakdownBackgroundImage: string | null
   mapTitle: string
   mapEntriesText: string
   mapFooterText: string
   mapPathway: string | null
+  mapBackgroundImage: string | null
 }
 
 const DEFAULT_BUILDER_STATE: BuilderCardState = {
@@ -385,16 +397,19 @@ const DEFAULT_BUILDER_STATE: BuilderCardState = {
   pathwayExplanationPath: 'Fool',
   pathwayExplanationTitle: '',
   pathwayExplanationText: '',
+  pathwayExplanationBackgroundImage: null,
   breakdownKicker: '',
   breakdownTitle: '',
   breakdownDoes: '',
   breakdownDoesNot: '',
   breakdownEdgeLabel: 'Edge',
   breakdownEdgeText: '',
+  breakdownBackgroundImage: null,
   mapTitle: '',
   mapEntriesText: '',
   mapFooterText: '',
   mapPathway: null,
+  mapBackgroundImage: null,
 }
 
 export function toBuilderCardState(content: CardContent): BuilderCardState {
@@ -465,6 +480,7 @@ export function toBuilderCardState(content: CardContent): BuilderCardState {
       pathwayExplanationPath: content.pathway,
       pathwayExplanationTitle: content.title,
       pathwayExplanationText: content.description,
+      pathwayExplanationBackgroundImage: content.backgroundImageUrl ?? null,
     }
   }
 
@@ -477,6 +493,7 @@ export function toBuilderCardState(content: CardContent): BuilderCardState {
       breakdownDoesNot: content.doesNot,
       breakdownEdgeLabel: content.edgeLabel,
       breakdownEdgeText: content.edgeText,
+      breakdownBackgroundImage: content.backgroundImageUrl ?? null,
     }
   }
 
@@ -489,6 +506,7 @@ export function toBuilderCardState(content: CardContent): BuilderCardState {
         .join('\n'),
       mapFooterText: content.footerText ?? '',
       mapPathway: content.pathway ?? null,
+      mapBackgroundImage: content.backgroundImageUrl ?? null,
     }
   }
 
@@ -565,6 +583,9 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
       pathway: state.pathwayExplanationPath,
       title: state.pathwayExplanationTitle.trim(),
       description: state.pathwayExplanationText.trim(),
+      ...(state.pathwayExplanationBackgroundImage
+        ? { backgroundImageUrl: state.pathwayExplanationBackgroundImage }
+        : {}),
     }
   }
   if (state.type === 'Breakdown') {
@@ -576,6 +597,7 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
       doesNot: state.breakdownDoesNot.trim(),
       edgeLabel: state.breakdownEdgeLabel.trim() || 'Edge',
       edgeText: state.breakdownEdgeText.trim(),
+      ...(state.breakdownBackgroundImage ? { backgroundImageUrl: state.breakdownBackgroundImage } : {}),
     }
   }
   if (state.type === 'Map') {
@@ -585,6 +607,7 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
       entries: parseMapEntries(state.mapEntriesText),
       ...(state.mapFooterText.trim() ? { footerText: state.mapFooterText.trim() } : {}),
       ...(state.mapPathway ? { pathway: state.mapPathway } : {}),
+      ...(state.mapBackgroundImage ? { backgroundImageUrl: state.mapBackgroundImage } : {}),
     }
   }
   const standard = {

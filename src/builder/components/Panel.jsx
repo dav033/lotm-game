@@ -76,6 +76,36 @@ function SeqSelect({ path, value, onChange }) {
   )
 }
 
+// Campo de imagen de fondo. Cada carta guarda la suya en un campo distinto del
+// estado, asi que el nombre llega por prop y el input vive aqui dentro para no
+// compartir un unico ref entre secciones.
+function BackgroundField({ value, field, set, onUploadImage, help }) {
+  const inputRef = useRef(null)
+  return (
+    <div className="field">
+      <label>Background image (optional)</label>
+      <div className="actions tier-background-actions">
+        <button className="btn-img" onClick={() => inputRef.current?.click()}>
+          {value ? 'Replace image' : 'Upload image'}
+        </button>
+        {value && <button className="btn-img" onClick={() => set({ [field]: null })}>Remove</button>}
+      </div>
+      <p className="field-help">{value ? 'Dark overlay applied.' : help}</p>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        aria-label="Choose background image"
+        hidden
+        onChange={(event) => {
+          onUploadImage(event.target.files[0], field)
+          event.target.value = ''
+        }}
+      />
+    </div>
+  )
+}
+
 export default function Panel({ state, set, accent, onUploadImage, onDownload, onGenerateTierBatch }) {
   const fileRef = useRef(null)
   const isCover = state.type === 'Cover'
@@ -532,6 +562,14 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
             <p className="field-help">{(state.pathwayExplanationText ?? '').length}/240 characters</p>
           </div>
 
+          <BackgroundField
+            value={state.pathwayExplanationBackgroundImage}
+            field="pathwayExplanationBackgroundImage"
+            set={set}
+            onUploadImage={onUploadImage}
+            help="No background image selected."
+          />
+
           <div className="actions">
             <button className="btn-dl" style={{ background: accent.c }} onClick={onDownload}>Download PNG</button>
           </div>
@@ -619,6 +657,14 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
             />
           </div>
 
+          <BackgroundField
+            value={state.breakdownBackgroundImage}
+            field="breakdownBackgroundImage"
+            set={set}
+            onUploadImage={onUploadImage}
+            help="No background image selected."
+          />
+
           <div className="actions">
             <button className="btn-dl" style={{ background: accent.c }} onClick={onDownload}>Download PNG</button>
           </div>
@@ -695,6 +741,16 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
               onChange={(e) => set({ mapFooterText: e.target.value })}
             />
           </div>
+
+          <BackgroundField
+            value={state.mapBackgroundImage}
+            field="mapBackgroundImage"
+            set={set}
+            onUploadImage={onUploadImage}
+            help={state.mapPathway
+              ? `Using the default ${state.mapPathway} background. Upload one to override it.`
+              : 'No background image selected.'}
+          />
 
           <div className="actions">
             <button className="btn-dl" style={{ background: accent.c }} onClick={onDownload}>Download PNG</button>

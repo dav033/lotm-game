@@ -12,7 +12,7 @@ function renderHighlightedTitle(title) {
 }
 
 const PathwayExplanationCard = forwardRef(function PathwayExplanationCard(
-  { pathway, index, total, title, description },
+  { pathway, index, total, title, description, backgroundImage = null },
   ref,
 ) {
   const shown = title || 'A title with a *highlighted* word.'
@@ -26,6 +26,16 @@ const PathwayExplanationCard = forwardRef(function PathwayExplanationCard(
       ref={ref}
       aria-label={`${pathway} pathway explanation`}
     >
+      {backgroundImage && (
+        <>
+          <div
+            className="tier-background"
+            style={{ backgroundImage: `url("${backgroundImage}")` }}
+            aria-hidden="true"
+          />
+          <div className="tier-background-overlay" aria-hidden="true" />
+        </>
+      )}
       <div className="pathway-explanation-content">
         <header className="pathway-explanation-head">
           <span className="pathway-explanation-chip">{pathway}</span>

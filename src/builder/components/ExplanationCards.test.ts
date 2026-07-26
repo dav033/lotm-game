@@ -94,6 +94,26 @@ test('Breakdown deriva los pips de la secuencia escrita en el kicker', () => {
   assert.doesNotMatch(sinSecuencia, /breakdown-ghost/)
 })
 
+test('Breakdown y Pathway Explanation pintan la imagen de fondo bajo su velo', () => {
+  const breakdown = renderToStaticMarkup(React.createElement(Breakdown, {
+    kicker: 'Authority', title: 'Seals', does: 'a', doesNot: 'b', edgeLabel: 'Edge', edgeText: 'c',
+    backgroundImage: '/covers/seals.jpg',
+  }))
+  const explicacion = renderToStaticMarkup(React.createElement(PathwayExplanation, {
+    pathway: 'Door', index: 2, total: 22, title: 'Un *gancho*.', description: 'Texto.',
+    backgroundImage: '/covers/door.jpg',
+  }))
+
+  assert.match(breakdown, /tier-background[\s\S]*?covers\/seals\.jpg/)
+  assert.match(breakdown, /tier-background-overlay/)
+  assert.match(explicacion, /tier-background[\s\S]*?covers\/door\.jpg/)
+  // Sin imagen no se emite ningun nodo de fondo.
+  const pelado = renderToStaticMarkup(React.createElement(Breakdown, {
+    kicker: 'Authority', title: 'Seals', does: 'a', doesNot: 'b', edgeLabel: 'Edge', edgeText: 'c',
+  }))
+  assert.doesNotMatch(pelado, /tier-background/)
+})
+
 test('Breakdown sin kicker no reserva espacio para él', () => {
   const html = renderToStaticMarkup(React.createElement(Breakdown, {
     title: 'Door',

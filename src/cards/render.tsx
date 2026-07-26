@@ -243,6 +243,7 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
           total={PATH_NAMES.length}
           title={state.pathwayExplanationTitle}
           description={state.pathwayExplanationText}
+          backgroundImage={state.pathwayExplanationBackgroundImage}
         />
       ) : isBreakdown ? (
         <StaticBreakdownCard
@@ -252,6 +253,7 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
           doesNot={state.breakdownDoesNot}
           edgeLabel={state.breakdownEdgeLabel}
           edgeText={state.breakdownEdgeText}
+          backgroundImage={state.breakdownBackgroundImage}
         />
       ) : isMap ? (
         <StaticMapCard
@@ -288,8 +290,10 @@ async function resolveStateImages(
   const generalExplanationSource = state.type === 'General Explanation' && state.explanationPath
     ? (PATHWAY_BACKGROUNDS as Record<string, string>)[state.explanationPath] ?? null
     : null
-  const mapSource = state.type === 'Map' && state.mapPathway
-    ? (PATHWAY_BACKGROUNDS as Record<string, string>)[state.mapPathway] ?? null
+  // En un Map la imagen propia manda sobre la que aporta el pathway.
+  const mapSource = state.type === 'Map'
+    ? state.mapBackgroundImage
+      ?? (state.mapPathway ? (PATHWAY_BACKGROUNDS as Record<string, string>)[state.mapPathway] ?? null : null)
     : null
   const tierBackgroundSource = state.tierBackgroundImage
     ?? (state.type === 'Tier'
@@ -324,6 +328,12 @@ async function resolveStateImages(
       ? await resolveImageSource(generalExplanationSource, publicDir)
       : null,
     mapBackground: mapSource ? await resolveImageSource(mapSource, publicDir) : null,
+    pathwayExplanationBackgroundImage: state.pathwayExplanationBackgroundImage
+      ? await resolveImageSource(state.pathwayExplanationBackgroundImage, publicDir)
+      : null,
+    breakdownBackgroundImage: state.breakdownBackgroundImage
+      ? await resolveImageSource(state.breakdownBackgroundImage, publicDir)
+      : null,
   }
 }
 

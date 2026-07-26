@@ -117,6 +117,7 @@ export default function LiveCardPreview({ state }) {
         total={PATH_NAMES.length}
         title={state.pathwayExplanationTitle}
         description={state.pathwayExplanationText}
+        backgroundImage={state.pathwayExplanationBackgroundImage}
       />
     )
   }
@@ -130,6 +131,7 @@ export default function LiveCardPreview({ state }) {
         doesNot={state.breakdownDoesNot}
         edgeLabel={state.breakdownEdgeLabel}
         edgeText={state.breakdownEdgeText}
+        backgroundImage={state.breakdownBackgroundImage}
       />
     )
   }
@@ -143,7 +145,8 @@ export default function LiveCardPreview({ state }) {
         footerText={state.mapFooterText}
         pathway={mapPathway}
         tier={mapPathway ? PATHWAY_COLORS[mapPathway] : null}
-        backgroundImage={mapPathway ? PATHWAY_BACKGROUNDS[mapPathway] ?? null : null}
+        backgroundImage={state.mapBackgroundImage
+          || (mapPathway ? PATHWAY_BACKGROUNDS[mapPathway] ?? null : null)}
       />
     )
   }

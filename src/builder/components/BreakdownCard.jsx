@@ -22,7 +22,7 @@ function Section({ label, text, highlight }) {
 }
 
 const BreakdownCard = forwardRef(function BreakdownCard(
-  { kicker, title, does, doesNot, edgeLabel, edgeText },
+  { kicker, title, does, doesNot, edgeLabel, edgeText, backgroundImage = null },
   ref,
 ) {
   const { chip, aside } = splitKicker(kicker)
@@ -37,6 +37,16 @@ const BreakdownCard = forwardRef(function BreakdownCard(
       ref={ref}
       aria-label={`${title || 'Breakdown'} concept card`}
     >
+      {backgroundImage && (
+        <>
+          <div
+            className="tier-background"
+            style={{ backgroundImage: `url("${backgroundImage}")` }}
+            aria-hidden="true"
+          />
+          <div className="tier-background-overlay" aria-hidden="true" />
+        </>
+      )}
       {/* La cifra fantasma repite la secuencia con control completo. */}
       {reach && <div className="breakdown-ghost" aria-hidden="true">{reach.full}</div>}
       <div className="breakdown-content">

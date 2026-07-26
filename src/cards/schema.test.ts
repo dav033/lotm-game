@@ -167,6 +167,33 @@ test('una Map con pathway conserva el tema al ida y vuelta', () => {
   assert.equal(roundTripped.type === 'Map' && roundTripped.pathway, 'Door')
 })
 
+test('las tres cartas nuevas aceptan una imagen de fondo propia', () => {
+  const explicacion = CardContentSchema.parse({
+    type: 'Pathway Explanation', pathway: 'Door', title: 'Un *gancho*.', description: 'Texto.',
+    backgroundImageUrl: '/covers/door.jpg',
+  })
+  const breakdown = CardContentSchema.parse({
+    type: 'Breakdown', title: 'Seals', does: 'a', doesNot: 'b', edgeLabel: 'Edge', edgeText: 'c',
+    backgroundImageUrl: '/covers/seals.jpg',
+  })
+  const mapa = CardContentSchema.parse({
+    type: 'Map', title: 'The chain', entries: [{ tags: 'Means', value: 'Door' }],
+    pathway: 'Door', backgroundImageUrl: '/covers/custom.jpg',
+  })
+
+  assert.equal(toBuilderCardState(explicacion).pathwayExplanationBackgroundImage, '/covers/door.jpg')
+  assert.equal(toBuilderCardState(breakdown).breakdownBackgroundImage, '/covers/seals.jpg')
+  assert.equal(toBuilderCardState(mapa).mapBackgroundImage, '/covers/custom.jpg')
+  // Ida y vuelta: la ruta sobrevive al paso por el estado del editor.
+  const ida = fromBuilderCardState(toBuilderCardState(breakdown))
+  assert.equal(ida.type === 'Breakdown' && ida.backgroundImageUrl, '/covers/seals.jpg')
+  // Sin imagen el campo no se inventa.
+  const sinFondo = fromBuilderCardState(toBuilderCardState(
+    CardContentSchema.parse({ type: 'Breakdown', title: 'Door', does: 'a', doesNot: 'b', edgeText: 'c' }),
+  ))
+  assert.equal(sinFondo.type === 'Breakdown' && 'backgroundImageUrl' in sinFondo, false)
+})
+
 test('valida un cover de imagen completa con título al pie', () => {
   const cover = CardContentSchema.parse({
     type: 'Full Image Cover',
