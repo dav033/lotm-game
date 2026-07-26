@@ -105,31 +105,38 @@ await upstream.connect(new StreamableHTTPClientTransport(new URL(`${base}/mcp/`)
   requestInit: { headers: cabeceras },
 }))
 
-const server = new Server(
-  { name: 'obsidian-bridge', version: '1.0.0' },
-  { capabilities: { tools: {} } },
-)
+// Uno nuevo por peticion: reconectar la misma instancia a transportes sucesivos
+// deja la sesion rota ("Session not found") en la segunda llamada. El cliente
+// hacia el plugin si es unico y de larga vida.
+function creaServidor(): Server {
+  const server = new Server(
+    { name: 'obsidian-bridge', version: '1.0.0' },
+    { capabilities: { tools: {} } },
+  )
 
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  const { tools } = await upstream.listTools()
-  return { tools: [...tools, HERRAMIENTA_BINARIA] }
-})
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    const { tools } = await upstream.listTools()
+    return { tools: [...tools, HERRAMIENTA_BINARIA] }
+  })
 
-server.setRequestHandler(CallToolRequestSchema, async (peticion) => {
-  const { name, arguments: args } = peticion.params
-  if (name !== HERRAMIENTA_BINARIA.name) {
-    return upstream.callTool({ name, arguments: args ?? {} })
-  }
-  try {
-    const resultado = await escribirBinario(args ?? {})
-    return { content: [{ type: 'text', text: JSON.stringify(resultado, null, 2) }] }
-  } catch (error) {
-    return {
-      isError: true,
-      content: [{ type: 'text', text: error instanceof Error ? error.message : String(error) }],
+  server.setRequestHandler(CallToolRequestSchema, async (peticion) => {
+    const { name, arguments: args } = peticion.params
+    if (name !== HERRAMIENTA_BINARIA.name) {
+      return upstream.callTool({ name, arguments: args ?? {} })
     }
-  }
-})
+    try {
+      const resultado = await escribirBinario(args ?? {})
+      return { content: [{ type: 'text', text: JSON.stringify(resultado, null, 2) }] }
+    } catch (error) {
+      return {
+        isError: true,
+        content: [{ type: 'text', text: error instanceof Error ? error.message : String(error) }],
+      }
+    }
+  })
+
+  return server
+}
 
 // El SDK valida la cabecera Host contra el DNS rebinding, asi que el dominio
 // publico por el que entra ChatGPT tiene que declararse.
@@ -142,7 +149,8 @@ app.get('/health', (_peticion, respuesta) => respuesta.json({ ok: true, service:
 
 app.post('/mcp', async (peticion, respuesta) => {
   const transporte = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
-  respuesta.on('close', () => void transporte.close())
+  const server = creaServidor()
+  respuesta.on('close', () => void Promise.all([transporte.close(), server.close()]))
   try {
     await server.connect(transporte)
     await transporte.handleRequest(peticion, respuesta, peticion.body)
