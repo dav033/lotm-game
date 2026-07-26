@@ -179,6 +179,25 @@ nunca almacena binarios. Una IA que genere una imagen la sube con
 en línea, así que ese es el único camino. Las cartas que quedaran en IndexedDB de versiones
 anteriores se suben al servidor la primera vez que se abre el editor.
 
+### Despliegue automático
+
+El servidor se actualiza solo. Un timer de systemd ejecuta
+`/usr/local/bin/autodeploy.sh` cada 2 minutos: por cada proyecto compara su
+`HEAD` con la rama remota y, si el remoto avanzó, hace `pull --ff-only`,
+reconstruye y levanta. Publicar es empujar a `main`.
+
+```bash
+systemctl list-timers autodeploy.timer   # cuándo toca la próxima
+tail -f /var/log/autodeploy.log          # qué desplegó y qué falló
+sudo systemctl start autodeploy.service  # forzar una pasada ahora
+```
+
+Solo hace fast-forward: si la copia del servidor diverge o tiene cambios en
+archivos versionados, lo anota en el log y no despliega, en vez de descartar
+trabajo. Nunca ejecuta `reset --hard` ni `clean`, porque en producción hay
+archivos sin versionar que deben sobrevivir. Si el build falla, sigue corriendo
+lo anterior.
+
 ### Producción y ChatGPT
 
 El contenedor `cards-mcp` del archivo `docker-compose.production.yml` ejecuta
