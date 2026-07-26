@@ -322,16 +322,28 @@
   color:var(--text);white-space:pre-line;overflow-wrap:anywhere}
 
 .general-explanation-card{--tier:#d9b869;--tier-deep:#4a3a17}
-.general-explanation-content{padding:48px 24px 24px}
-.general-explanation-title{max-width:10ch;font-family:'Cinzel',serif;font-size:54px;font-weight:900;
-  line-height:1.06;color:#fff;overflow-wrap:anywhere;
+/* Esta carta se alinea a la izquierda; .explanation-content centra porque lo
+   comparte con la carta de Tier Explanation. */
+.general-explanation-content{padding:54px 34px 30px;align-items:flex-start;
+  justify-content:flex-start;text-align:left}
+/* El titulo ocupa el ancho de la carta: antes un max-width de 10ch lo partia en
+   varias lineas aunque cupiera de sobra. */
+.general-explanation-title{font-family:'Cinzel',serif;font-size:34px;font-weight:900;
+  line-height:1.14;color:#fff;overflow-wrap:anywhere;
   text-shadow:-1px 0 rgba(255,40,90,.28),1px 0 rgba(40,170,255,.28)}
-.general-explanation-rule{width:62px;height:2px;margin:30px 0;background:var(--tier);
-  box-shadow:0 0 14px var(--tier-deep)}
-.general-explanation-description{max-width:34ch;font-size:17px;line-height:1.62;color:var(--text);
+/* flex:0 0 auto o el flex-shrink del contenedor en columna la aplasta a 0. */
+.general-explanation-rule{flex:0 0 auto;width:96px;height:3px;margin:14px 0 26px;
+  background:var(--tier);box-shadow:0 0 14px var(--tier-deep)}
+.general-explanation-body{display:flex;flex-direction:column;gap:18px}
+.general-explanation-description{font-size:17px;line-height:1.62;color:var(--text);
   white-space:pre-line;overflow-wrap:anywhere}
-.general-explanation-card.dense .general-explanation-title{font-size:43px}
-.general-explanation-card.dense .general-explanation-description{font-size:15px;line-height:1.5}
+/* ponytail: dos tamanos fijos, no ajuste automatico. Cubre el rango util; con
+   mucho mas texto del que cabe, la carta recorta (overflow:hidden). */
+.general-explanation-card.dense .general-explanation-content{padding:38px 34px 26px}
+.general-explanation-card.dense .general-explanation-title{font-size:26px;line-height:1.16}
+.general-explanation-card.dense .general-explanation-rule{margin:12px 0 20px;width:80px;height:2px}
+.general-explanation-card.dense .general-explanation-body{gap:13px}
+.general-explanation-card.dense .general-explanation-description{font-size:14px;line-height:1.5}
 
 /* ================= CONTROL PANEL ================= */
 .panel{width:360px;flex:0 0 auto;background:var(--panel);border-left:1px solid var(--line);

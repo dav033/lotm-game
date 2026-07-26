@@ -4,7 +4,14 @@ const GeneralExplanationCard = forwardRef(function GeneralExplanationCard(
   { title, description, scope },
   ref,
 ) {
-  const dense = title.length > 45 || description.length > 520
+  const dense = title.length > 38 || description.length > 500
+  // Una linea en blanco separa parrafos. Dentro de uno, los saltos sueltos se
+  // conservan (white-space:pre-line), asi que una lista sigue viendose como tal.
+  const paragraphs = (description || 'Add the explanation in the editor panel.')
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+
   return (
     <article
       className={'explanation-card general-explanation-card' + (dense ? ' dense' : '')}
@@ -17,9 +24,11 @@ const GeneralExplanationCard = forwardRef(function GeneralExplanationCard(
       <div className="explanation-content general-explanation-content">
         <h2 className="general-explanation-title">{title || 'Explanation title'}</h2>
         <div className="general-explanation-rule" aria-hidden="true" />
-        <p className="general-explanation-description">
-          {description || 'Add the explanation in the editor panel.'}
-        </p>
+        <div className="general-explanation-body">
+          {paragraphs.map((block, index) => (
+            <p className="general-explanation-description" key={index}>{block}</p>
+          ))}
+        </div>
       </div>
     </article>
   )
