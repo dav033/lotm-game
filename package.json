@@ -14,7 +14,8 @@
     "cards:browser": "playwright install chromium",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "obsidian:bridge": "node --import tsx mcp/obsidian-bridge.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
