@@ -90,8 +90,7 @@ export class CardPngRenderer {
     }
 
     const context = await browser.newContext({
-      // Mas alto que la carta (960) para que quepa entera sin recorte.
-      viewport: { width: 1_200, height: 1_100 },
+      viewport: { width: 1_200, height: 900 },
       deviceScaleFactor: 2,
     })
     const page = await context.newPage()
