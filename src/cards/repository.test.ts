@@ -459,3 +459,37 @@ test('borrar un proyecto arrastra sus imagenes importadas', async (t) => {
 
   assert.deepEqual(repository.listImages(), [])
 })
+
+test('la duracion propia se guarda, se acota y se puede quitar', async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-duration-'))
+  const repository = new CardRepository(path.join(directory, 'cards.db'))
+  t.after(async () => {
+    repository.close()
+    await fs.rm(directory, { recursive: true, force: true })
+  })
+
+  const [card] = repository.saveBatch({
+    universe: { name: 'LOTM' },
+    part: { name: 'Door', number: 1 },
+    cards: [{ type: 'Pathway', pathway: 'Door', points: ['Sellos'] }],
+  })
+  // Sin tocar nada, una carta hereda la duracion global.
+  assert.equal(card.durationSeconds, null)
+
+  assert.equal(repository.setCardDuration(card.id, 7.5)?.durationSeconds, 7.5)
+  assert.equal(repository.getCard(card.id)?.durationSeconds, 7.5)
+  // Los limites se aplican en el repositorio, no solo en la ruta HTTP.
+  assert.equal(repository.setCardDuration(card.id, 900)?.durationSeconds, 60)
+  assert.equal(repository.setCardDuration(card.id, 0)?.durationSeconds, 0.5)
+  // null la devuelve a la global.
+  assert.equal(repository.setCardDuration(card.id, null)?.durationSeconds, null)
+  assert.equal(repository.setCardDuration(randomUUID(), 3), null)
+
+  const project = repository.createProject('Recortes')
+  const [image] = repository.addImages(project.id, [{ url: '/a.png', name: 'a.png' }])
+  assert.equal(image.durationSeconds, null)
+  assert.equal(repository.setImageDuration(image.id, 2.5)?.durationSeconds, 2.5)
+  assert.equal(repository.listImages(project.id)[0].durationSeconds, 2.5)
+  assert.equal(repository.setImageDuration(image.id, null)?.durationSeconds, null)
+  assert.equal(repository.setImageDuration(randomUUID(), 3), null)
+})

@@ -75,6 +75,7 @@ function storedCard(
     content,
     createdAt: '2026-07-20T00:00:00.000Z',
     updatedAt: '2026-07-20T00:00:00.000Z',
+    durationSeconds: null,
     universe: { id: 'u', slug: 'bleach', name: 'Bleach', description: '' },
     part: { id: 'p', slug: 'soul-society', name: 'Soul Society', number: 1, description: '' },
   }

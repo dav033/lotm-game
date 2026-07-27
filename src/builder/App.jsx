@@ -425,6 +425,8 @@ export default function App() {
         })
         const data = await captureCard()
         form.append('frames', await (await fetch(data)).blob(), `${item.id}.png`)
+        // Vacio = esta carta no tiene excepcion y usa la duracion global.
+        form.append('durations', item.durationSeconds ?? '')
       }
 
       await sendVideo(form)
@@ -453,6 +455,7 @@ export default function App() {
       form.append('name', `${slugify(project?.name ?? 'proyecto')}-imagenes`)
       for (const image of images) {
         form.append('frames', await imageToPng(image.url), `${image.id}.png`)
+        form.append('durations', image.durationSeconds ?? '')
       }
       await sendVideo(form)
     } catch (error) {
@@ -577,6 +580,7 @@ export default function App() {
       state: cardState,
       universe: card.universe,
       part: card.part,
+      durationSeconds: card.durationSeconds ?? null,
     }
   })
 
@@ -763,6 +767,7 @@ export default function App() {
           videoError={videoError}
           seconds={seconds}
           onSeconds={setSeconds}
+          onCardDuration={(id, value) => session.setDuration('card', id, value)}
         />
 
         <ImageTray
@@ -773,6 +778,7 @@ export default function App() {
           onDelete={session.deleteImage}
           onReorder={(imageIds) => session.reorderImages(activeProjectId, imageIds)}
           onExportVideo={onExportImagesVideo}
+          onImageDuration={(id, value) => session.setDuration('image', id, value)}
         />
       </section>
 

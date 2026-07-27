@@ -40,6 +40,7 @@ type JoinedCardRow = {
   data_json: string
   created_at: string
   updated_at: string
+  duration_seconds: number | null
   universe_id: string
   universe_slug: string
   universe_name: string
@@ -59,6 +60,8 @@ export type StoredCard = {
   content: CardContent
   createdAt: string
   updatedAt: string
+  // null = usa la duracion global que se pide al exportar el video.
+  durationSeconds: number | null
   universe: {
     id: string
     slug: string
@@ -90,6 +93,7 @@ type ImportedImageRow = {
   url: string
   name: string
   created_at: string
+  duration_seconds: number | null
 }
 
 export type ImportedImage = {
@@ -99,6 +103,7 @@ export type ImportedImage = {
   url: string
   name: string
   createdAt: string
+  durationSeconds: number | null
 }
 
 export type MoveCardsTarget = {
@@ -432,6 +437,31 @@ export class CardRepository {
     return this.listProjects().find((project) => project.slug === slug) as Project
   }
 
+  // ---- Duracion propia en el video ----
+
+  // `null` borra la excepcion y devuelve la carta a la duracion global. El
+  // valor se acota aqui y no solo en la ruta porque el MCP entra por aqui.
+  setCardDuration(id: string, seconds: number | null): StoredCard | null {
+    const value = seconds === null ? null : clampDuration(seconds)
+    const changed = this.db
+      .prepare('UPDATE cards SET duration_seconds = ? WHERE id = ?')
+      .run(value, id).changes
+    if (!changed) return null
+    this.localWrites += 1
+    return this.getCard(id)
+  }
+
+  setImageDuration(id: string, seconds: number | null): ImportedImage | null {
+    const value = seconds === null ? null : clampDuration(seconds)
+    const changed = this.db
+      .prepare('UPDATE imported_images SET duration_seconds = ? WHERE id = ?')
+      .run(value, id).changes
+    if (!changed) return null
+    this.localWrites += 1
+    const row = this.db.prepare('SELECT * FROM imported_images WHERE id = ?').get(id)
+    return row ? mapImage(row as ImportedImageRow) : null
+  }
+
   // ---- Imagenes importadas ----
 
   listImages(universeId?: string): ImportedImage[] {
@@ -504,14 +534,23 @@ export class CardRepository {
 
   private migrate(): void {
     const version = this.db.pragma('user_version', { simple: true }) as number
-    if (version > 6) throw new Error(`La version ${version} de cards.db no es compatible.`)
-    if (version === 6) return
+    if (version > 7) throw new Error(`La version ${version} de cards.db no es compatible.`)
+    if (version === 7) return
+
+    if (version === 6) {
+      this.db.exec(`
+        ${DURATION_COLUMNS}
+        PRAGMA user_version = 7;
+      `)
+      return
+    }
 
     if (version === 5) {
       this.db.exec(`
         ${IMPORTED_IMAGES_SCHEMA}
         PRAGMA user_version = 6;
       `)
+      this.migrate()
       return
     }
 
@@ -651,14 +690,34 @@ export class CardRepository {
       CREATE INDEX cards_part_id_idx ON cards(part_id);
       CREATE INDEX parts_universe_id_idx ON parts(universe_id);
       ${IMPORTED_IMAGES_SCHEMA}
-      PRAGMA user_version = 6;
+      ${DURATION_COLUMNS}
+      PRAGMA user_version = 7;
     `)
   }
 }
 
+// Duracion propia de una carta o imagen en el video, en segundos. NULL es lo
+// normal y significa "usa la duracion global que se pide al exportar"; asi la
+// global sigue mandando sobre todo lo que no se haya tocado a mano.
+const DURATION_COLUMNS = `
+  ALTER TABLE cards ADD COLUMN duration_seconds REAL;
+  ALTER TABLE imported_images ADD COLUMN duration_seconds REAL;
+`
+
 // Imagenes que se importan tal cual, sin convertirse en carta: no se editan,
 // solo se ordenan y se exportan. Cuelgan del universo (el "proyecto") y no de
 // una parte, porque no participan en la numeracion de las cartas.
+// Mismos limites que src/cards/video.ts. Se repiten aqui en vez de importarlos
+// porque ese modulo arrastra ffmpeg-static, y el repositorio lo usan el MCP y
+// los scripts, que no tienen por que cargar un binario de 50 MB.
+export const MIN_CARD_DURATION = 0.5
+export const MAX_CARD_DURATION = 60
+
+function clampDuration(value: number): number {
+  if (!Number.isFinite(value)) throw new Error('La duracion tiene que ser un numero.')
+  return Math.min(MAX_CARD_DURATION, Math.max(MIN_CARD_DURATION, value))
+}
+
 function mapImage(row: ImportedImageRow): ImportedImage {
   return {
     id: row.id,
@@ -667,6 +726,7 @@ function mapImage(row: ImportedImageRow): ImportedImage {
     url: row.url,
     name: row.name,
     createdAt: row.created_at,
+    durationSeconds: row.duration_seconds,
   }
 }
 
@@ -686,6 +746,7 @@ const IMPORTED_IMAGES_SCHEMA = `
 const CARD_SELECT = `
   SELECT
     c.id, c.position, c.type, c.title, c.data_json, c.created_at, c.updated_at,
+    c.duration_seconds,
     u.id AS universe_id, u.slug AS universe_slug, u.name AS universe_name,
     u.description AS universe_description,
     p.id AS part_id, p.slug AS part_slug, p.name AS part_name,
@@ -704,6 +765,7 @@ function mapCard(row: JoinedCardRow): StoredCard {
     content: CardContentSchema.parse(JSON.parse(row.data_json)),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    durationSeconds: row.duration_seconds,
     universe: {
       id: row.universe_id,
       slug: row.universe_slug,

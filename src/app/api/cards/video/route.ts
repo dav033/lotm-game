@@ -20,6 +20,7 @@ const MAX_TOTAL_BYTES = 256 * 1024 * 1024
 export async function POST(request: Request) {
   let frames: Uint8Array[]
   let seconds: number
+  let durations: Array<number | null>
   let filename: string
   try {
     const form = await request.formData()
@@ -32,6 +33,17 @@ export async function POST(request: Request) {
 
     const rawSeconds = Number(form.get('secondsPerCard') ?? DEFAULT_SECONDS_PER_CARD)
     seconds = clampSeconds(rawSeconds)
+
+    // Una duracion por fotograma, en el mismo orden. Cadena vacia significa
+    // "sin excepcion": ese fotograma usa la duracion global.
+    const rawDurations = form.getAll('durations').map(String)
+    durations = files.map((_, index) => {
+      const own = rawDurations[index]
+      if (own === undefined || own.trim() === '') return null
+      const parsed = Number(own)
+      if (!Number.isFinite(parsed)) return null
+      return parsed
+    })
     filename = `${slugify(String(form.get('name') || 'cartas'))}.mp4`
     frames = await Promise.all(
       files.map(async (file) => new Uint8Array(await file.arrayBuffer())),
@@ -41,7 +53,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const video = await createVideoFromFrames(frames, { secondsPerCard: seconds })
+    const video = await createVideoFromFrames(frames, { secondsPerCard: seconds, durations })
     return new NextResponse(new Uint8Array(video), {
       headers: {
         'Content-Type': 'video/mp4',

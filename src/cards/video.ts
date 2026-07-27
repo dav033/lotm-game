@@ -14,6 +14,9 @@ export const DEFAULT_FPS = 30
 
 export type CardVideoOptions = {
   secondsPerCard?: number
+  // Duracion propia de cada fotograma, en el mismo orden que `frames`. Un hueco
+  // (null/undefined) cae en `secondsPerCard`, que es la duracion global.
+  durations?: Array<number | null | undefined>
   fps?: number
 }
 
@@ -34,7 +37,11 @@ export async function createVideoFromFrames(
   // El estrechado de tipo se pierde dentro de los callbacks de abajo.
   const ffmpeg = ffmpegPath
 
-  const seconds = clampSeconds(options.secondsPerCard ?? DEFAULT_SECONDS_PER_CARD)
+  const fallback = clampSeconds(options.secondsPerCard ?? DEFAULT_SECONDS_PER_CARD)
+  const seconds = frames.map((_, index) => {
+    const own = options.durations?.[index]
+    return own === null || own === undefined ? fallback : clampSeconds(own)
+  })
   const fps = options.fps ?? DEFAULT_FPS
   const workDir = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-video-'))
 
@@ -83,7 +90,7 @@ export async function createVideoFromFrames(
     // El demuxer concat ignora la duracion de la ultima entrada, asi que se
     // repite el archivo final para que esa carta dure lo mismo que las demas.
     const listing = [
-      ...canvas.map((file) => `file '${ffmpegEscape(file)}'\nduration ${seconds}`),
+      ...canvas.map((file, index) => `file '${ffmpegEscape(file)}'\nduration ${seconds[index]}`),
       `file '${ffmpegEscape(canvas[canvas.length - 1])}'`,
     ].join('\n')
     const listFile = path.join(workDir, 'frames.txt')

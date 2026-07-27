@@ -31,6 +31,7 @@ const toSessionCard = (card) => ({
   universe: card.universe,
   part: card.part,
   updatedAt: card.updatedAt,
+  durationSeconds: card.durationSeconds ?? null,
   state: toBuilderCardState(card.content),
 })
 
@@ -230,6 +231,34 @@ export function useCardSession() {
     }
   }, [pull])
 
+  // Duracion propia de una carta o imagen. `seconds: null` la devuelve a la
+  // global. Se aplica ya en pantalla y se confirma contra el servidor.
+  const setDuration = useCallback(async (kind, id, seconds) => {
+    const apply = (list) => list.map((item) => (
+      item.id === id ? { ...item, durationSeconds: seconds } : item
+    ))
+    if (kind === 'card') setCards(apply)
+    else setImages(apply)
+    try {
+      const response = await fetch('/api/cards/duration', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind, id, seconds }),
+      })
+      if (!response.ok) {
+        setError(await readError(response, 'No se pudo cambiar la duracion'))
+        void pull()
+        return false
+      }
+      setError(null)
+      return true
+    } catch {
+      setError(OFFLINE_MESSAGE)
+      void pull()
+      return false
+    }
+  }, [pull])
+
   const createProject = useCallback(async (name) => {
     try {
       const response = await fetch('/api/cards/projects', {
@@ -390,6 +419,7 @@ export function useCardSession() {
     renameSection,
     uploadImage,
     createProject,
+    setDuration,
     importImages,
     deleteImage,
     reorderImages,

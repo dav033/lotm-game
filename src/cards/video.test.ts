@@ -35,6 +35,64 @@ test('sin fotogramas no se invoca a ffmpeg', async () => {
   await assert.rejects(createVideoFromFrames([]), /No hay cartas/)
 })
 
+// Duracion global con excepciones por carta: 2s + 5s + 2s = 9s. Si las
+// excepciones se ignorasen saldrian 6s, y si mandasen sobre todo, 15s.
+test('cada fotograma puede llevar su propia duracion', async () => {
+  const { execFile } = await import('node:child_process')
+  const { promisify } = await import('node:util')
+  const fs = await import('node:fs/promises')
+  const os = await import('node:os')
+  const path = await import('node:path')
+  const ffmpeg = (await import('ffmpeg-static')).default as string
+
+  const run = promisify(execFile)
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-video-dur-'))
+  try {
+    const file = path.join(dir, 'frame.png')
+    await run(ffmpeg, ['-y', '-f', 'lavfi', '-i', 'color=c=teal:s=120x160', '-frames:v', '1', file])
+    const frame = new Uint8Array(await fs.readFile(file))
+
+    const video = await createVideoFromFrames([frame, frame, frame], {
+      secondsPerCard: 2,
+      durations: [null, 5, undefined],
+      fps: 10,
+    })
+    const output = path.join(dir, 'out.mp4')
+    await fs.writeFile(output, video)
+
+    const { stderr } = await run(ffmpeg, ['-hide_banner', '-i', output]).catch((e) => e)
+    assert.match(stderr as string, /Duration: 00:00:09/)
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('una duracion propia fuera de rango se acota en vez de romper el render', async () => {
+  const { execFile } = await import('node:child_process')
+  const { promisify } = await import('node:util')
+  const fs = await import('node:fs/promises')
+  const os = await import('node:os')
+  const path = await import('node:path')
+  const ffmpeg = (await import('ffmpeg-static')).default as string
+
+  const run = promisify(execFile)
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-video-clamp-'))
+  try {
+    const file = path.join(dir, 'frame.png')
+    await run(ffmpeg, ['-y', '-f', 'lavfi', '-i', 'color=c=teal:s=120x160', '-frames:v', '1', file])
+    const frame = new Uint8Array(await fs.readFile(file))
+
+    // -3 no puede llegar a ffmpeg como duracion negativa.
+    const video = await createVideoFromFrames([frame], { durations: [-3], fps: 10 })
+    const output = path.join(dir, 'out.mp4')
+    await fs.writeFile(output, video)
+    const { stderr } = await run(ffmpeg, ['-hide_banner', '-i', output]).catch((e) => e)
+    assert.match(stderr as string, /Duration: 00:00:0[01]/)
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true })
+  }
+})
+
 // Prueba de extremo a extremo del muxing: dos PNG de tamaños distintos deben
 // acabar en un MP4 con un unico lienzo y la duracion pedida.
 test('los fotogramas se unen en un MP4 con la duracion pedida', async () => {

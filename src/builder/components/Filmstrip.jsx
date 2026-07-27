@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import LiveCardPreview from '../LiveCardPreview.jsx'
+import DurationBadge from './DurationBadge.jsx'
 
 // Horizontal strip of saved cards (Canva-style "pages"). Click to edit, drag a
 // thumbnail onto another to reorder, "+" to add a new card.
@@ -53,6 +54,7 @@ export default function Filmstrip({
   batch, editingId, accent, busy,
   onLoadCard, onNewCard, onRemoveFromBatch, onReorder, onDownloadZip, onRenameSection,
   onDownloadSection, onDownloadSectionVideo, videoError, seconds, onSeconds,
+  onCardDuration,
 }) {
   const [dragIndex, setDragIndex] = useState(null)
   const [overIndex, setOverIndex] = useState(null)
@@ -137,6 +139,12 @@ export default function Filmstrip({
                     onClick={(e) => { e.stopPropagation(); onRemoveFromBatch(item.id) }}
                     aria-label="Remove"
                   >×</button>
+                  <DurationBadge
+                    value={item.durationSeconds}
+                    fallback={seconds}
+                    disabled={busy}
+                    onChange={(value) => onCardDuration(item.id, value)}
+                  />
                 </div>
               ))}
             </div>

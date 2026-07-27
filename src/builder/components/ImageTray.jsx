@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react'
+import DurationBadge from './DurationBadge.jsx'
 
 // Bandeja de imagenes importadas. A diferencia del filmstrip de cartas, aqui
 // no se edita nada: solo se importa, se ordena, se borra y se exporta a MP4.
 export default function ImageTray({
-  images, busy, seconds, onImport, onDelete, onReorder, onExportVideo,
+  images, busy, seconds, onImport, onDelete, onReorder, onExportVideo, onImageDuration,
 }) {
   const inputRef = useRef(null)
   const [dragIndex, setDragIndex] = useState(null)
@@ -86,6 +87,12 @@ export default function ImageTray({
               aria-label={`Quitar ${image.name}`}
               onClick={() => onDelete(image.id)}
             >×</button>
+            <DurationBadge
+              value={image.durationSeconds}
+              fallback={seconds}
+              disabled={busy}
+              onChange={(value) => onImageDuration(image.id, value)}
+            />
           </div>
         ))}
       </div>
