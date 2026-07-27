@@ -386,3 +386,76 @@ test('la revision cambia con las escrituras propias y con las de otra conexion',
   writer.updateCard(card.id, { type: 'Pathway', pathway: 'Sun', points: ['Luz'] })
   assert.notEqual(reader.revision(), afterOwnWrite)
 })
+
+test('los proyectos incluyen los vacios y no admiten nombres repetidos', async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-projects-'))
+  const repository = new CardRepository(path.join(directory, 'cards.db'))
+  t.after(async () => {
+    repository.close()
+    await fs.rm(directory, { recursive: true, force: true })
+  })
+
+  const created = repository.createProject('Door explicado')
+  assert.equal(created.cardCount, 0)
+  assert.equal(created.imageCount, 0)
+  // Un proyecto recien creado no tiene cartas, pero el editor tiene que poder
+  // abrirlo igualmente.
+  assert.deepEqual(repository.listProjects().map(({ name }) => name), ['Door explicado'])
+
+  assert.throws(() => repository.createProject('door-explicado'), /Ya existe un proyecto/)
+  assert.throws(() => repository.createProject('   '), /necesita un nombre/)
+})
+
+test('las imagenes importadas se ordenan, se reordenan y se borran', async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-images-'))
+  const repository = new CardRepository(path.join(directory, 'cards.db'))
+  t.after(async () => {
+    repository.close()
+    await fs.rm(directory, { recursive: true, force: true })
+  })
+
+  const project = repository.createProject('Recortes')
+  const added = repository.addImages(project.id, [
+    { url: '/api/cards/images/a.png', name: 'a.png' },
+    { url: '/api/cards/images/b.png', name: 'b.png' },
+    { url: '/api/cards/images/c.png', name: 'c.png' },
+  ])
+  assert.deepEqual(added.map(({ position }) => position), [1, 2, 3])
+
+  // Importar de nuevo continua la numeracion en vez de reiniciarla.
+  const more = repository.addImages(project.id, [{ url: '/api/cards/images/d.png', name: 'd.png' }])
+  assert.deepEqual(more.map(({ name }) => name), ['a.png', 'b.png', 'c.png', 'd.png'])
+
+  // La tabla exige position > 0, asi que el reordenado no puede apartar las
+  // posiciones negandolas: esto falla si alguien lo reescribe asi.
+  const rotated = repository.reorderImages(project.id, [added[2].id, added[0].id, added[1].id])
+  assert.deepEqual(rotated.map(({ name }) => name), ['c.png', 'a.png', 'b.png', 'd.png'])
+  assert.deepEqual(rotated.map(({ position }) => position), [1, 2, 3, 4])
+
+  assert.equal(repository.deleteImage(added[0].id), true)
+  assert.equal(repository.deleteImage(added[0].id), false)
+  assert.deepEqual(repository.listImages(project.id).map(({ name }) => name), ['c.png', 'b.png', 'd.png'])
+
+  assert.throws(() => repository.addImages(randomUUID(), [{ url: '/x.png', name: 'x' }]), /no existe/)
+  assert.equal(repository.listProjects().find(({ id }) => id === project.id)?.imageCount, 3)
+})
+
+test('borrar un proyecto arrastra sus imagenes importadas', async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-cascade-'))
+  const file = path.join(directory, 'cards.db')
+  const repository = new CardRepository(file)
+  t.after(async () => {
+    repository.close()
+    await fs.rm(directory, { recursive: true, force: true })
+  })
+
+  const project = repository.createProject('Temporal')
+  repository.addImages(project.id, [{ url: '/api/cards/images/a.png', name: 'a.png' }])
+
+  const raw = new Database(file)
+  raw.pragma('foreign_keys = ON')
+  raw.prepare('DELETE FROM universes WHERE id = ?').run(project.id)
+  raw.close()
+
+  assert.deepEqual(repository.listImages(), [])
+})

@@ -16,6 +16,8 @@ import BreakdownCard from './components/BreakdownCard.jsx'
 import MapCard from './components/MapCard.jsx'
 import Panel from './components/Panel.jsx'
 import Filmstrip from './components/Filmstrip.jsx'
+import ProjectTabs, { MAX_OPEN_PROJECTS } from './components/ProjectTabs.jsx'
+import ImageTray from './components/ImageTray.jsx'
 import SectionField from './components/SectionField.jsx'
 import { PATHWAYS, PATH_NAMES, tierColor, powerTier, TIER_RANKS, PATHWAY_COLORS } from './data/pathways.js'
 import { PATHWAY_ICONS } from './data/pathwayIcons.js'
@@ -144,11 +146,61 @@ const waitForCardAssets = async (root) => {
 export default function App() {
   const cardRef = useRef(null)
   const session = useCardSession()
-  const { cards, sections, ready, error: sessionError, saving } = session
+  const {
+    cards: allCards, sections, projects, images: allImages,
+    ready, error: sessionError, saving,
+  } = session
 
   const [editingId, setEditingId] = useState(null)
   const [state, setState] = useState(DEFAULT_STATE)
   const [busy, setBusy] = useState(false)
+  const [videoError, setVideoError] = useState(null)
+  // Segundos que dura cada carta o imagen en el MP4. Vive aqui porque lo
+  // comparten el filmstrip y la bandeja de imagenes.
+  const [seconds, setSeconds] = useState(4)
+  const [openProjectIds, setOpenProjectIds] = useState([])
+  const [activeProjectId, setActiveProjectId] = useState(null)
+
+  // Al cargar la sesion se abre el primer proyecto; y si el activo desaparece
+  // (lo borro el MCP, por ejemplo) se cae al primero que quede.
+  useEffect(() => {
+    if (!projects.length) return
+    setOpenProjectIds((previous) => {
+      const alive = previous.filter((id) => projects.some((project) => project.id === id))
+      return alive.length ? alive : [projects[0].id]
+    })
+    setActiveProjectId((previous) => (
+      previous && projects.some((project) => project.id === previous) ? previous : projects[0].id
+    ))
+  }, [projects])
+
+  // Todo lo que se ve en el editor pertenece al proyecto activo.
+  const cards = allCards.filter((card) => card.universe.id === activeProjectId)
+  const images = allImages.filter((image) => image.universeId === activeProjectId)
+
+  const onOpenProject = (id) => {
+    setOpenProjectIds((previous) => (
+      previous.includes(id) || previous.length >= MAX_OPEN_PROJECTS ? previous : [...previous, id]
+    ))
+    setActiveProjectId(id)
+    setEditingId(null)
+  }
+
+  // El siguiente estado se calcula fuera del updater: React puede invocarlo mas
+  // de una vez (StrictMode lo hace en desarrollo) y tiene que ser puro.
+  const onCloseProject = (id) => {
+    const next = openProjectIds.filter((open) => open !== id)
+    setOpenProjectIds(next)
+    if (id === activeProjectId) {
+      setActiveProjectId(next[0] ?? null)
+      setEditingId(null)
+    }
+  }
+
+  const onCreateProject = async (name) => {
+    const project = await session.createProject(name)
+    if (project) onOpenProject(project.id)
+  }
 
   const stateRef = useRef(state)
   const editingIdRef = useRef(editingId)
@@ -351,6 +403,80 @@ export default function App() {
     }
   }
 
+  // Encadena una seccion en un MP4, cada carta en pantalla los segundos
+  // pedidos. Las cartas se capturan aqui igual que en el ZIP —cargandolas una a
+  // una en el editor— y el servidor solo las une con ffmpeg, asi que el video
+  // muestra exactamente lo mismo que el ZIP.
+  const onDownloadSectionVideo = async (partId, secondsPerCard) => {
+    const chosen = cards.filter((card) => card.part.id === partId)
+    if (!chosen.length || busy) return
+    setBusy(true)
+    setVideoError(null)
+    const previousState = state
+    const previousEditingId = editingId
+    try {
+      const form = new FormData()
+      form.append('secondsPerCard', String(secondsPerCard))
+      form.append('name', slugify(chosen[0].part.name))
+      for (const item of chosen) {
+        flushSync(() => {
+          setState(item.state)
+          setEditingId(item.id)
+        })
+        const data = await captureCard()
+        form.append('frames', await (await fetch(data)).blob(), `${item.id}.png`)
+      }
+
+      await sendVideo(form)
+    } catch {
+      setVideoError('Sin conexion con el servidor.')
+    } finally {
+      flushSync(() => {
+        setState(previousState)
+        setEditingId(previousEditingId)
+      })
+      setBusy(false)
+    }
+  }
+
+  // Mismo MP4, pero a partir de las imagenes importadas. Se pasan a PNG en el
+  // navegador porque el servidor lee el tamaño de la cabecera IHDR y las
+  // importadas pueden venir en JPG, WebP o cualquier otro formato.
+  const onExportImagesVideo = async () => {
+    if (!images.length || busy) return
+    setBusy(true)
+    setVideoError(null)
+    try {
+      const project = projects.find((item) => item.id === activeProjectId)
+      const form = new FormData()
+      form.append('secondsPerCard', String(seconds))
+      form.append('name', `${slugify(project?.name ?? 'proyecto')}-imagenes`)
+      for (const image of images) {
+        form.append('frames', await imageToPng(image.url), `${image.id}.png`)
+      }
+      await sendVideo(form)
+    } catch (error) {
+      setVideoError(error?.message ?? 'Sin conexion con el servidor.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const sendVideo = async (form) => {
+    const response = await fetch('/api/cards/video', { method: 'POST', body: form })
+    if (!response.ok) {
+      const body = await response.json().catch(() => null)
+      setVideoError(body?.error ?? `No se pudo generar el video (HTTP ${response.status}).`)
+      return
+    }
+    const blob = await response.blob()
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = filenameFromResponse(response) ?? 'cartas.mp4'
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
   // One tier slide per pathway, in canon order, keeping the current rank as a
   // starting point — then jump to the first one so you can start judging.
   const onGenerateTierBatch = async () => {
@@ -457,6 +583,16 @@ export default function App() {
   return (
     <div className="app">
       <section className="stage">
+        <ProjectTabs
+          projects={projects}
+          openIds={openProjectIds}
+          activeId={activeProjectId}
+          busy={busy}
+          onActivate={setActiveProjectId}
+          onOpen={onOpenProject}
+          onClose={onCloseProject}
+          onCreate={onCreateProject}
+        />
         <div className="stage-top">
           <div className="stage-nav">
             <button className="nav" onClick={() => onStep(-1)} aria-label="Previous">‹</button>
@@ -623,6 +759,20 @@ export default function App() {
             const seccion = cards.filter((card) => card.part.id === partId)
             if (seccion.length) void onDownloadZip(seccion, slugify(seccion[0].part.name))
           }}
+          onDownloadSectionVideo={onDownloadSectionVideo}
+          videoError={videoError}
+          seconds={seconds}
+          onSeconds={setSeconds}
+        />
+
+        <ImageTray
+          images={images}
+          busy={busy}
+          seconds={seconds}
+          onImport={(files) => session.importImages(activeProjectId, files)}
+          onDelete={session.deleteImage}
+          onReorder={(imageIds) => session.reorderImages(activeProjectId, imageIds)}
+          onExportVideo={onExportImagesVideo}
         />
       </section>
 
@@ -636,6 +786,39 @@ export default function App() {
       />
     </div>
   )
+}
+
+// Limite del lado mayor de una imagen importada al pasarla a fotograma. Sin
+// tope, una foto de movil genera un PNG de decenas de MB por fotograma.
+const MAX_FRAME_SIDE = 1920
+
+// Pasa una imagen importada a PNG. El servidor deduce el tamaño de la cabecera
+// IHDR, asi que un JPG o un WebP no le sirven tal cual.
+function imageToPng(url) {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.crossOrigin = 'anonymous'
+    image.onload = () => {
+      const scale = Math.min(1, MAX_FRAME_SIDE / Math.max(image.naturalWidth, image.naturalHeight))
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
+      canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height)
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error(`No se pudo convertir ${url}.`))),
+        'image/png',
+      )
+    }
+    image.onerror = () => reject(new Error(`No se pudo cargar ${url}.`))
+    image.src = url
+  })
+}
+
+// El servidor ya nombra el archivo segun la seccion; se reutiliza ese nombre
+// en vez de recomponerlo en el cliente.
+function filenameFromResponse(response) {
+  const match = /filename="([^"]+)"/.exec(response.headers.get('Content-Disposition') ?? '')
+  return match?.[1] ?? null
 }
 
 // labelFor puede traer caracteres que no valen en un nombre de archivo. Una

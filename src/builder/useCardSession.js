@@ -43,6 +43,8 @@ async function readError(response, fallback) {
 
 export function useCardSession() {
   const [cards, setCards] = useState([])
+  const [projects, setProjects] = useState([])
+  const [images, setImages] = useState([])
   const [ready, setReady] = useState(false)
   const [error, setError] = useState(null)
   const [savingIds, setSavingIds] = useState([])
@@ -76,6 +78,8 @@ export function useCardSession() {
       // Una respuesta que llega tarde no puede pisar a una mas reciente.
       if (requestId !== pullRequest.current) return
       revisionRef.current = session.revision
+      setProjects(session.projects ?? [])
+      setImages(session.images ?? [])
       setCards((previous) => {
         const local = new Map(previous.map((card) => [card.id, card]))
         return session.cards.map((card) => {
@@ -226,6 +230,84 @@ export function useCardSession() {
     }
   }, [pull])
 
+  const createProject = useCallback(async (name) => {
+    try {
+      const response = await fetch('/api/cards/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      if (!response.ok) {
+        setError(await readError(response, 'No se pudo crear el proyecto'))
+        return null
+      }
+      setError(null)
+      const { project } = await response.json()
+      await pull()
+      return project
+    } catch {
+      setError(OFFLINE_MESSAGE)
+      return null
+    }
+  }, [pull])
+
+  // Importa imagenes tal cual en un proyecto. No se convierten en carta ni se
+  // editan: solo se ordenan y se exportan.
+  const importImages = useCallback(async (universeId, files) => {
+    if (!files.length) return false
+    const form = new FormData()
+    form.append('universeId', universeId)
+    for (const file of files) form.append('files', file)
+    try {
+      const response = await fetch('/api/cards/imported', { method: 'POST', body: form })
+      if (!response.ok) {
+        setError(await readError(response, 'No se pudieron importar las imagenes'))
+        return false
+      }
+      setError(null)
+      await pull()
+      return true
+    } catch {
+      setError(OFFLINE_MESSAGE)
+      return false
+    }
+  }, [pull])
+
+  const deleteImage = useCallback(async (id) => {
+    setImages((previous) => previous.filter((image) => image.id !== id))
+    try {
+      const response = await fetch(`/api/cards/imported/${id}`, { method: 'DELETE' })
+      if (!response.ok && response.status !== 404) {
+        setError(await readError(response, 'No se pudo borrar la imagen'))
+        void pull()
+      }
+    } catch {
+      setError(OFFLINE_MESSAGE)
+      void pull()
+    }
+  }, [pull])
+
+  const reorderImages = useCallback(async (universeId, imageIds) => {
+    try {
+      const response = await fetch('/api/cards/imported', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ universeId, imageIds }),
+      })
+      if (!response.ok) {
+        setError(await readError(response, 'No se pudieron reordenar las imagenes'))
+        void pull()
+        return false
+      }
+      setError(null)
+      await pull()
+      return true
+    } catch {
+      setError(OFFLINE_MESSAGE)
+      return false
+    }
+  }, [pull])
+
   const uploadImage = useCallback(async (file) => {
     const form = new FormData()
     form.append('file', file)
@@ -294,6 +376,8 @@ export function useCardSession() {
   return {
     cards,
     sections,
+    projects,
+    images,
     ready,
     error,
     saving: savingIds.length > 0,
@@ -305,6 +389,10 @@ export function useCardSession() {
     moveCards,
     renameSection,
     uploadImage,
+    createProject,
+    importImages,
+    deleteImage,
+    reorderImages,
   }
 }
 

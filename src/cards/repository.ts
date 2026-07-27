@@ -74,6 +74,33 @@ export type StoredCard = {
   }
 }
 
+export type Project = {
+  id: string
+  slug: string
+  name: string
+  description: string
+  cardCount: number
+  imageCount: number
+}
+
+type ImportedImageRow = {
+  id: string
+  universe_id: string
+  position: number
+  url: string
+  name: string
+  created_at: string
+}
+
+export type ImportedImage = {
+  id: string
+  universeId: string
+  position: number
+  url: string
+  name: string
+  createdAt: string
+}
+
 export type MoveCardsTarget = {
   universe?: SaveCardBatchInput['universe']
   part: SaveCardBatchInput['part']
@@ -360,10 +387,133 @@ export class CardRepository {
     return this.listCards().filter((card) => card.part.id === partId)
   }
 
+  // ---- Proyectos (universos) ----
+
+  // Todos los proyectos, incluidos los que aun no tienen ninguna carta: el
+  // editor necesita poder abrir uno recien creado y vacio.
+  listProjects(): Project[] {
+    const rows = this.db
+      .prepare(`
+        SELECT u.id, u.slug, u.name, u.description,
+          (SELECT COUNT(*) FROM parts p JOIN cards c ON c.part_id = p.id WHERE p.universe_id = u.id) AS card_count,
+          (SELECT COUNT(*) FROM imported_images i WHERE i.universe_id = u.id) AS image_count
+        FROM universes u
+        ORDER BY u.name COLLATE NOCASE
+      `)
+      .all() as Array<UniverseRow & { card_count: number; image_count: number }>
+    return rows.map((row) => ({
+      id: row.id,
+      slug: row.slug,
+      name: row.name,
+      description: row.description,
+      cardCount: row.card_count,
+      imageCount: row.image_count,
+    }))
+  }
+
+  createProject(rawName: string): Project {
+    // El nombre se valida antes de pasar por slugify: ese helper nunca devuelve
+    // vacio (cae en 'sin-nombre'), asi que un nombre en blanco crearia un
+    // proyecto sin titulo visible en vez de fallar.
+    const name = rawName.trim()
+    if (!name) throw new Error('El proyecto necesita un nombre.')
+    const slug = slugify(name)
+    const existing = this.db.prepare('SELECT id FROM universes WHERE slug = ?').get(slug)
+    if (existing) throw new Error(`Ya existe un proyecto llamado "${name}".`)
+
+    const now = new Date().toISOString()
+    this.db
+      .prepare(`
+        INSERT INTO universes (id, slug, name, description, created_at, updated_at)
+        VALUES (?, ?, ?, '', ?, ?)
+      `)
+      .run(randomUUID(), slug, name, now, now)
+    this.localWrites += 1
+    return this.listProjects().find((project) => project.slug === slug) as Project
+  }
+
+  // ---- Imagenes importadas ----
+
+  listImages(universeId?: string): ImportedImage[] {
+    const rows = universeId
+      ? this.db
+          .prepare('SELECT * FROM imported_images WHERE universe_id = ? ORDER BY position')
+          .all(universeId)
+      : this.db.prepare('SELECT * FROM imported_images ORDER BY universe_id, position').all()
+    return (rows as ImportedImageRow[]).map(mapImage)
+  }
+
+  addImages(universeId: string, images: Array<{ url: string; name: string }>): ImportedImage[] {
+    if (!images.length) return []
+    const universe = this.db.prepare('SELECT id FROM universes WHERE id = ?').get(universeId)
+    if (!universe) throw new Error('El proyecto indicado no existe.')
+
+    const now = new Date().toISOString()
+    const insert = this.db.transaction(() => {
+      const max = this.db
+        .prepare('SELECT COALESCE(MAX(position), 0) AS value FROM imported_images WHERE universe_id = ?')
+        .get(universeId) as { value: number }
+      const statement = this.db.prepare(`
+        INSERT INTO imported_images (id, universe_id, position, url, name, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `)
+      images.forEach((image, index) => {
+        statement.run(randomUUID(), universeId, max.value + index + 1, image.url, image.name, now)
+      })
+    })
+
+    insert()
+    this.localWrites += 1
+    return this.listImages(universeId)
+  }
+
+  deleteImage(id: string): boolean {
+    const deleted = this.db.prepare('DELETE FROM imported_images WHERE id = ?').run(id).changes > 0
+    if (deleted) this.localWrites += 1
+    return deleted
+  }
+
+  // Reordena dentro de un proyecto. Igual que reorderPart, las posiciones se
+  // apartan primero sumando un salto grande: no pueden negarse porque la tabla
+  // exige position > 0, y sin apartarlas chocarian con el UNIQUE al vuelo.
+  reorderImages(universeId: string, orderedIds: string[]): ImportedImage[] {
+    const reorder = this.db.transaction(() => {
+      const current = this.db
+        .prepare('SELECT id FROM imported_images WHERE universe_id = ? ORDER BY position')
+        .all(universeId) as Array<{ id: string }>
+      const known = new Set(current.map((row) => row.id))
+      const final = [
+        ...orderedIds.filter((id) => known.has(id)),
+        ...current.map((row) => row.id).filter((id) => !orderedIds.includes(id)),
+      ]
+      if (!final.length) return false
+
+      const free = this.db.prepare(
+        'UPDATE imported_images SET position = position + 1000000 WHERE universe_id = ?',
+      )
+      const place = this.db.prepare('UPDATE imported_images SET position = ? WHERE id = ?')
+      free.run(universeId)
+      final.forEach((id, index) => place.run(index + 1, id))
+      return true
+    })
+
+    if (!reorder()) return []
+    this.localWrites += 1
+    return this.listImages(universeId)
+  }
+
   private migrate(): void {
     const version = this.db.pragma('user_version', { simple: true }) as number
-    if (version > 5) throw new Error(`La version ${version} de cards.db no es compatible.`)
-    if (version === 5) return
+    if (version > 6) throw new Error(`La version ${version} de cards.db no es compatible.`)
+    if (version === 6) return
+
+    if (version === 5) {
+      this.db.exec(`
+        ${IMPORTED_IMAGES_SCHEMA}
+        PRAGMA user_version = 6;
+      `)
+      return
+    }
 
     if (version === 1 || version === 2) {
       this.db.exec(`
@@ -457,6 +607,7 @@ export class CardRepository {
         CREATE INDEX cards_part_id_idx ON cards(part_id);
         PRAGMA user_version = 5;
       `)
+      this.migrate()
       return
     }
 
@@ -499,10 +650,38 @@ export class CardRepository {
 
       CREATE INDEX cards_part_id_idx ON cards(part_id);
       CREATE INDEX parts_universe_id_idx ON parts(universe_id);
-      PRAGMA user_version = 5;
+      ${IMPORTED_IMAGES_SCHEMA}
+      PRAGMA user_version = 6;
     `)
   }
 }
+
+// Imagenes que se importan tal cual, sin convertirse en carta: no se editan,
+// solo se ordenan y se exportan. Cuelgan del universo (el "proyecto") y no de
+// una parte, porque no participan en la numeracion de las cartas.
+function mapImage(row: ImportedImageRow): ImportedImage {
+  return {
+    id: row.id,
+    universeId: row.universe_id,
+    position: row.position,
+    url: row.url,
+    name: row.name,
+    createdAt: row.created_at,
+  }
+}
+
+const IMPORTED_IMAGES_SCHEMA = `
+  CREATE TABLE imported_images (
+    id TEXT PRIMARY KEY,
+    universe_id TEXT NOT NULL REFERENCES universes(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL CHECK (position > 0),
+    url TEXT NOT NULL,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE (universe_id, position)
+  );
+  CREATE INDEX imported_images_universe_id_idx ON imported_images(universe_id);
+`
 
 const CARD_SELECT = `
   SELECT

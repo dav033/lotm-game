@@ -104,6 +104,68 @@
 .film-add:hover:not(:disabled){border-color:var(--tier);color:var(--tier)}
 .film-add:disabled{opacity:.4;cursor:default}
 .filmstrip .btn-zip{flex:0 0 auto;width:auto;padding:11px 18px}
+.film-group-video{flex:0 0 auto;width:16px;height:16px;border-radius:4px;border:1px solid var(--line);
+  background:transparent;color:var(--muted2);font-size:9px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;padding:0}
+.film-group-video:hover:not(:disabled){border-color:var(--tier);color:var(--tier)}
+.film-group-video:disabled{opacity:.4;cursor:default}
+.film-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.film-seconds{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted2)}
+.film-seconds input{width:62px;font-family:inherit;font-size:12px;color:var(--parchment);
+  background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 7px}
+.film-seconds input:focus{outline:none;border-color:var(--tier)}
+.film-seconds input:disabled{opacity:.4}
+.film-video-error{margin:8px 0 0;font-size:11px;color:#e08b7a}
+
+/* ---- Pestañas de proyecto ---- */
+.project-tabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.project-tab{display:flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:7px;
+  background:transparent;overflow:hidden}
+.project-tab.active{border-color:var(--tier);background:var(--panel)}
+.project-tab-name{background:none;border:none;font-family:inherit;font-size:11px;letter-spacing:.04em;
+  color:var(--muted2);padding:6px 10px;cursor:pointer;max-width:220px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.project-tab.active .project-tab-name{color:var(--parchment)}
+.project-tab-name:disabled{opacity:.5;cursor:default}
+.project-tab-close{background:none;border:none;color:var(--muted2);font-size:13px;line-height:1;
+  cursor:pointer;padding:0 7px 0 0}
+.project-tab-close:hover:not(:disabled){color:#e08b7a}
+.project-new,.project-open{border:1px dashed var(--line2);border-radius:7px;background:transparent;
+  color:var(--muted2);font-family:inherit;font-size:11px;padding:6px 10px;cursor:pointer}
+.project-new:hover:not(:disabled),.project-open:hover:not(:disabled){border-color:var(--tier);color:var(--tier)}
+.project-new:disabled{opacity:.4;cursor:default}
+.project-new-input{border:1px solid var(--tier);border-radius:7px;background:var(--panel);
+  color:var(--parchment);font-family:inherit;font-size:11px;padding:6px 10px;min-width:180px}
+.project-new-input:focus{outline:none}
+
+/* ---- Bandeja de imagenes importadas (solo visor: no se editan) ---- */
+.image-tray{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.image-tray-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.image-tray-title{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted2);
+  margin-right:auto}
+.image-tray-add{border:1px solid var(--line);border-radius:6px;background:transparent;
+  color:var(--muted2);font-family:inherit;font-size:11px;padding:5px 10px;cursor:pointer}
+.image-tray-add:hover:not(:disabled){border-color:var(--tier);color:var(--tier)}
+.image-tray-add:disabled,.image-tray-video:disabled{opacity:.4;cursor:default}
+.image-tray-video{width:26px;height:26px;border:1px solid var(--line);border-radius:6px;
+  background:transparent;font-size:11px;line-height:1;cursor:pointer;display:flex;
+  align-items:center;justify-content:center;padding:0}
+.image-tray-video:hover:not(:disabled){border-color:var(--tier)}
+.image-tray-rail{display:flex;align-items:center;gap:10px;overflow-x:auto;min-height:96px;
+  border:1.5px dashed transparent;border-radius:9px;padding:4px}
+.image-tray-rail.dropping{border-color:var(--tier);background:rgba(255,255,255,.02)}
+.image-tray-empty{margin:0;font-size:11px;color:var(--muted2)}
+.image-thumb{position:relative;flex:0 0 auto;width:78px;aspect-ratio:3/4;border-radius:7px;
+  overflow:hidden;border:1px solid var(--line);background:#0a0a11;cursor:grab}
+.image-thumb.over{border-color:var(--tier);transform:translateY(-3px)}
+.image-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.image-no{position:absolute;top:3px;left:4px;z-index:2;font-size:9px;color:var(--parchment);
+  background:rgba(0,0,0,.6);border-radius:3px;padding:0 4px}
+.image-rm{position:absolute;top:3px;right:3px;z-index:2;width:15px;height:15px;border:none;
+  border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:11px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;padding:0}
+.image-rm:hover{background:#c0392b}
 
 /* ================= CARD (exports at 960x1280) ================= */
 .card{

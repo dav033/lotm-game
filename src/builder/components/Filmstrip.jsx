@@ -52,7 +52,7 @@ function SectionLabel({ text, name, editing, draft, onStart, onDraft, onCommit, 
 export default function Filmstrip({
   batch, editingId, accent, busy,
   onLoadCard, onNewCard, onRemoveFromBatch, onReorder, onDownloadZip, onRenameSection,
-  onDownloadSection,
+  onDownloadSection, onDownloadSectionVideo, videoError, seconds, onSeconds,
 }) {
   const [dragIndex, setDragIndex] = useState(null)
   const [overIndex, setOverIndex] = useState(null)
@@ -100,6 +100,15 @@ export default function Filmstrip({
                 disabled={busy}
                 onClick={() => onDownloadSection(group.partId)}
               >↓</button>
+              <button
+                className="film-group-video"
+                title={
+                  `Exportar "${group.part.name}" en MP4 · ${group.items.length} cartas × ` +
+                  `${seconds}s = ${formatDuration(group.items.length * seconds)}`
+                }
+                disabled={busy}
+                onClick={() => onDownloadSectionVideo(group.partId, seconds)}
+              >🎬</button>
             </div>
             <div className="film-group-cards">
               {group.items.map(({ item, index: i }) => (
@@ -139,14 +148,49 @@ export default function Filmstrip({
         </button>
       </div>
 
-      <button
-        className="btn-zip"
-        style={{ background: accent.c }}
-        disabled={batch.length === 0 || busy}
-        onClick={() => onDownloadZip()}
-      >
-        Download all ({batch.length})
-      </button>
+      <div className="film-actions">
+        <button
+          className="btn-zip"
+          style={{ background: accent.c }}
+          disabled={batch.length === 0 || busy}
+          onClick={() => onDownloadZip()}
+        >
+          Download all ({batch.length})
+        </button>
+
+        <label className="film-seconds" title="Segundos que dura cada carta en el MP4">
+          <span>Seg. por carta</span>
+          <input
+            type="number"
+            min={MIN_SECONDS}
+            max={MAX_SECONDS}
+            step="0.5"
+            value={seconds}
+            disabled={busy}
+            onChange={(e) => onSeconds(clampSeconds(Number(e.target.value)))}
+          />
+        </label>
+      </div>
+
+      {videoError ? <p className="film-video-error">{videoError}</p> : null}
     </div>
   )
+}
+
+// Tiene que coincidir con los limites de src/cards/video.ts; el servidor los
+// valida igual, esto solo evita mandar un valor que va a rebotar.
+const DEFAULT_SECONDS = 4
+const MIN_SECONDS = 0.5
+const MAX_SECONDS = 60
+
+function clampSeconds(value) {
+  if (!Number.isFinite(value)) return DEFAULT_SECONDS
+  return Math.min(MAX_SECONDS, Math.max(MIN_SECONDS, value))
+}
+
+function formatDuration(total) {
+  const rounded = Math.round(total)
+  const minutes = Math.floor(rounded / 60)
+  const seconds = rounded % 60
+  return minutes ? `${minutes}m ${seconds}s` : `${seconds}s`
 }

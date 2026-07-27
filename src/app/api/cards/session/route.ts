@@ -10,7 +10,14 @@ export const dynamic = 'force-dynamic'
 // que ya quedo vieja.
 export async function GET() {
   return NextResponse.json(
-    { revision: cardsRepository.revision(), cards: cardsRepository.listCards() },
+    {
+      revision: cardsRepository.revision(),
+      cards: cardsRepository.listCards(),
+      // Proyectos e imagenes viajan aqui para que el editor no necesite mas
+      // peticiones: el sondeo de `revision` ya cubre sus cambios.
+      projects: cardsRepository.listProjects(),
+      images: cardsRepository.listImages(),
+    },
     { headers: { 'Cache-Control': 'no-store' } },
   )
 }
