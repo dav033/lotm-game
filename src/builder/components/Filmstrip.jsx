@@ -101,16 +101,16 @@ export default function Filmstrip({
                 title={`Descargar "${group.part.name}" en ZIP (${group.items.length} cartas)`}
                 disabled={busy}
                 onClick={() => onDownloadSection(group.partId)}
-              >↓</button>
+              >ZIP</button>
               <button
                 className="film-group-video"
                 title={
-                  `Exportar "${group.part.name}" en MP4 · ${group.items.length} cartas × ` +
-                  `${seconds}s = ${formatDuration(group.items.length * seconds)}`
+                  `Exportar "${group.part.name}" en MP4 · ${group.items.length} cartas · ` +
+                  `${formatDuration(totalSeconds(group.items, seconds))}`
                 }
                 disabled={busy}
                 onClick={() => onDownloadSectionVideo(group.partId, seconds)}
-              >🎬</button>
+              >MP4</button>
             </div>
             <div className="film-group-cards">
               {group.items.map(({ item, index: i }) => (
@@ -194,6 +194,12 @@ const MAX_SECONDS = 60
 function clampSeconds(value) {
   if (!Number.isFinite(value)) return DEFAULT_SECONDS
   return Math.min(MAX_SECONDS, Math.max(MIN_SECONDS, value))
+}
+
+// Lo que va a durar la seccion de verdad: cada carta con su duracion propia si
+// la tiene, y la global para el resto.
+function totalSeconds(items, fallback) {
+  return items.reduce((sum, { item }) => sum + (item.durationSeconds ?? fallback), 0)
 }
 
 function formatDuration(total) {

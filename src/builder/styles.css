@@ -13,6 +13,16 @@
 
 /* ================= APP LAYOUT (Canva-style) ================= */
 .app{display:flex;align-items:stretch;min-height:100vh}
+/* En escritorio el editor ocupa exactamente la ventana y lo que scrollea es la
+   zona de la carta, no la pagina. Asi la tira y la bandeja de imagenes quedan
+   siempre a la vista: antes caian bajo el pliegue y no habia nada que indicara
+   que seguian ahi abajo. */
+@media (min-width:901px){
+  .app{height:100vh;overflow:hidden}
+  .stage{height:100vh;overflow:hidden}
+  .stage-canvas{overflow:auto}
+  .filmstrip,.image-tray{flex:0 0 auto}
+}
 .app-loading{display:flex;align-items:center;justify-content:center;min-height:100vh;
   color:var(--muted);font-size:14px;letter-spacing:.04em}
 
@@ -59,16 +69,16 @@
 
 /* Bottom: filmstrip of saved cards */
 .filmstrip{width:100%;margin-top:16px;display:flex;align-items:center;gap:14px}
-.filmstrip-rail{flex:1 1 auto;display:flex;align-items:flex-end;gap:10px;
+.filmstrip-rail{flex:1 1 auto;min-width:0;display:flex;align-items:flex-end;gap:10px;
   overflow-x:auto;padding:8px 2px 12px}
 /* Las cartas se agrupan por seccion, igual que en /cartas/vivo. */
 .film-group{flex:0 0 auto;display:flex;flex-direction:column;gap:5px;
   padding-left:12px;border-left:1px solid var(--line)}
 .film-group:first-child{padding-left:0;border-left:none}
 .film-group-head{display:flex;align-items:center;gap:6px;min-width:0}
-.film-group-zip{flex:0 0 auto;width:16px;height:16px;border-radius:4px;border:1px solid var(--line);
-  background:transparent;color:var(--muted2);font-size:11px;line-height:1;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;padding:0}
+.film-group-zip{flex:0 0 auto;height:16px;border-radius:4px;border:1px solid var(--line);
+  background:transparent;color:var(--muted2);font-family:inherit;font-size:8px;letter-spacing:.06em;
+  line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0 5px}
 .film-group-zip:hover:not(:disabled){border-color:var(--tier);color:var(--tier)}
 .film-group-zip:disabled{opacity:.4;cursor:default}
 .film-group-label{font-size:10px;letter-spacing:.06em;text-transform:uppercase;
@@ -104,14 +114,16 @@
 .film-add:hover:not(:disabled){border-color:var(--tier);color:var(--tier)}
 .film-add:disabled{opacity:.4;cursor:default}
 .filmstrip .btn-zip{flex:0 0 auto;width:auto;padding:11px 18px}
-.film-group-video{flex:0 0 auto;width:16px;height:16px;border-radius:4px;border:1px solid var(--line);
-  background:transparent;color:var(--muted2);font-size:9px;line-height:1;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;padding:0}
+.film-group-video{flex:0 0 auto;height:16px;border-radius:4px;border:1px solid var(--line);
+  background:transparent;color:var(--muted2);font-family:inherit;font-size:8px;letter-spacing:.06em;
+  line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0 5px}
 .film-group-video:hover:not(:disabled){border-color:var(--tier);color:var(--tier)}
 .film-group-video:disabled{opacity:.4;cursor:default}
-.film-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.film-seconds{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--muted2)}
+/* No puede encogerse: si lo hace, el boton de descarga se sale del escenario y
+   queda cortado bajo el panel. Lo que cede es el carril, que ya scrollea. */
+.film-actions{flex:0 0 auto;display:flex;flex-direction:column;align-items:stretch;gap:8px}
+.film-seconds{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--muted2);white-space:nowrap}
 .film-seconds input{width:62px;font-family:inherit;font-size:12px;color:var(--parchment);
   background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 7px}
 .film-seconds input:focus{outline:none;border-color:var(--tier)}
@@ -148,10 +160,10 @@
   color:var(--muted2);font-family:inherit;font-size:11px;padding:5px 10px;cursor:pointer}
 .image-tray-add:hover:not(:disabled){border-color:var(--tier);color:var(--tier)}
 .image-tray-add:disabled,.image-tray-video:disabled{opacity:.4;cursor:default}
-.image-tray-video{width:26px;height:26px;border:1px solid var(--line);border-radius:6px;
-  background:transparent;font-size:11px;line-height:1;cursor:pointer;display:flex;
-  align-items:center;justify-content:center;padding:0}
-.image-tray-video:hover:not(:disabled){border-color:var(--tier)}
+.image-tray-video{height:26px;border:1px solid var(--line);border-radius:6px;background:transparent;
+  color:var(--muted2);font-family:inherit;font-size:11px;line-height:1;cursor:pointer;display:flex;
+  align-items:center;justify-content:center;padding:0 10px}
+.image-tray-video:hover:not(:disabled){border-color:var(--tier);color:var(--tier)}
 .image-tray-rail{display:flex;align-items:center;gap:10px;overflow-x:auto;min-height:96px;
   border:1.5px dashed transparent;border-radius:9px;padding:4px}
 .image-tray-rail.dropping{border-color:var(--tier);background:rgba(255,255,255,.02)}

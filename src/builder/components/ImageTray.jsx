@@ -38,9 +38,9 @@ export default function ImageTray({
         <button
           className="image-tray-video"
           disabled={busy || !images.length}
-          title={`Exportar ${images.length} imagenes en MP4 · ${seconds}s cada una`}
+          title={`Exportar ${images.length} imagenes en MP4`}
           onClick={() => onExportVideo()}
-        >🎬</button>
+        >Vídeo MP4</button>
         <input
           ref={inputRef}
           type="file"
