@@ -681,6 +681,27 @@ export default function App() {
         />
 
         <div className="stage-canvas" ref={canvasRef}>
+          {/* Pasar de carta sin subir hasta la barra de arriba: el hueco que
+              queda a los lados del lienzo no servia para nada. Se colocan
+              respecto al borde de la carta, que cambia de ancho con --fit. */}
+          {cards.length > 1 && (
+            <>
+              <button
+                className="stage-arrow prev"
+                disabled={editingIndex <= 0}
+                aria-label="Carta anterior"
+                title="Carta anterior"
+                onClick={() => onStep(-1)}
+              >‹</button>
+              <button
+                className="stage-arrow next"
+                disabled={editingIndex < 0 || editingIndex >= cards.length - 1}
+                aria-label="Carta siguiente"
+                title="Carta siguiente"
+                onClick={() => onStep(1)}
+              >›</button>
+            </>
+          )}
           {/* Sin cartas no hay nada que editar: escribir aqui no guardaria en
               ningun sitio, asi que se dice que hay que crear una. */}
           {cards.length === 0 ? (

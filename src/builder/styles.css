@@ -67,11 +67,32 @@
 .save-status.error::before{background:#e0736b;flex:0 0 auto}
 @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
 
-.stage-canvas{flex:1 1 auto;display:flex;align-items:center;justify-content:center;
+.stage-canvas{position:relative;flex:1 1 auto;display:flex;align-items:center;justify-content:center;
   width:100%;min-height:0}
-/* Toda carta es una caja fija de 480x640; el unico otro hijo del canvas es el
-   estado vacio, que no se escala porque es texto. */
-.stage-canvas>*:not(.stage-empty){transform:scale(var(--fit,1));transform-origin:center center}
+/* Toda carta es una caja fija de 480x640; los otros hijos del canvas son el
+   estado vacio, que no se escala porque es texto, y las flechas, que tienen que
+   medir lo mismo sea cual sea el zoom de la carta. */
+.stage-canvas>*:not(.stage-empty):not(.stage-arrow){transform:scale(var(--fit,1));transform-origin:center center}
+
+/* Flechas de navegacion, una a cada lado del cuerpo de la carta. Se anclan al
+   centro y se apartan media carta —240px es su semiancho— por el zoom vigente,
+   asi que acompañan al borde cuando la ventana cambia de tamaño. */
+.stage-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:4;
+  width:52px;height:104px;padding:0;border-radius:13px;border:1px solid var(--line);
+  background:rgba(16,16,25,.5);color:var(--muted2);font-family:inherit;font-size:34px;line-height:1;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.45;
+  transition:opacity .16s,color .16s,border-color .16s,background .16s}
+.stage-arrow.prev{right:calc(50% + (240px * var(--fit,1)) + 20px)}
+.stage-arrow.next{left:calc(50% + (240px * var(--fit,1)) + 20px)}
+.stage-arrow:hover:not(:disabled){opacity:1;color:var(--tier);border-color:var(--tier);background:var(--panel)}
+.stage-arrow:focus-visible{opacity:1;outline:2px solid var(--tier);outline-offset:3px}
+.stage-arrow:disabled{opacity:.12;cursor:default}
+/* Sin sitio a los lados se pegan a los bordes y se encogen, antes que salirse. */
+@media (max-width:1100px){
+  .stage-arrow{width:38px;height:76px;font-size:26px}
+  .stage-arrow.prev{right:auto;left:0}
+  .stage-arrow.next{left:auto;right:0}
+}
 .stage-empty{display:flex;flex-direction:column;align-items:center;gap:16px;
   color:var(--muted2);font-size:14px;text-align:center}
 .btn-new-card{padding:10px 18px;border-radius:8px;border:1px solid var(--tier);
