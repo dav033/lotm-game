@@ -333,9 +333,14 @@
   box-shadow:0 0 0 1px rgba(0,0,0,.6),0 30px 70px -30px rgba(0,0,0,.9);
 }
 .tier-background{position:absolute;inset:0;z-index:0;background:center/cover no-repeat;
-  opacity:var(--background-opacity,.65);filter:saturate(.75) contrast(1.04)}
+  opacity:var(--background-opacity,.65);filter:saturate(.95) contrast(1.04)}
+/* El velo cede cuando sube la visibilidad: con opacidad fija la imagen nunca
+   pasaba del 18% real por mas que el slider dijera 100%. */
 .tier-background-overlay{position:absolute;inset:0;z-index:1;pointer-events:none;
+  opacity:calc(1.15 - var(--background-opacity,.65));
   background:linear-gradient(180deg,rgba(10,10,11,.62),rgba(10,10,11,.82))}
+/* Con el velo mas fino el texto se apoya en su propia sombra, no en el velo. */
+:has(>.tier-background){text-shadow:0 2px 14px rgba(0,0,0,.72)}
 .tier-content{position:relative;z-index:3;display:flex;flex-direction:column;
   align-items:center;width:100%;height:100%;min-height:0;text-align:center}
 
