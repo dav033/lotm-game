@@ -106,7 +106,8 @@ export default function LiveCardPreview({ state }) {
         scope={state.explanationPath ?? 'All pathways'}
         pathway={state.explanationPath}
         icon={state.explanationPath ? PATHWAY_ICONS[state.explanationPath] : null}
-        backgroundImage={state.explanationPath ? PATHWAY_BACKGROUNDS[state.explanationPath] ?? null : null}
+        backgroundImage={state.generalExplanationBackgroundImage
+          || (state.explanationPath ? PATHWAY_BACKGROUNDS[state.explanationPath] ?? null : null)}
         backgroundOpacity={state.backgroundOpacity}
       />
     )

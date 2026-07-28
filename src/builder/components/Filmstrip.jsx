@@ -138,6 +138,26 @@ export default function Filmstrip({
                   <div className="film-preview">
                     <LiveCardPreview state={item.state} />
                   </div>
+                  {/* Mismo camino que el arrastre, pero de a un paso: cambiar el
+                      orden no deberia obligar a acertarle a un blanco de 78px. */}
+                  {i > 0 && (
+                    <button
+                      className="film-move left"
+                      disabled={busy}
+                      title="Mover una posición a la izquierda"
+                      aria-label={`Mover "${item.label}" una posición a la izquierda`}
+                      onClick={(e) => { e.stopPropagation(); onReorder(item.id, batch[i - 1].id) }}
+                    >‹</button>
+                  )}
+                  {i < batch.length - 1 && (
+                    <button
+                      className="film-move right"
+                      disabled={busy}
+                      title="Mover una posición a la derecha"
+                      aria-label={`Mover "${item.label}" una posición a la derecha`}
+                      onClick={(e) => { e.stopPropagation(); onReorder(item.id, batch[i + 1].id) }}
+                    >›</button>
+                  )}
                   <button
                     className="film-rm"
                     onClick={(e) => { e.stopPropagation(); onRemoveFromBatch(item.id) }}

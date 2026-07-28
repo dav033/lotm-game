@@ -93,6 +93,7 @@ const DEFAULT_STATE = {
   tierExplanationBackgroundImage: null,
   generalExplanationTitle: '',
   generalExplanationText: '',
+  generalExplanationBackgroundImage: null,
   pathwayExplanationPath: 'Fool',
   pathwayExplanationTitle: '',
   pathwayExplanationText: '',
@@ -318,6 +319,7 @@ export default function App() {
       tierExplanationBackgroundImage: null,
       generalExplanationTitle: '',
       generalExplanationText: '',
+      generalExplanationBackgroundImage: null,
       pathwayExplanationTitle: '',
       pathwayExplanationText: '',
       pathwayExplanationBackgroundImage: null,
@@ -613,6 +615,10 @@ export default function App() {
   const pathwayExplanationBackground = state.pathwayExplanationBackgroundImage
     || PATHWAY_BACKGROUNDS[pathwayExplanationPath]
     || null
+  // Igual, salvo que aqui el pathway es opcional: sin el no hay arte heredado,
+  // pero una imagen propia se pinta lo mismo.
+  const generalExplanationBackground = state.generalExplanationBackgroundImage
+    || (explanationPath ? PATHWAY_BACKGROUNDS[explanationPath] ?? null : null)
 
   if (!ready) {
     return <div className="app-loading">Loading your cards…</div>
@@ -743,8 +749,9 @@ export default function App() {
               scope={explanationScope}
               pathway={explanationPath}
               icon={explanationPath ? PATHWAY_ICONS[explanationPath] : null}
-              backgroundImage={explanationPath ? PATHWAY_BACKGROUNDS[explanationPath] ?? null : null}
+              backgroundImage={generalExplanationBackground}
               backgroundOpacity={state.backgroundOpacity}
+              onDropBackground={(file) => onUploadImage(file, 'generalExplanationBackgroundImage')}
             />
           ) : isPathwayExplanation ? (
             <PathwayExplanationCard

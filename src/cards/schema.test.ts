@@ -218,6 +218,41 @@ test('las tres cartas nuevas aceptan una imagen de fondo propia', () => {
   assert.equal(sinFondo.type === 'Breakdown' && 'backgroundImageUrl' in sinFondo, false)
 })
 
+// Una General Explanation con pathway ya heredaba el arte de su pathway, pero no
+// habia forma de poner una propia. El pathway es opcional en este tipo, asi que
+// la imagen tiene que sobrevivir el viaje con y sin el.
+test('una General Explanation acepta imagen de fondo propia, con o sin pathway', () => {
+  const conPathway = CardContentSchema.parse({
+    type: 'General Explanation',
+    title: 'Door y la replicacion',
+    description: 'Texto.',
+    pathway: 'Door',
+    backgroundImageUrl: '/covers/door-propia.jpg',
+  })
+  const sinPathway = CardContentSchema.parse({
+    type: 'General Explanation',
+    title: 'Los pathways',
+    description: 'Texto.',
+    backgroundImageUrl: '/covers/generica.jpg',
+  })
+
+  assert.equal(toBuilderCardState(conPathway).generalExplanationBackgroundImage, '/covers/door-propia.jpg')
+  assert.equal(toBuilderCardState(sinPathway).generalExplanationBackgroundImage, '/covers/generica.jpg')
+  // El pathway sigue siendo cosa aparte de la imagen: uno no arrastra al otro.
+  assert.equal(toBuilderCardState(sinPathway).explanationPath, null)
+
+  const ida = fromBuilderCardState(toBuilderCardState(conPathway))
+  assert.equal(ida.type === 'General Explanation' && ida.backgroundImageUrl, '/covers/door-propia.jpg')
+  assert.equal(ida.type === 'General Explanation' && ida.pathway, 'Door')
+
+  // Sin imagen el campo no se inventa, que si no toda carta vieja saldria con
+  // un backgroundImageUrl vacio al reguardarse.
+  const pelada = fromBuilderCardState(toBuilderCardState(
+    CardContentSchema.parse({ type: 'General Explanation', title: 'T', description: 'D' }),
+  ))
+  assert.equal(pelada.type === 'General Explanation' && 'backgroundImageUrl' in pelada, false)
+})
+
 test('valida un cover de imagen completa con título al pie', () => {
   const cover = CardContentSchema.parse({
     type: 'Full Image Cover',

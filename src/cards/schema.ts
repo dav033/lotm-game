@@ -145,6 +145,9 @@ export const GeneralExplanationCardSchema = z
     pathway: PathwayNameSchema.optional().describe(
       'Pathway concreto opcional. Si se omite, la explicacion es general.',
     ),
+    backgroundImageUrl: ImageSourceSchema.optional().describe(
+      'Imagen de fondo propia. Si se omite y hay pathway, la carta usa el arte de ese pathway.',
+    ),
     backgroundOpacity: BackgroundOpacitySchema,
   })
   .strict()
@@ -355,6 +358,7 @@ export type BuilderCardState = {
   tierExplanationBackgroundImage: string | null
   generalExplanationTitle: string
   generalExplanationText: string
+  generalExplanationBackgroundImage: string | null
   pathwayExplanationPath: string
   pathwayExplanationTitle: string
   pathwayExplanationText: string
@@ -409,6 +413,7 @@ const DEFAULT_BUILDER_STATE: BuilderCardState = {
   tierExplanationBackgroundImage: null,
   generalExplanationTitle: '',
   generalExplanationText: '',
+  generalExplanationBackgroundImage: null,
   pathwayExplanationPath: 'Fool',
   pathwayExplanationTitle: '',
   pathwayExplanationText: '',
@@ -491,6 +496,7 @@ export function toBuilderCardState(content: CardContent): BuilderCardState {
       explanationPath: content.pathway ?? null,
       generalExplanationTitle: content.title,
       generalExplanationText: content.description,
+      generalExplanationBackgroundImage: content.backgroundImageUrl ?? null,
     }
   }
 
@@ -598,6 +604,9 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
       type: 'General Explanation', title: state.generalExplanationTitle.trim(),
       description: state.generalExplanationText.trim(),
       ...(state.explanationPath ? { pathway: state.explanationPath } : {}),
+      ...(state.generalExplanationBackgroundImage
+        ? { backgroundImageUrl: state.generalExplanationBackgroundImage }
+        : {}),
       backgroundOpacity: state.backgroundOpacity,
     }
   }

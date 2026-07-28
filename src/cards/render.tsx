@@ -295,8 +295,13 @@ async function resolveStateImages(
   publicDir: string,
   defaultCover: string,
 ): Promise<RenderState> {
-  const generalExplanationSource = state.type === 'General Explanation' && state.explanationPath
-    ? (PATHWAY_BACKGROUNDS as Record<string, string>)[state.explanationPath] ?? null
+  // La imagen propia manda; el arte del pathway es el respaldo, y sin pathway no
+  // hay respaldo pero la propia se pinta igual.
+  const generalExplanationSource = state.type === 'General Explanation'
+    ? state.generalExplanationBackgroundImage
+      ?? (state.explanationPath
+        ? (PATHWAY_BACKGROUNDS as Record<string, string>)[state.explanationPath] ?? null
+        : null)
     : null
   const pathwayExplanationSource = state.type === 'Pathway Explanation'
     ? state.pathwayExplanationBackgroundImage

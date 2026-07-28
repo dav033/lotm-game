@@ -1,9 +1,14 @@
 import React, { forwardRef } from 'react'
+import { useBackgroundDrop } from '../useBackgroundDrop'
 
 const GeneralExplanationCard = forwardRef(function GeneralExplanationCard(
-  { title, description, scope, pathway = null, icon = null, backgroundImage = null, backgroundOpacity = 65 },
+  {
+    title, description, scope, pathway = null, icon = null,
+    backgroundImage = null, backgroundOpacity = 65, onDropBackground,
+  },
   ref,
 ) {
+  const { dragging, dropProps } = useBackgroundDrop(onDropBackground)
   const dense = title.length > 38 || description.length > 500
   // Una linea en blanco separa parrafos. Dentro de uno, los saltos sueltos se
   // conservan (white-space:pre-line), asi que una lista sigue viendose como tal.
@@ -14,14 +19,15 @@ const GeneralExplanationCard = forwardRef(function GeneralExplanationCard(
 
   return (
     <article
-      className={'explanation-card general-explanation-card' + (dense ? ' dense' : '')}
+      className={'explanation-card general-explanation-card' + (dense ? ' dense' : '') + (dragging ? ' dragover' : '')}
       id="card"
       ref={ref}
       style={{ '--background-opacity': backgroundOpacity / 100 }}
       aria-label={`${title || 'General explanation'} for ${scope}`}
+      {...dropProps}
     >
-      {/* Solo cuando la explicacion es de un pathway concreto: si es general no
-          hay simbolo ni fondo que mostrar. */}
+      {/* El fondo puede venir del pathway o subirse a mano, asi que tambien lo
+          hay sin pathway; el simbolo, en cambio, solo con pathway. */}
       {backgroundImage && (
         <>
           <div

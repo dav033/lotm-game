@@ -225,9 +225,18 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
                 </div>
               )}
 
-              {state.explanationPath && (
-                <BackgroundOpacityField value={state.backgroundOpacity} set={set} />
-              )}
+              {/* Siempre, no solo con pathway: sin pathway no hay fondo por
+                  defecto, pero una imagen propia se puede poner igual. */}
+              <BackgroundField
+                value={state.generalExplanationBackgroundImage}
+                field="generalExplanationBackgroundImage"
+                opacity={state.backgroundOpacity}
+                set={set}
+                onUploadImage={onUploadImage}
+                help={state.explanationPath
+                  ? `Using the default ${state.explanationPath} background. Upload one to override it.`
+                  : 'No background image selected.'}
+              />
             </>
           )}
 
