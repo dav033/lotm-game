@@ -288,6 +288,45 @@ test('divide una seccion en varias conservando las cartas', async (t) => {
   )
 })
 
+// De esto vive el arrastre entre secciones del filmstrip: manda la seccion de
+// destino entera, con la carta forastera ya intercalada, y espera ese orden. Si
+// moveCards volviera a pegarla al final, la carta saltaria al ultimo sitio.
+test('mover con la seccion de destino entera coloca la carta intercalada', async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-cards-'))
+  const repository = new CardRepository(path.join(directory, 'cards.db'))
+  t.after(async () => {
+    repository.close()
+    await fs.rm(directory, { recursive: true, force: true })
+  })
+
+  const [forastera] = repository.saveBatch({
+    universe: { name: 'LOTM' },
+    part: { name: 'Origen', number: 1 },
+    cards: [{ type: 'Pathway' as const, pathway: 'Fool' as const, points: ['Fool'] }],
+  })
+  const [primera, segunda] = repository.saveBatch({
+    universe: { name: 'LOTM' },
+    part: { name: 'Destino', number: 2 },
+    cards: (['Moon', 'Sun'] as const).map((pathway) => ({
+      type: 'Pathway' as const,
+      pathway,
+      points: [pathway],
+    })),
+  })
+
+  const moved = repository.moveCards(
+    [primera.id, forastera.id, segunda.id],
+    { part: { name: 'Destino' } },
+  )
+
+  assert.deepEqual(moved.map(({ id }) => id), [primera.id, forastera.id, segunda.id])
+  assert.deepEqual(moved.map(({ position }) => position), [1, 2, 3])
+  // La seccion de origen se queda sin cartas y desaparece de la biblioteca.
+  assert.deepEqual(repository.listLibrary()[0].parts.map(({ name }) => name), ['Destino'])
+  // Omitir el numero no renumera la seccion de destino.
+  assert.equal(repository.listLibrary()[0].parts[0].number, 2)
+})
+
 test('renombra una seccion y rechaza colisiones dentro del universo', async (t) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-cards-'))
   const repository = new CardRepository(path.join(directory, 'cards.db'))

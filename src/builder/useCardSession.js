@@ -161,28 +161,44 @@ export function useCardSession() {
     }
   }, [clearPending, pull])
 
-  // El orden es una columna de la base, asi que reordenar solo tiene sentido
-  // dentro de una misma parte; arrastrar entre partes distintas no hace nada.
-  const reorder = useCallback(async (from, to) => {
+  // Soltar una carta sobre otra la lleva a esa posicion. Si la de destino es de
+  // otra seccion, la carta cambia de seccion en el mismo gesto.
+  // Va por id y no por indice: el editor solo muestra las cartas del proyecto
+  // activo, asi que sus indices no son los de esta lista, que las tiene todas.
+  const reorder = useCallback(async (fromId, toId) => {
     const list = cardsRef.current
+    const from = list.findIndex((card) => card.id === fromId)
+    const to = list.findIndex((card) => card.id === toId)
     const moved = list[from]
-    if (!moved || !list[to] || moved.part.id !== list[to].part.id) return
+    const target = list[to]
+    if (!moved || !target) return
 
+    // La carta adopta la seccion de destino ya en el optimista: si no, el
+    // filmstrip la agrupa aparte y parte el grupo en dos hasta el siguiente pull.
+    const samePart = moved.part.id === target.part.id
     const next = [...list]
-    next.splice(to, 0, ...next.splice(from, 1))
+    next.splice(from, 1)
+    next.splice(to, 0, samePart ? moved : { ...moved, part: target.part })
     setCards(next)
-    const cardIds = next.filter((card) => card.part.id === moved.part.id).map((card) => card.id)
+    const cardIds = next.filter((card) => card.part.id === target.part.id).map((card) => card.id)
+
+    // Mover acepta la seccion de destino entera en el orden que debe quedar, asi
+    // que un solo POST cambia de seccion y coloca en su sitio a la vez. El numero
+    // se omite a proposito: mandarlo renumeraria la seccion de destino.
+    // ponytail: /api/cards/move corta en 100 cartas por llamada; una seccion mas
+    // larga que eso necesitaria trocear el envio.
+    const { url, body, fallback } = samePart
+      ? { url: '/api/cards/reorder', body: { partId: target.part.id, cardIds }, fallback: 'No se pudo reordenar' }
+      : { url: '/api/cards/move', body: { cardIds, part: { name: target.part.name } }, fallback: 'No se pudo mover la carta' }
 
     try {
-      const response = await fetch('/api/cards/reorder', {
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ partId: moved.part.id, cardIds }),
+        body: JSON.stringify(body),
       })
-      if (!response.ok) {
-        setError(await readError(response, 'No se pudo reordenar'))
-        void pull()
-      }
+      if (!response.ok) setError(await readError(response, fallback))
+      void pull()
     } catch {
       setError(OFFLINE_MESSAGE)
       void pull()

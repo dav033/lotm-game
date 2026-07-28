@@ -78,6 +78,47 @@
   background:transparent;color:var(--tier);font:inherit;cursor:pointer}
 .btn-new-card:hover{background:var(--tier);color:#0a0a11}
 
+/* ================= ESCENARIO ANCHO: la tira al costado =================
+   Apiladas debajo, la tira y la bandeja le quitaban 251px de alto a una carta
+   que solo necesita 480 de ancho, mientras sobraban ~1200px de ancho vacio a los
+   lados. En pantallas anchas pasan a una columna a la derecha del lienzo: el
+   hueco que sobraba de ancho se convierte en el alto que le faltaba a la carta.
+   El lienzo ocupa tambien la fila de la bandeja, asi que se queda con todo el
+   alto de la izquierda. */
+@media (min-width:1200px){
+  .stage{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 208px;
+    grid-template-rows:auto auto auto minmax(0,1fr) auto;
+    grid-template-areas:
+      "tabs   rail"
+      "top    rail"
+      "sect   rail"
+      "canvas rail"
+      "canvas tray";
+    column-gap:20px;
+    /* Sin esto gana el align-items:center del flex y el lienzo se queda del alto
+       de su contenido (640) en vez de estirarse a la fila, que es de donde sale
+       el alto extra. */
+    align-items:stretch;
+  }
+  .project-tabs{grid-area:tabs}
+  /* justify-self porque el grid ya no centra a sus hijos como hacia el flex. */
+  .stage-top{grid-area:top;justify-self:center}
+  .stage-section{grid-area:sect;justify-self:center}
+  .stage-canvas{grid-area:canvas}
+  .filmstrip{grid-area:rail;flex-direction:column;align-items:stretch;min-height:0;margin-top:0}
+  .filmstrip-rail{flex-direction:column;align-items:center;min-height:0;
+    overflow-x:hidden;overflow-y:auto;padding:2px 6px 2px 2px}
+  .filmstrip-rail::-webkit-scrollbar{width:8px}
+  /* Cada seccion pasa a ser un bloque apilado: el filo que las separaba de lado
+     ahora va arriba, que es por donde se tocan. */
+  .film-group{width:100%;padding:10px 0 0;border-left:none;border-top:1px solid var(--line)}
+  .film-group:first-child{padding-top:0;border-top:none}
+  .film-group-cards{flex-direction:column}
+  .image-tray{grid-area:tray;margin-top:12px}
+}
+
 /* Bottom: filmstrip of saved cards */
 .filmstrip{width:100%;margin-top:16px;display:flex;align-items:center;gap:14px}
 .filmstrip-rail{flex:1 1 auto;min-width:0;display:flex;align-items:flex-end;gap:10px;

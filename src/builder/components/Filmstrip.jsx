@@ -67,7 +67,7 @@ export default function Filmstrip({
   }
 
   const handleDrop = (to) => {
-    if (dragIndex !== null) onReorder(dragIndex, to)
+    if (dragIndex !== null) onReorder(batch[dragIndex].id, batch[to].id)
     setDragIndex(null)
     setOverIndex(null)
   }
@@ -112,6 +112,9 @@ export default function Filmstrip({
                 onClick={() => onDownloadSectionVideo(group.partId, seconds)}
               >MP4</button>
             </div>
+            {/* El arrastre escribe en dataTransfer porque Firefox lo cancela si
+                nadie lo hace, y viaja por id: el indice es el de esta tira, que
+                solo lleva el proyecto activo, no el de la sesion entera. */}
             <div className="film-group-cards">
               {group.items.map(({ item, index: i }) => (
                 <div
@@ -124,7 +127,7 @@ export default function Filmstrip({
                   title={item.label}
                   draggable
                   onClick={() => onLoadCard(item.id)}
-                  onDragStart={() => setDragIndex(i)}
+                  onDragStart={(e) => { e.dataTransfer.setData('text/plain', item.id); setDragIndex(i) }}
                   onDragOver={(e) => { e.preventDefault(); setOverIndex(i) }}
                   onDragLeave={() => setOverIndex((o) => (o === i ? null : o))}
                   onDrop={(e) => { e.preventDefault(); handleDrop(i) }}

@@ -255,14 +255,16 @@ export default function App() {
 
   // La carta mide 480x640 fijos y el editor ocupa exactamente la ventana, asi
   // que en pantallas bajas no cabe: quedaba recortada tras una barra de scroll y
-  // solo se veia su tercio superior. Se reduce a la escala que quepa, como el
-  // zoom-to-fit de cualquier editor, y nunca se amplia mas alla de su tamaño.
+  // solo se veia su tercio superior. Se lleva a la escala que quepa, como el
+  // zoom-to-fit de cualquier editor. Tambien hacia arriba: es lo que se esta
+  // editando y con la tira al costado sobra alto para agrandarla. El PNG no se
+  // entera, que sale de captureCard con --fit a 1.
   useEffect(() => {
     const stage = canvasRef.current
     if (!stage) return
     const fitToStage = () => {
       const { width, height } = stage.getBoundingClientRect()
-      const scale = Math.min(1, (width - CARD_MARGIN) / CARD_W, (height - CARD_MARGIN) / CARD_H)
+      const scale = Math.min((width - CARD_MARGIN) / CARD_W, (height - CARD_MARGIN) / CARD_H)
       stage.style.setProperty('--fit', String(Math.max(MIN_FIT, scale)))
     }
     fitToStage()
@@ -357,9 +359,9 @@ export default function App() {
   }
 
   // Drag-to-reorder a thumbnail from one slot to another.
-  const onReorder = (from, to) => {
-    if (from === to) return
-    void session.reorder(from, to)
+  const onReorder = (fromId, toId) => {
+    if (fromId === toId) return
+    void session.reorder(fromId, toId)
   }
 
   // Drop several images at once -> one card per image (same fields, swapped art).
@@ -649,9 +651,12 @@ export default function App() {
           </span>
         </div>
 
+        {/* Solo las secciones de este proyecto: elegir una de otro se llevaria la
+            carta fuera del editor abierto, y desde un campo que se llama
+            "Sección" nadie espera cambiar de proyecto. */}
         <SectionField
           section={cards.find((card) => card.id === editingId)?.part ?? null}
-          sections={sections}
+          sections={sections.filter((section) => section.universe.id === activeProjectId)}
           onMove={(target) => session.moveCards([editingId], target)}
         />
 
