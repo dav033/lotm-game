@@ -85,32 +85,39 @@
    empujarlo: si empujara, la carta cambiaria de tamaño al pasar el raton por
    encima. Con foco dentro se queda abierto, que si no editar el nombre de una
    seccion o los segundos de una carta lo cerraria a media escritura. */
-.stage-dock{flex:0 0 auto;width:100%;--dock-handle:32px}
+/* --dock-peek es lo que asoma en reposo: el tirador y un dedo de las miniaturas,
+   para que se vea que hay algo ahi sin que tape la carta. */
+.stage-dock{flex:0 0 auto;width:100%;--dock-handle:30px;--dock-peek:52px}
 /* Sin raton no hay con que desplegar, asi que el muelle se queda abierto y el
    tirador sobra: en tactil el hover es un toque pegajoso, y para abrirlo habria
    que tocar justo la barra. */
 .stage-dock-handle{display:none}
 
 @media (hover:hover) and (min-width:901px){
-  .stage-dock{height:var(--dock-handle);position:relative}
+  /* En reposo no se esconde: se queda caido y traslucido, asomando --dock-peek.
+     Se mueve con transform y opacidad y no plegando la altura, que ademas evita
+     el scroll retenido: con el cuerpo colapsado por max-height, hacer clic en una
+     miniatura hacia que el navegador scrollease el panel para revelarla y ese
+     scrollTop sobrevivia al plegado, dejando miniaturas asomando por debajo. */
+  .stage-dock{height:var(--dock-peek);position:relative}
   .stage-dock-panel{position:absolute;left:0;right:0;bottom:0;z-index:5;
-    background:linear-gradient(180deg,rgba(7,7,9,.93),var(--bg) 34px);
+    opacity:.34;
+    transform:translateY(calc(100% - var(--dock-peek)));
+    transition:opacity .24s ease,transform .24s ease;
+    background:linear-gradient(180deg,rgba(7,7,9,.55),rgba(7,7,9,.94) 44px);
     border-radius:12px 12px 0 0}
-  /* Lo que se pliega es el cuerpo, no el panel entero: el tirador tiene que
-     quedar fuera de lo que scrollea. Estando dentro, hacer clic en una miniatura
-     con el muelle abierto hacia que el navegador scrollease el panel para
-     revelarla, y ese scrollTop sobrevivia al plegado —overflow:hidden lo
-     respeta—, asi que el tirador se iba hacia arriba y asomaban las miniaturas
-     por debajo del borde. */
-  .stage-dock-body{max-height:0;overflow:hidden;transition:max-height .18s ease}
-  .stage-dock:hover .stage-dock-body,
-  .stage-dock:focus-within .stage-dock-body{max-height:min(74vh,520px);overflow-y:auto}
+  .stage-dock:hover .stage-dock-panel,
+  .stage-dock:focus-within .stage-dock-panel{opacity:1;transform:translateY(0)}
+  /* El cuerpo acota su propio alto: el panel ya no recorta nada, asi que una
+     seccion muy larga se saldria por arriba en vez de scrollear. */
+  .stage-dock-body{max-height:min(70vh,488px);overflow-y:auto}
   .stage-dock-handle{display:flex;align-items:center;justify-content:center;gap:9px;
     height:var(--dock-handle);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
-    color:var(--muted2);border-top:1px solid var(--line);cursor:default;user-select:none}
+    color:var(--muted2);border-top:1px solid var(--line);cursor:default;user-select:none;
+    transition:color .24s ease}
   .stage-dock:hover .stage-dock-handle,
-  .stage-dock:focus-within .stage-dock-handle{color:var(--tier);border-top-color:var(--line2)}
-  .stage-dock-handle::before{content:'▲';font-size:8px;transition:transform .18s ease}
+  .stage-dock:focus-within .stage-dock-handle{color:var(--tier)}
+  .stage-dock-handle::before{content:'▲';font-size:8px;transition:transform .24s ease}
   .stage-dock:hover .stage-dock-handle::before,
   .stage-dock:focus-within .stage-dock-handle::before{transform:rotate(180deg)}
   /* Ya lo separa el muelle: dentro, el margen de la tira abre un hueco muerto. */
