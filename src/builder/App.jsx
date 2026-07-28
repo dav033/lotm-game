@@ -111,6 +111,12 @@ const DEFAULT_STATE = {
   backgroundOpacity: 65,
 }
 
+// Tamaño real de toda carta y margen que se le deja al encajarla en la ventana.
+const CARD_W = 480
+const CARD_H = 640
+const CARD_MARGIN = 16
+const MIN_FIT = 0.25
+
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
 
 // html2canvas snapshots whatever is currently painted, so a capture taken
@@ -145,6 +151,7 @@ const waitForCardAssets = async (root) => {
 
 export default function App() {
   const cardRef = useRef(null)
+  const canvasRef = useRef(null)
   const session = useCardSession()
   const {
     cards: allCards, sections, projects, images: allImages,
@@ -246,14 +253,41 @@ export default function App() {
     setState(active.state)
   }, [cards, editingId, session])
 
+  // La carta mide 480x640 fijos y el editor ocupa exactamente la ventana, asi
+  // que en pantallas bajas no cabe: quedaba recortada tras una barra de scroll y
+  // solo se veia su tercio superior. Se reduce a la escala que quepa, como el
+  // zoom-to-fit de cualquier editor, y nunca se amplia mas alla de su tamaño.
+  useEffect(() => {
+    const stage = canvasRef.current
+    if (!stage) return
+    const fitToStage = () => {
+      const { width, height } = stage.getBoundingClientRect()
+      const scale = Math.min(1, (width - CARD_MARGIN) / CARD_W, (height - CARD_MARGIN) / CARD_H)
+      stage.style.setProperty('--fit', String(Math.max(MIN_FIT, scale)))
+    }
+    fitToStage()
+    const observer = new ResizeObserver(fitToStage)
+    observer.observe(stage)
+    return () => observer.disconnect()
+  }, [ready])
+
   const captureCard = async () => {
-    await waitForCardAssets(cardRef.current)
-    const canvas = await html2canvas(cardRef.current, {
-      backgroundColor: null,
-      scale: 2,
-      useCORS: true,
-    })
-    return canvas.toDataURL('image/png')
+    // El zoom-to-fit es solo de pantalla: el PNG sigue saliendo a 960x1280, asi
+    // que se captura con la carta a su tamaño real.
+    const stage = canvasRef.current
+    const fit = stage?.style.getPropertyValue('--fit')
+    stage?.style.setProperty('--fit', '1')
+    try {
+      await waitForCardAssets(cardRef.current)
+      const canvas = await html2canvas(cardRef.current, {
+        backgroundColor: null,
+        scale: 2,
+        useCORS: true,
+      })
+      return canvas.toDataURL('image/png')
+    } finally {
+      if (fit) stage.style.setProperty('--fit', fit)
+    }
   }
 
   // ---- Card operations ----
@@ -621,7 +655,7 @@ export default function App() {
           onMove={(target) => session.moveCards([editingId], target)}
         />
 
-        <div className="stage-canvas">
+        <div className="stage-canvas" ref={canvasRef}>
           {/* Sin cartas no hay nada que editar: escribir aqui no guardaria en
               ningun sitio, asi que se dice que hay que crear una. */}
           {cards.length === 0 ? (

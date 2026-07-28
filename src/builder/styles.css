@@ -13,14 +13,22 @@
 
 /* ================= APP LAYOUT (Canva-style) ================= */
 .app{display:flex;align-items:stretch;min-height:100vh}
-/* En escritorio el editor ocupa exactamente la ventana y lo que scrollea es la
-   zona de la carta, no la pagina. Asi la tira y la bandeja de imagenes quedan
-   siempre a la vista: antes caian bajo el pliegue y no habia nada que indicara
-   que seguian ahi abajo. */
+/* En escritorio el editor ocupa exactamente el hueco que deja la nav del sitio,
+   asi la tira y la bandeja de imagenes quedan siempre a la vista: antes caian
+   bajo el pliegue y no habia nada que indicara que seguian ahi abajo.
+   La nav mide lo que mide su contenido, asi que el hueco se reparte con flex; un
+   100vh fijo dejaba el editor una nav mas alto que la ventana y la bandeja se
+   salia por abajo. El :has() acota esto a las paginas del editor. */
 @media (min-width:901px){
-  .app{height:100vh;overflow:hidden}
-  .stage{height:100vh;overflow:hidden}
-  .stage-canvas{overflow:auto}
+  /* Altura definida, no min-height: sin un limite firme el editor crece con su
+     contenido y vuelve a salirse por abajo en vez de encajar la carta. */
+  body:has(.builder-root){height:100dvh;overflow:hidden;display:flex;flex-direction:column}
+  .builder-root{flex:1 1 auto;min-height:0}
+  .app{height:100%;min-height:0;overflow:hidden}
+  .stage{height:100%;overflow:hidden}
+  /* La carta se encaja por escala (--fit, que calcula el editor), no por scroll:
+     asi se ve entera y la tira y la bandeja siguen ancladas abajo. */
+  .stage-canvas{overflow:hidden}
   .filmstrip,.image-tray{flex:0 0 auto}
 }
 .app-loading{display:flex;align-items:center;justify-content:center;min-height:100vh;
@@ -61,6 +69,9 @@
 
 .stage-canvas{flex:1 1 auto;display:flex;align-items:center;justify-content:center;
   width:100%;min-height:0}
+/* Toda carta es una caja fija de 480x640; el unico otro hijo del canvas es el
+   estado vacio, que no se escala porque es texto. */
+.stage-canvas>*:not(.stage-empty){transform:scale(var(--fit,1));transform-origin:center center}
 .stage-empty{display:flex;flex-direction:column;align-items:center;gap:16px;
   color:var(--muted2);font-size:14px;text-align:center}
 .btn-new-card{padding:10px 18px;border-radius:8px;border:1px solid var(--tier);
@@ -71,6 +82,15 @@
 .filmstrip{width:100%;margin-top:16px;display:flex;align-items:center;gap:14px}
 .filmstrip-rail{flex:1 1 auto;min-width:0;display:flex;align-items:flex-end;gap:10px;
   overflow-x:auto;padding:8px 2px 12px}
+/* Las barras nativas de Windows son claras y gruesas: dentro del editor oscuro
+   cantaban mas que las propias miniaturas. */
+.filmstrip-rail,.image-tray-rail{scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+.filmstrip-rail::-webkit-scrollbar,.image-tray-rail::-webkit-scrollbar{height:8px}
+.filmstrip-rail::-webkit-scrollbar-track,.image-tray-rail::-webkit-scrollbar-track{background:transparent}
+.filmstrip-rail::-webkit-scrollbar-thumb,.image-tray-rail::-webkit-scrollbar-thumb{
+  background:var(--line2);border-radius:99px}
+.filmstrip-rail::-webkit-scrollbar-thumb:hover,.image-tray-rail::-webkit-scrollbar-thumb:hover{
+  background:var(--muted)}
 /* Las cartas se agrupan por seccion, igual que en /cartas/vivo. */
 .film-group{flex:0 0 auto;display:flex;flex-direction:column;gap:5px;
   padding-left:12px;border-left:1px solid var(--line)}
@@ -152,7 +172,9 @@
 .project-new-input:focus{outline:none}
 
 /* ---- Bandeja de imagenes importadas (solo visor: no se editan) ---- */
-.image-tray{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+/* width:100% porque el stage centra a sus hijos: sin esto la bandeja se queda en
+   una columna estrecha en medio y su regla superior parece un trozo de linea. */
+.image-tray{width:100%;margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
 .image-tray-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .image-tray-title{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted2);
   margin-right:auto}
@@ -166,6 +188,9 @@
 .image-tray-video:hover:not(:disabled){border-color:var(--tier);color:var(--tier)}
 .image-tray-rail{display:flex;align-items:center;gap:10px;overflow-x:auto;min-height:96px;
   border:1.5px dashed transparent;border-radius:9px;padding:4px}
+/* Sin imagenes la bandeja no reserva la altura de una miniatura: ese hueco vacio
+   se lo quitaba a la carta, que es lo que se esta editando. */
+.image-tray-rail:has(.image-tray-empty){min-height:0;border-style:dashed;border-color:var(--line)}
 .image-tray-rail.dropping{border-color:var(--tier);background:rgba(255,255,255,.02)}
 .image-tray-empty{margin:0;font-size:11px;color:var(--muted2)}
 .image-thumb{position:relative;flex:0 0 auto;width:78px;aspect-ratio:3/4;border-radius:7px;
