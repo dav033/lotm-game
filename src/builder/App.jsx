@@ -117,6 +117,10 @@ const CARD_H = 640
 const CARD_MARGIN = 16
 const MIN_FIT = 0.25
 
+// Los dos archivos que sale cada exportacion de video, en el orden en que se
+// bajan. Los tamaños los pone el servidor: ver VIDEO_FORMATS en src/cards/video.
+const VIDEO_FORMATS = ['card', 'shorts']
+
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
 
 // html2canvas snapshots whatever is currently painted, so a capture taken
@@ -501,19 +505,27 @@ export default function App() {
     }
   }
 
+  // Cada exportacion baja dos archivos: el de la carta tal cual (3:4) y el
+  // vertical 9:16 para Shorts, TikTok y Reels. Se reaprovecha el mismo FormData
+  // en las dos peticiones porque los fotogramas ya estan capturados: lo unico
+  // que se repite es la subida, no el renderizado de las cartas, que es lo caro.
+  // El navegador pide permiso una vez para bajar varios archivos de un sitio.
   const sendVideo = async (form) => {
-    const response = await fetch('/api/cards/video', { method: 'POST', body: form })
-    if (!response.ok) {
-      const body = await response.json().catch(() => null)
-      setVideoError(body?.error ?? `No se pudo generar el video (HTTP ${response.status}).`)
-      return
+    for (const format of VIDEO_FORMATS) {
+      form.set('format', format)
+      const response = await fetch('/api/cards/video', { method: 'POST', body: form })
+      if (!response.ok) {
+        const body = await response.json().catch(() => null)
+        setVideoError(body?.error ?? `No se pudo generar el video (HTTP ${response.status}).`)
+        return
+      }
+      const blob = await response.blob()
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = filenameFromResponse(response) ?? `cartas-${format}.mp4`
+      a.click()
+      URL.revokeObjectURL(a.href)
     }
-    const blob = await response.blob()
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = filenameFromResponse(response) ?? 'cartas.mp4'
-    a.click()
-    URL.revokeObjectURL(a.href)
   }
 
   // One tier slide per pathway, in canon order, keeping the current rank as a
@@ -619,6 +631,8 @@ export default function App() {
       durationSeconds: card.durationSeconds ?? null,
     }
   })
+  // Lo que resume el muelle plegado, para saber que hay ahi debajo sin abrirlo.
+  const sectionCount = new Set(cards.map((card) => card.part.id)).size
 
   return (
     <div className="app">
@@ -787,38 +801,52 @@ export default function App() {
           )}
         </div>
 
-        <Filmstrip
-          batch={filmstrip}
-          editingId={editingId}
-          accent={accent}
-          busy={busy}
-          onLoadCard={onLoadCard}
-          onNewCard={onNewCard}
-          onRemoveFromBatch={onRemoveFromBatch}
-          onReorder={onReorder}
-          onDownloadZip={onDownloadZip}
-          onRenameSection={(partId, name) => session.renameSection(partId, { name })}
-          onDownloadSection={(partId) => {
-            const seccion = cards.filter((card) => card.part.id === partId)
-            if (seccion.length) void onDownloadZip(seccion, slugify(seccion[0].part.name))
-          }}
-          onDownloadSectionVideo={onDownloadSectionVideo}
-          videoError={videoError}
-          seconds={seconds}
-          onSeconds={setSeconds}
-          onCardDuration={(id, value) => session.setDuration('card', id, value)}
-        />
+        {/* La tira y la bandeja viven plegadas al pie y se abren al pasar por
+            encima. Se despliegan sobre el lienzo, no lo empujan: ver .stage-dock
+            en styles.css. */}
+        <div className="stage-dock">
+          <div className="stage-dock-panel">
+            <div className="stage-dock-handle">
+              {filmstrip.length} cartas · {sectionCount} {sectionCount === 1 ? 'sección' : 'secciones'}
+              {images.length ? ` · ${images.length} imágenes` : ''}
+            </div>
 
-        <ImageTray
-          images={images}
-          busy={busy}
-          seconds={seconds}
-          onImport={(files) => session.importImages(activeProjectId, files)}
-          onDelete={session.deleteImage}
-          onReorder={(imageIds) => session.reorderImages(activeProjectId, imageIds)}
-          onExportVideo={onExportImagesVideo}
-          onImageDuration={(id, value) => session.setDuration('image', id, value)}
-        />
+            <div className="stage-dock-body">
+            <Filmstrip
+              batch={filmstrip}
+              editingId={editingId}
+              accent={accent}
+              busy={busy}
+              onLoadCard={onLoadCard}
+              onNewCard={onNewCard}
+              onRemoveFromBatch={onRemoveFromBatch}
+              onReorder={onReorder}
+              onDownloadZip={onDownloadZip}
+              onRenameSection={(partId, name) => session.renameSection(partId, { name })}
+              onDownloadSection={(partId) => {
+                const seccion = cards.filter((card) => card.part.id === partId)
+                if (seccion.length) void onDownloadZip(seccion, slugify(seccion[0].part.name))
+              }}
+              onDownloadSectionVideo={onDownloadSectionVideo}
+              videoError={videoError}
+              seconds={seconds}
+              onSeconds={setSeconds}
+              onCardDuration={(id, value) => session.setDuration('card', id, value)}
+            />
+
+            <ImageTray
+              images={images}
+              busy={busy}
+              seconds={seconds}
+              onImport={(files) => session.importImages(activeProjectId, files)}
+              onDelete={session.deleteImage}
+              onReorder={(imageIds) => session.reorderImages(activeProjectId, imageIds)}
+              onExportVideo={onExportImagesVideo}
+              onImageDuration={(id, value) => session.setDuration('image', id, value)}
+            />
+            </div>
+          </div>
+        </div>
       </section>
 
       <Panel

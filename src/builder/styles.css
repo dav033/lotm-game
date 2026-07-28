@@ -78,45 +78,43 @@
   background:transparent;color:var(--tier);font:inherit;cursor:pointer}
 .btn-new-card:hover{background:var(--tier);color:#0a0a11}
 
-/* ================= ESCENARIO ANCHO: la tira al costado =================
-   Apiladas debajo, la tira y la bandeja le quitaban 251px de alto a una carta
-   que solo necesita 480 de ancho, mientras sobraban ~1200px de ancho vacio a los
-   lados. En pantallas anchas pasan a una columna a la derecha del lienzo: el
-   hueco que sobraba de ancho se convierte en el alto que le faltaba a la carta.
-   El lienzo ocupa tambien la fila de la bandeja, asi que se queda con todo el
-   alto de la izquierda. */
-@media (min-width:1200px){
-  .stage{
-    display:grid;
-    grid-template-columns:minmax(0,1fr) 208px;
-    grid-template-rows:auto auto auto minmax(0,1fr) auto;
-    grid-template-areas:
-      "tabs   rail"
-      "top    rail"
-      "sect   rail"
-      "canvas rail"
-      "canvas tray";
-    column-gap:20px;
-    /* Sin esto gana el align-items:center del flex y el lienzo se queda del alto
-       de su contenido (640) en vez de estirarse a la fila, que es de donde sale
-       el alto extra. */
-    align-items:stretch;
-  }
-  .project-tabs{grid-area:tabs}
-  /* justify-self porque el grid ya no centra a sus hijos como hacia el flex. */
-  .stage-top{grid-area:top;justify-self:center}
-  .stage-section{grid-area:sect;justify-self:center}
-  .stage-canvas{grid-area:canvas}
-  .filmstrip{grid-area:rail;flex-direction:column;align-items:stretch;min-height:0;margin-top:0}
-  .filmstrip-rail{flex-direction:column;align-items:center;min-height:0;
-    overflow-x:hidden;overflow-y:auto;padding:2px 6px 2px 2px}
-  .filmstrip-rail::-webkit-scrollbar{width:8px}
-  /* Cada seccion pasa a ser un bloque apilado: el filo que las separaba de lado
-     ahora va arriba, que es por donde se tocan. */
-  .film-group{width:100%;padding:10px 0 0;border-left:none;border-top:1px solid var(--line)}
-  .film-group:first-child{padding-top:0;border-top:none}
-  .film-group-cards{flex-direction:column}
-  .image-tray{grid-area:tray;margin-top:12px}
+/* ================= MUELLE INFERIOR PLEGADO =================
+   La tira y la bandeja se quedan abajo, pero plegadas: apiladas enteras le
+   quitaban 251px de alto a una carta que solo necesita 480 de ancho. Plegado el
+   muelle ocupa una barra fina y el resto se despliega por encima del lienzo, sin
+   empujarlo: si empujara, la carta cambiaria de tamaño al pasar el raton por
+   encima. Con foco dentro se queda abierto, que si no editar el nombre de una
+   seccion o los segundos de una carta lo cerraria a media escritura. */
+.stage-dock{flex:0 0 auto;width:100%;--dock-handle:32px}
+/* Sin raton no hay con que desplegar, asi que el muelle se queda abierto y el
+   tirador sobra: en tactil el hover es un toque pegajoso, y para abrirlo habria
+   que tocar justo la barra. */
+.stage-dock-handle{display:none}
+
+@media (hover:hover) and (min-width:901px){
+  .stage-dock{height:var(--dock-handle);position:relative}
+  .stage-dock-panel{position:absolute;left:0;right:0;bottom:0;z-index:5;
+    background:linear-gradient(180deg,rgba(7,7,9,.93),var(--bg) 34px);
+    border-radius:12px 12px 0 0}
+  /* Lo que se pliega es el cuerpo, no el panel entero: el tirador tiene que
+     quedar fuera de lo que scrollea. Estando dentro, hacer clic en una miniatura
+     con el muelle abierto hacia que el navegador scrollease el panel para
+     revelarla, y ese scrollTop sobrevivia al plegado —overflow:hidden lo
+     respeta—, asi que el tirador se iba hacia arriba y asomaban las miniaturas
+     por debajo del borde. */
+  .stage-dock-body{max-height:0;overflow:hidden;transition:max-height .18s ease}
+  .stage-dock:hover .stage-dock-body,
+  .stage-dock:focus-within .stage-dock-body{max-height:min(74vh,520px);overflow-y:auto}
+  .stage-dock-handle{display:flex;align-items:center;justify-content:center;gap:9px;
+    height:var(--dock-handle);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--muted2);border-top:1px solid var(--line);cursor:default;user-select:none}
+  .stage-dock:hover .stage-dock-handle,
+  .stage-dock:focus-within .stage-dock-handle{color:var(--tier);border-top-color:var(--line2)}
+  .stage-dock-handle::before{content:'▲';font-size:8px;transition:transform .18s ease}
+  .stage-dock:hover .stage-dock-handle::before,
+  .stage-dock:focus-within .stage-dock-handle::before{transform:rotate(180deg)}
+  /* Ya lo separa el muelle: dentro, el margen de la tira abre un hueco muerto. */
+  .stage-dock .filmstrip{margin-top:0}
 }
 
 /* Bottom: filmstrip of saved cards */

@@ -12,12 +12,25 @@ export const MIN_SECONDS_PER_CARD = 0.5
 export const MAX_SECONDS_PER_CARD = 60
 export const DEFAULT_FPS = 30
 
+// Formatos de salida. `card` respeta el tamaño de los PNG capturados (3:4, que
+// es la carta); `shorts` los lleva al vertical 9:16 que piden YouTube Shorts,
+// TikTok y Reels. Un 3:4 dentro de un 9:16 sobra por los lados, asi que entra
+// por ancho y queda banda arriba y abajo.
+export const VIDEO_FORMATS = {
+  card: null,
+  shorts: { width: 1080, height: 1920 },
+} as const
+
+export type VideoFormat = keyof typeof VIDEO_FORMATS
+
 export type CardVideoOptions = {
   secondsPerCard?: number
   // Duracion propia de cada fotograma, en el mismo orden que `frames`. Un hueco
   // (null/undefined) cae en `secondsPerCard`, que es la duracion global.
   durations?: Array<number | null | undefined>
   fps?: number
+  // Lienzo final. Sin el, el video sale del tamaño de los propios fotogramas.
+  target?: { readonly width: number; readonly height: number } | null
 }
 
 // Encadena los fotogramas en un solo MP4, cada uno en pantalla los segundos
@@ -104,6 +117,14 @@ export async function createVideoFromFrames(
       '-i', listFile,
       '-vf', [
         `fps=${fps}`,
+        // El lienzo final va aqui y no en la pasada previa: aquella solo iguala
+        // fotogramas dispares entre si, que es lo que exige el demuxer concat.
+        ...(options.target
+          ? [
+            `scale=${options.target.width}:${options.target.height}:force_original_aspect_ratio=decrease`,
+            `pad=${options.target.width}:${options.target.height}:(ow-iw)/2:(oh-ih)/2:color=black`,
+          ]
+          : []),
         'setsar=1',
         // Las capturas traen alfa; sin aplanarlo a yuv420p el video no se ve
         // en QuickTime ni en la mayoria de reproductores sociales.

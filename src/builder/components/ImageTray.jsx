@@ -38,7 +38,10 @@ export default function ImageTray({
         <button
           className="image-tray-video"
           disabled={busy || !images.length}
-          title={`Exportar ${images.length} imagenes en MP4`}
+          title={
+            `Exportar ${images.length} imagenes en MP4 · ` +
+            'baja 2 archivos: original (3:4) y vertical para Shorts (9:16)'
+          }
           onClick={() => onExportVideo()}
         >Vídeo MP4</button>
         <input

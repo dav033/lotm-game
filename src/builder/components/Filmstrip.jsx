@@ -106,7 +106,8 @@ export default function Filmstrip({
                 className="film-group-video"
                 title={
                   `Exportar "${group.part.name}" en MP4 · ${group.items.length} cartas · ` +
-                  `${formatDuration(totalSeconds(group.items, seconds))}`
+                  `${formatDuration(totalSeconds(group.items, seconds))} · ` +
+                  'baja 2 archivos: carta (3:4) y vertical para Shorts (9:16)'
                 }
                 disabled={busy}
                 onClick={() => onDownloadSectionVideo(group.partId, seconds)}

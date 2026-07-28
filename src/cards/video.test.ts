@@ -7,6 +7,7 @@ import {
   MAX_SECONDS_PER_CARD,
   MIN_SECONDS_PER_CARD,
   pngSize,
+  VIDEO_FORMATS,
 } from './video'
 
 test('la duracion por carta se mantiene dentro de los limites', () => {
@@ -135,6 +136,47 @@ test('los fotogramas se unen en un MP4 con la duracion pedida', async () => {
     // primera entrada si los tamaños no coinciden, y aqui no coinciden a
     // proposito: es justo lo que comprueba esta asercion.
     assert.match(stdout, /Duration: 00:00:02|"duration": ?"2\./)
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true })
+  }
+})
+
+// El mismo lote sale dos veces: tal cual y en vertical para Shorts. Lo que
+// importa es que el vertical mida 1080x1920 exactos aunque los fotogramas sean
+// 3:4 —si solo escalara sin rellenar, YouTube no lo tomaria como Short— y que
+// el formato de la carta siga saliendo del tamaño de sus propios PNG.
+test('el formato shorts lleva los fotogramas a un 1080x1920 exacto', async () => {
+  const { execFile } = await import('node:child_process')
+  const { promisify } = await import('node:util')
+  const fs = await import('node:fs/promises')
+  const os = await import('node:os')
+  const path = await import('node:path')
+  const ffmpeg = (await import('ffmpeg-static')).default as string
+
+  const run = promisify(execFile)
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-video-shorts-'))
+  const medir = async (video: Buffer, nombre: string) => {
+    const output = path.join(dir, nombre)
+    await fs.writeFile(output, video)
+    const { stderr } = await run(ffmpeg, ['-hide_banner', '-i', output]).catch((e) => e)
+    return String(stderr).match(/, (\d+)x(\d+)[ ,]/)?.slice(1, 3).join('x')
+  }
+
+  try {
+    // 3:4, la proporcion real de una carta exportada (960x1280 a escala).
+    const file = path.join(dir, 'frame.png')
+    await run(ffmpeg, ['-y', '-f', 'lavfi', '-i', 'color=c=teal:s=240x320', '-frames:v', '1', file])
+    const frame = new Uint8Array(await fs.readFile(file))
+
+    const carta = await createVideoFromFrames([frame], {
+      secondsPerCard: 1, fps: 10, target: VIDEO_FORMATS.card,
+    })
+    const shorts = await createVideoFromFrames([frame], {
+      secondsPerCard: 1, fps: 10, target: VIDEO_FORMATS.shorts,
+    })
+
+    assert.equal(await medir(carta, 'carta.mp4'), '240x320', 'sin target manda el tamaño del PNG')
+    assert.equal(await medir(shorts, 'shorts.mp4'), '1080x1920', 'el vertical es 9:16 exacto')
   } finally {
     await fs.rm(dir, { recursive: true, force: true })
   }

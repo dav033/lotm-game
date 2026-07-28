@@ -5,6 +5,8 @@ import {
   clampSeconds,
   createVideoFromFrames,
   DEFAULT_SECONDS_PER_CARD,
+  VIDEO_FORMATS,
+  type VideoFormat,
 } from '@/cards/video'
 
 export const runtime = 'nodejs'
@@ -22,6 +24,7 @@ export async function POST(request: Request) {
   let seconds: number
   let durations: Array<number | null>
   let filename: string
+  let format: VideoFormat
   try {
     const form = await request.formData()
     const files = form.getAll('frames').filter((value): value is File => value instanceof File)
@@ -44,7 +47,14 @@ export async function POST(request: Request) {
       if (!Number.isFinite(parsed)) return null
       return parsed
     })
-    filename = `${slugify(String(form.get('name') || 'cartas'))}.mp4`
+    // El sufijo distingue los dos archivos en la carpeta de descargas: si los
+    // dos se llamaran igual, el navegador le pega un "(1)" al segundo y no hay
+    // forma de saber cual es el vertical.
+    const requested = String(form.get('format') || 'card')
+    if (!(requested in VIDEO_FORMATS)) throw new Error(`Formato de video desconocido: ${requested}.`)
+    format = requested as VideoFormat
+    const suffix = format === 'card' ? '' : `-${format}`
+    filename = `${slugify(String(form.get('name') || 'cartas'))}${suffix}.mp4`
     frames = await Promise.all(
       files.map(async (file) => new Uint8Array(await file.arrayBuffer())),
     )
@@ -53,7 +63,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const video = await createVideoFromFrames(frames, { secondsPerCard: seconds, durations })
+    const video = await createVideoFromFrames(frames, {
+      secondsPerCard: seconds,
+      durations,
+      target: VIDEO_FORMATS[format],
+    })
     return new NextResponse(new Uint8Array(video), {
       headers: {
         'Content-Type': 'video/mp4',
