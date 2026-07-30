@@ -23,12 +23,16 @@ const CorruptionFileCard = forwardRef(function CorruptionFileCard(
   const incidentNumber = String((incident || 'UNKNOWN').length * 73).padStart(4, '0')
   const formatLabel = { Warning: 'Hazard poster', Evidence: 'Meme autopsy', Quote: 'Context collapse' }[mode]
   const accent = /^#[0-9a-f]{6}$/i.test(accentColor || '') ? accentColor : '#d84a4a'
+  const imageVisibility = Math.max(0, Math.min(100, backgroundOpacity)) / 100
+  const veilOpacity = Number((0.92 - imageVisibility * 0.72).toFixed(3))
   const style = {
     '--corruption': accent,
     '--corruption-12': colorWithAlpha(accent, 0.12),
     '--corruption-25': colorWithAlpha(accent, 0.25),
     '--corruption-55': colorWithAlpha(accent, 0.55),
-    '--background-opacity': backgroundOpacity / 100,
+    '--background-opacity': imageVisibility,
+    '--background-veil': veilOpacity,
+    '--corruption-veil': colorWithAlpha(accent, veilOpacity),
   }
 
   return (
