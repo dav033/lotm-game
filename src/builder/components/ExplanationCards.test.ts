@@ -79,6 +79,12 @@ test('Tarot Member genera colores compatibles con html2canvas', () => {
   assert.doesNotMatch(readFileSync(new URL('../styles.css', import.meta.url), 'utf8'), /color-mix\(/)
 })
 
+test('el velo de Corruption File conserva su transparencia con Dark Reader', () => {
+  const styles = readFileSync(new URL('../styles.css', import.meta.url), 'utf8')
+  assert.match(styles, /\.corruption-file-veil\{[^}]*opacity:var\(--background-veil\)/)
+  assert.doesNotMatch(styles, /\.corruption-file-veil\{[^}]*rgba\([^}]*var\(--background-veil\)/)
+})
+
 test('Tarot Member adapta el layout del expediente a la cantidad de contenido', () => {
   const renderDossier = (props: Record<string, unknown>) => renderToStaticMarkup(React.createElement(TarotMember, {
     variant: 'Dossier', ...props,
