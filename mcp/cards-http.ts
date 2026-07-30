@@ -106,7 +106,8 @@ app.delete('/mcp', (_request, response) => {
 
 app.get('/downloads/:filename', async (request, response) => {
   const filename = path.basename(request.params.filename)
-  if (filename !== request.params.filename || !filename.endsWith('.zip')) {
+  const extension = path.extname(filename).toLowerCase()
+  if (filename !== request.params.filename || !['.zip', '.mp4'].includes(extension)) {
     response.status(400).json({ error: 'Archivo invalido.' })
     return
   }
