@@ -218,6 +218,28 @@ export const MapCardSchema = z
   })
   .strict()
 
+export const TarotMemberCardSchema = z
+  .object({
+    type: z.literal('Tarot Member'),
+    variant: z.enum(['Portrait', 'Dossier', 'Contrast']).default('Portrait').describe(
+      'Composicion visual: Portrait prioriza imagen y nombre; Dossier parece un expediente; Contrast divide percepcion y realidad.',
+    ),
+    name: z.string().trim().min(1).max(80).describe('Nombre o identidad que se explica.'),
+    tarotTitle: z.string().trim().min(1).max(40).describe('Arcano o rol visible, p. ej. The Hanged Man.'),
+    description: z.string().trim().min(1).max(360).describe(
+      'Descripcion principal; en Contrast es lo que el Club percibe.',
+    ),
+    detailLabel: z.string().trim().min(1).max(36).default('Club function').describe(
+      'Etiqueta de la segunda idea; en Contrast encabeza la realidad.',
+    ),
+    detailText: z.string().trim().min(1).max(280).describe('Segunda idea, funcion o contraste del personaje.'),
+    footerText: z.string().trim().max(180).optional().describe('Remate final breve, divertido pero veraz.'),
+    pathway: PathwayNameSchema.optional().describe('Pathway opcional que aporta el color de acento.'),
+    imageUrl: ImageSourceSchema.optional().describe('Retrato o arte de fondo opcional.'),
+    backgroundOpacity: BackgroundOpacitySchema,
+  })
+  .strict()
+
 export const CardContentSchema = z.discriminatedUnion('type', [
   CharacterCardSchema,
   ArtifactCardSchema,
@@ -230,6 +252,7 @@ export const CardContentSchema = z.discriminatedUnion('type', [
   PathwayExplanationCardSchema,
   BreakdownCardSchema,
   MapCardSchema,
+  TarotMemberCardSchema,
 ])
 
 export type CardContent = z.infer<typeof CardContentSchema>
@@ -324,7 +347,7 @@ export type SaveCardBatchInput = z.infer<typeof SaveCardBatchSchema>
 export type CardFilter = z.infer<typeof CardFilterSchema>
 
 export type BuilderCardState = {
-  type: 'Character' | 'Artifact' | 'Cover' | 'Full Image Cover' | 'Tier' | 'Pathway' | 'Tier Explanation' | 'General Explanation' | 'Pathway Explanation' | 'Breakdown' | 'Map'
+  type: 'Character' | 'Artifact' | 'Cover' | 'Full Image Cover' | 'Tier' | 'Pathway' | 'Tier Explanation' | 'General Explanation' | 'Pathway Explanation' | 'Breakdown' | 'Map' | 'Tarot Member'
   name: string
   path: string
   seq: number
@@ -375,6 +398,15 @@ export type BuilderCardState = {
   mapFooterText: string
   mapPathway: string | null
   mapBackgroundImage: string | null
+  tarotMemberVariant: 'Portrait' | 'Dossier' | 'Contrast'
+  tarotMemberName: string
+  tarotMemberTitle: string
+  tarotMemberDescription: string
+  tarotMemberDetailLabel: string
+  tarotMemberDetailText: string
+  tarotMemberFooterText: string
+  tarotMemberPathway: string | null
+  tarotMemberImage: string | null
   backgroundOpacity: number
 }
 
@@ -430,6 +462,15 @@ const DEFAULT_BUILDER_STATE: BuilderCardState = {
   mapFooterText: '',
   mapPathway: null,
   mapBackgroundImage: null,
+  tarotMemberVariant: 'Portrait',
+  tarotMemberName: '',
+  tarotMemberTitle: '',
+  tarotMemberDescription: '',
+  tarotMemberDetailLabel: 'Club function',
+  tarotMemberDetailText: '',
+  tarotMemberFooterText: '',
+  tarotMemberPathway: null,
+  tarotMemberImage: null,
   backgroundOpacity: 65,
 }
 
@@ -533,6 +574,21 @@ export function toBuilderCardState(content: CardContent): BuilderCardState {
       mapFooterText: content.footerText ?? '',
       mapPathway: content.pathway ?? null,
       mapBackgroundImage: content.backgroundImageUrl ?? null,
+    }
+  }
+
+  if (content.type === 'Tarot Member') {
+    return {
+      ...state,
+      tarotMemberVariant: content.variant,
+      tarotMemberName: content.name,
+      tarotMemberTitle: content.tarotTitle,
+      tarotMemberDescription: content.description,
+      tarotMemberDetailLabel: content.detailLabel,
+      tarotMemberDetailText: content.detailText,
+      tarotMemberFooterText: content.footerText ?? '',
+      tarotMemberPathway: content.pathway ?? null,
+      tarotMemberImage: content.imageUrl ?? null,
     }
   }
 
@@ -646,6 +702,21 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
       backgroundOpacity: state.backgroundOpacity,
     }
   }
+  if (state.type === 'Tarot Member') {
+    return {
+      type: 'Tarot Member',
+      variant: state.tarotMemberVariant,
+      name: state.tarotMemberName.trim(),
+      tarotTitle: state.tarotMemberTitle.trim(),
+      description: state.tarotMemberDescription.trim(),
+      detailLabel: state.tarotMemberDetailLabel.trim() || 'Club function',
+      detailText: state.tarotMemberDetailText.trim(),
+      ...(state.tarotMemberFooterText.trim() ? { footerText: state.tarotMemberFooterText.trim() } : {}),
+      ...(state.tarotMemberPathway ? { pathway: state.tarotMemberPathway } : {}),
+      ...(state.tarotMemberImage ? { imageUrl: state.tarotMemberImage } : {}),
+      backgroundOpacity: state.backgroundOpacity,
+    }
+  }
   const standard = {
     name: state.name.trim(),
     pathway: state.path,
@@ -683,6 +754,7 @@ export function titleForCard(content: CardContent): string {
   if (content.type === 'Map') {
     return content.title
   }
+  if (content.type === 'Tarot Member') return `${content.tarotTitle}: ${content.name}`
   return content.name
 }
 
@@ -722,6 +794,9 @@ export function filenameForCard(content: CardContent): string {
   }
   if (content.type === 'Map') {
     return `map_${slugify(content.title)}`
+  }
+  if (content.type === 'Tarot Member') {
+    return `tarot-member_${slugify(content.tarotTitle)}_${slugify(content.name)}`
   }
   return `${slugify(content.name)}_seq-${content.sequence}`
 }

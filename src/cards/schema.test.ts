@@ -2,6 +2,21 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { CardContentSchema, filenameForCard, fromBuilderCardState, toBuilderCardState } from './schema'
 
+test('Tarot Member conserva sus tres composiciones y campos al ida y vuelta', () => {
+  for (const variant of ['Portrait', 'Dossier', 'Contrast'] as const) {
+    const content = CardContentSchema.parse({
+      type: 'Tarot Member', variant, name: 'Alger Wilson', tarotTitle: 'The Hanged Man',
+      description: 'What the Club sees.', detailLabel: 'What is actually happening',
+      detailText: 'A cautious intelligence analyst.', footerText: 'Underthinking is fatal.',
+      pathway: 'Tyrant', backgroundOpacity: 42,
+    })
+    const state = toBuilderCardState(content)
+    assert.equal(state.tarotMemberVariant, variant)
+    assert.deepEqual(fromBuilderCardState(state), content)
+    assert.equal(filenameForCard(content), 'tarot-member_the-hanged-man_alger-wilson')
+  }
+})
+
 test('convierte una carta Tier al estado que consume el renderer actual', () => {
   const content = CardContentSchema.parse({
     type: 'Tier',

@@ -13,6 +13,7 @@ import GeneralExplanationCard from '../builder/components/GeneralExplanationCard
 import PathwayExplanationCard from '../builder/components/PathwayExplanationCard.jsx'
 import BreakdownCard from '../builder/components/BreakdownCard.jsx'
 import MapCard from '../builder/components/MapCard.jsx'
+import TarotMemberCard from '../builder/components/TarotMemberCard.jsx'
 import {
   PATHWAYS,
   PATH_NAMES,
@@ -41,6 +42,7 @@ const StaticGeneralExplanationCard = GeneralExplanationCard as unknown as Compon
 const StaticPathwayExplanationCard = PathwayExplanationCard as unknown as ComponentType<Record<string, unknown>>
 const StaticBreakdownCard = BreakdownCard as unknown as ComponentType<Record<string, unknown>>
 const StaticMapCard = MapCard as unknown as ComponentType<Record<string, unknown>>
+const StaticTarotMemberCard = TarotMemberCard as unknown as ComponentType<Record<string, unknown>>
 const FONT_STYLESHEET =
   'https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Space+Grotesk:wght@400;500;700' +
   '&family=Playfair+Display:wght@700;900&family=Archivo:wght@400;500;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap'
@@ -137,6 +139,7 @@ export class CardPngRenderer {
 type RenderState = BuilderCardState & {
   generalExplanationBackground: string | null
   mapBackground: string | null
+  tarotMemberResolvedImage: string | null
 }
 
 function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string, string> }) {
@@ -150,6 +153,7 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
   const isPathwayExplanation = state.type === 'Pathway Explanation'
   const isBreakdown = state.type === 'Breakdown'
   const isMap = state.type === 'Map'
+  const isTarotMember = state.type === 'Tarot Member'
   const rawSequences = [
     { path: state.path, seq: state.seq },
     ...(state.hasSecond ? [{ path: state.path2, seq: state.seq2 }] : []),
@@ -172,7 +176,7 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
         ? { ...PATHWAY_COLOR_DATA[state.pathwayCardPath], pct: 100 }
       : isMap && state.mapPathway
         ? { ...PATHWAY_COLOR_DATA[state.mapPathway], pct: 100 }
-      : isGeneralExplanation || isPathwayExplanation || isBreakdown || isMap
+      : isGeneralExplanation || isPathwayExplanation || isBreakdown || isMap || isTarotMember
         ? COVER_ACCENT
       : powerTier(state.type, state.power, state.grade)
   const baseValue = isCharacter ? state.power : state.grade
@@ -272,6 +276,19 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
           backgroundImage={state.mapBackground}
           backgroundOpacity={state.backgroundOpacity}
         />
+      ) : isTarotMember ? (
+        <StaticTarotMemberCard
+          variant={state.tarotMemberVariant}
+          name={state.tarotMemberName}
+          tarotTitle={state.tarotMemberTitle}
+          description={state.tarotMemberDescription}
+          detailLabel={state.tarotMemberDetailLabel}
+          detailText={state.tarotMemberDetailText}
+          footerText={state.tarotMemberFooterText}
+          image={state.tarotMemberResolvedImage}
+          backgroundOpacity={state.backgroundOpacity}
+          tier={state.tarotMemberPathway ? PATHWAY_COLOR_DATA[state.tarotMemberPathway] : null}
+        />
       ) : (
         <StaticCard
           name={state.name}
@@ -345,6 +362,14 @@ async function resolveStateImages(
       ? await resolveImageSource(generalExplanationSource, publicDir)
       : null,
     mapBackground: mapSource ? await resolveImageSource(mapSource, publicDir) : null,
+    tarotMemberResolvedImage: state.tarotMemberImage
+      ? await resolveImageSource(state.tarotMemberImage, publicDir)
+      : state.type === 'Tarot Member' && state.tarotMemberPathway
+        ? await resolveImageSource(
+          (PATHWAY_BACKGROUNDS as Record<string, string>)[state.tarotMemberPathway],
+          publicDir,
+        )
+        : null,
     pathwayExplanationBackgroundImage: pathwayExplanationSource
       ? await resolveImageSource(pathwayExplanationSource, publicDir)
       : null,

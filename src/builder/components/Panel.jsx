@@ -163,6 +163,7 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
   const isPathwayExplanation = state.type === 'Pathway Explanation'
   const isBreakdown = state.type === 'Breakdown'
   const isMap = state.type === 'Map'
+  const isTarotMember = state.type === 'Tarot Member'
   const isExplanation = isTierExplanation || isGeneralExplanation
   const defaultTierBackground = PATHWAY_BACKGROUNDS[state.tierPath] ?? null
   const defaultPathwayCardBackground = PATHWAY_BACKGROUNDS[state.pathwayCardPath] ?? null
@@ -178,7 +179,7 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
       <div className="field">
         <label>Type</label>
         <div className="toggle">
-          {['Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Pathway', 'Tier Explanation', 'General Explanation', 'Pathway Explanation', 'Breakdown', 'Map'].map((t) => (
+          {['Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Pathway', 'Tier Explanation', 'General Explanation', 'Pathway Explanation', 'Breakdown', 'Map', 'Tarot Member'].map((t) => (
             <button
               key={t}
               className={'seg' + (state.type === t ? ' sel' : '')}
@@ -755,6 +756,53 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
           <div className="actions">
             <button className="btn-dl" style={{ background: accent.c }} onClick={onDownload}>Download PNG</button>
           </div>
+        </div>
+      ) : isTarotMember ? (
+        <div key="tarot-member-fields">
+          <div className="field">
+            <label>Composition</label>
+            <div className="toggle">
+              {['Portrait', 'Dossier', 'Contrast'].map((variant) => (
+                <button
+                  key={variant}
+                  className={'seg' + (state.tarotMemberVariant === variant ? ' sel' : '')}
+                  onClick={() => set({ tarotMemberVariant: variant })}
+                >{variant}</button>
+              ))}
+            </div>
+            <p className="field-help">Each option changes hierarchy and layout, not only the colors.</p>
+          </div>
+
+          <div className="field">
+            <label>Accent pathway (optional)</label>
+            <div className="toggle">
+              <button className={'seg' + (!state.tarotMemberPathway ? ' sel' : '')} onClick={() => set({ tarotMemberPathway: null })}>Neutral</button>
+              <button className={'seg' + (state.tarotMemberPathway ? ' sel' : '')} onClick={() => set({ tarotMemberPathway: state.tarotMemberPathway || 'Fool' })}>Pathway</button>
+            </div>
+          </div>
+          {state.tarotMemberPathway && (
+            <div className="field">
+              <label>Pathway</label>
+              <PathwayCombo value={state.tarotMemberPathway} onPick={(pathway) => set({ tarotMemberPathway: pathway })} />
+            </div>
+          )}
+
+          <div className="field"><label>Name or identity</label><input maxLength={80} value={state.tarotMemberName ?? ''} onChange={(e) => set({ tarotMemberName: e.target.value })} /></div>
+          <div className="field"><label>Tarot title</label><input maxLength={40} value={state.tarotMemberTitle ?? ''} placeholder="The Hanged Man" onChange={(e) => set({ tarotMemberTitle: e.target.value })} /></div>
+          <div className="field"><label>{state.tarotMemberVariant === 'Contrast' ? 'What the Club sees' : 'Description'}</label><textarea rows={4} maxLength={360} value={state.tarotMemberDescription ?? ''} onChange={(e) => set({ tarotMemberDescription: e.target.value })} /></div>
+          <div className="field"><label>Second section label</label><input maxLength={36} value={state.tarotMemberDetailLabel ?? ''} placeholder="What is actually happening" onChange={(e) => set({ tarotMemberDetailLabel: e.target.value })} /></div>
+          <div className="field"><label>Second section</label><textarea rows={4} maxLength={280} value={state.tarotMemberDetailText ?? ''} onChange={(e) => set({ tarotMemberDetailText: e.target.value })} /></div>
+          <div className="field"><label>Footer punchline (optional)</label><textarea rows={2} maxLength={180} value={state.tarotMemberFooterText ?? ''} onChange={(e) => set({ tarotMemberFooterText: e.target.value })} /></div>
+
+          <BackgroundField
+            value={state.tarotMemberImage}
+            field="tarotMemberImage"
+            opacity={state.backgroundOpacity}
+            set={set}
+            onUploadImage={onUploadImage}
+            help={state.tarotMemberPathway ? `Using the default ${state.tarotMemberPathway} art. Upload a portrait to override it.` : 'Upload a portrait or atmospheric background.'}
+          />
+          <div className="actions"><button className="btn-dl" style={{ background: accent.c }} onClick={onDownload}>Download PNG</button></div>
         </div>
       ) : isCover ? (
         <div key="cover-fields">

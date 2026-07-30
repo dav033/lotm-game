@@ -14,6 +14,7 @@ import GeneralExplanationCard from './components/GeneralExplanationCard.jsx'
 import PathwayExplanationCard from './components/PathwayExplanationCard.jsx'
 import BreakdownCard from './components/BreakdownCard.jsx'
 import MapCard from './components/MapCard.jsx'
+import TarotMemberCard from './components/TarotMemberCard.jsx'
 import Panel from './components/Panel.jsx'
 import Filmstrip from './components/Filmstrip.jsx'
 import ProjectTabs, { MAX_OPEN_PROJECTS } from './components/ProjectTabs.jsx'
@@ -55,6 +56,12 @@ const NEW_CARD_SEEDS = {
   Map: {
     mapTitle: 'Nuevo mapa',
     mapEntriesText: 'Etiqueta -> Valor',
+  },
+  'Tarot Member': {
+    tarotMemberName: 'New member',
+    tarotMemberTitle: 'The Unknown',
+    tarotMemberDescription: 'What the Club sees.',
+    tarotMemberDetailText: 'What is actually happening.',
   },
 }
 
@@ -109,6 +116,16 @@ const DEFAULT_STATE = {
   mapEntriesText: '',
   mapFooterText: '',
   mapBackgroundImage: null,
+  mapPathway: null,
+  tarotMemberVariant: 'Portrait',
+  tarotMemberName: '',
+  tarotMemberTitle: '',
+  tarotMemberDescription: '',
+  tarotMemberDetailLabel: 'Club function',
+  tarotMemberDetailText: '',
+  tarotMemberFooterText: '',
+  tarotMemberPathway: null,
+  tarotMemberImage: null,
   backgroundOpacity: 65,
 }
 
@@ -579,6 +596,7 @@ export default function App() {
   const isPathwayExplanation = state.type === 'Pathway Explanation'
   const isBreakdown = state.type === 'Breakdown'
   const isMap = state.type === 'Map'
+  const isTarotMember = state.type === 'Tarot Member'
   // Older saved cards predate the tier fields — fall back to sane defaults.
   const tierPath = PATHWAYS[state.tierPath] ? state.tierPath : 'Fool'
   const tierSeq = Number.isInteger(state.tierSeq) && state.tierSeq >= 0 && state.tierSeq <= 9
@@ -601,7 +619,7 @@ export default function App() {
         ? { ...PATHWAY_COLORS[pathwayCardPath], pct: 100 }
       : isMap && mapPathway
         ? { ...PATHWAY_COLORS[mapPathway], pct: 100 }
-      : isGeneralExplanation || isPathwayExplanation || isBreakdown || isMap
+      : isGeneralExplanation || isPathwayExplanation || isBreakdown || isMap || isTarotMember
         ? COVER_ACCENT
       : powerTier(state.type, state.power, state.grade)
   const pathLabel = [...new Set(sequences.map((s) => s.path))].join(' · ')
@@ -812,6 +830,21 @@ export default function App() {
               backgroundOpacity={state.backgroundOpacity}
               onDropBackground={(file) => onUploadImage(file, 'mapBackgroundImage')}
             />
+          ) : isTarotMember ? (
+            <TarotMemberCard
+              ref={cardRef}
+              variant={state.tarotMemberVariant}
+              name={state.tarotMemberName}
+              tarotTitle={state.tarotMemberTitle}
+              description={state.tarotMemberDescription}
+              detailLabel={state.tarotMemberDetailLabel}
+              detailText={state.tarotMemberDetailText}
+              footerText={state.tarotMemberFooterText}
+              image={state.tarotMemberImage || (state.tarotMemberPathway ? PATHWAY_BACKGROUNDS[state.tarotMemberPathway] ?? null : null)}
+              backgroundOpacity={state.backgroundOpacity}
+              tier={state.tarotMemberPathway ? PATHWAY_COLORS[state.tarotMemberPathway] : null}
+              onDropBackground={(file) => onUploadImage(file, 'tarotMemberImage')}
+            />
           ) : (
             <Card
               ref={cardRef}
@@ -953,6 +986,9 @@ function labelFor(s) {
   }
   if (s.type === 'Map') {
     return `map_${s.mapTitle || 'untitled'}`.replace(/\s+/g, '_')
+  }
+  if (s.type === 'Tarot Member') {
+    return `tarot_member_${s.tarotMemberTitle || 'arcana'}_${s.tarotMemberName || 'member'}`.replace(/\s+/g, '_')
   }
   return `${s.name || 'card'}_seq${s.seq}`
 }

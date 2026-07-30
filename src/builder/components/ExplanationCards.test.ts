@@ -10,6 +10,7 @@ import MapCard from './MapCard.jsx'
 import FullImageCoverCard from './FullImageCoverCard.jsx'
 import TierCard from './TierCard.jsx'
 import PathwayCard from './PathwayCard.jsx'
+import TarotMemberCard from './TarotMemberCard.jsx'
 import Panel from './Panel.jsx'
 import { CardContentSchema, toBuilderCardState } from '../../cards/schema'
 
@@ -21,7 +22,23 @@ const Map_ = MapCard as ComponentType<Record<string, unknown>>
 const FullImageCover = FullImageCoverCard as ComponentType<Record<string, unknown>>
 const Tier = TierCard as ComponentType<Record<string, unknown>>
 const Pathway = PathwayCard as ComponentType<Record<string, unknown>>
+const TarotMember = TarotMemberCard as ComponentType<Record<string, unknown>>
 const Panel_ = Panel as unknown as ComponentType<Record<string, unknown>>
+
+test('Tarot Member produce composiciones distintas para retrato, expediente y contraste', () => {
+  const common = {
+    name: 'Klein Moretti', tarotTitle: 'The Fool', description: 'The performance.',
+    detailLabel: 'Reality', detailText: 'A man improvising.', footerText: 'Praise the Fool.',
+  }
+  const portrait = renderToStaticMarkup(React.createElement(TarotMember, { ...common, variant: 'Portrait' }))
+  const dossier = renderToStaticMarkup(React.createElement(TarotMember, { ...common, variant: 'Dossier' }))
+  const contrast = renderToStaticMarkup(React.createElement(TarotMember, { ...common, variant: 'Contrast' }))
+  assert.match(portrait, /tarot-member-portrait/)
+  assert.match(dossier, /tarot-member-dossier/)
+  assert.match(dossier, /Restricted/)
+  assert.match(contrast, /tarot-member-contrast/)
+  assert.match(contrast, /What the Club sees/)
+})
 
 test('Tier Explanation muestra solo tier y descripción general', () => {
   const html = renderToStaticMarkup(React.createElement(TierExplanation, {

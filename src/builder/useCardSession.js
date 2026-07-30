@@ -464,6 +464,13 @@ function withPlaceholders(state) {
     fill('generalExplanationTitle')
     fill('generalExplanationText')
   }
+  if (state.type === 'Tarot Member') {
+    fill('tarotMemberName', 'New member')
+    fill('tarotMemberTitle', 'The Unknown')
+    fill('tarotMemberDescription', 'What the Club sees.')
+    fill('tarotMemberDetailLabel', 'Club function')
+    fill('tarotMemberDetailText', 'What is actually happening.')
+  }
   return next
 }
 

@@ -664,6 +664,60 @@
 .map-card.dense .map-entry-tags{font-size:10px}
 .map-card.dense .map-entry-value{font-size:17px;line-height:1.2}
 
+/* ================= TAROT MEMBER (three genuinely different compositions) ================= */
+.tarot-member-card{--tier:#d8b76b;--tier-deep:#43330f;background:#08090c}
+.tarot-member-image{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center;
+  opacity:var(--background-opacity,.65);filter:saturate(.72) contrast(1.08)}
+.tarot-member-veil{position:absolute;inset:0;z-index:1;background:
+  linear-gradient(180deg,rgba(4,5,8,.08),rgba(4,5,8,.72) 58%,#08090c 88%),
+  linear-gradient(90deg,rgba(4,5,8,.74),transparent 58%)}
+.tarot-member-arcana{position:absolute;z-index:1;right:-28px;top:52px;width:430px;
+  font-family:'Playfair Display',serif;font-size:112px;font-weight:900;line-height:.75;
+  text-align:right;color:var(--tier);opacity:.075;transform:rotate(-90deg) translateX(-100%);
+  transform-origin:top right;text-transform:uppercase;white-space:nowrap}
+.tarot-member-content{position:relative;z-index:3;height:100%;display:flex;flex-direction:column;padding:30px}
+.tarot-member-head{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.tarot-member-chip,.tarot-member-mode,.tarot-member-label{font-family:'JetBrains Mono',monospace;
+  font-size:11px;font-weight:700;letter-spacing:.17em;text-transform:uppercase}
+.tarot-member-chip{padding:6px 9px;background:var(--tier);color:#08090c}
+.tarot-member-mode{color:rgba(255,255,255,.5)}
+.tarot-member-title-block{margin-top:auto}
+.tarot-member-tarot{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--tier);margin-bottom:9px}
+.tarot-member-name{font-size:61px;max-width:9ch}
+.tarot-member-copy{margin-top:25px;display:flex;flex-direction:column;gap:18px}
+.tarot-member-description{max-width:31ch;font-size:18px;font-weight:600;line-height:1.42;color:#f3efe6}
+.tarot-member-detail{border-left:3px solid var(--tier);padding-left:14px}
+.tarot-member-label{display:block;color:var(--tier);margin-bottom:6px}
+.tarot-member-detail p{font-size:15px;line-height:1.4;color:#c9c5bb}
+.tarot-member-footer{margin-top:auto;padding-top:15px;border-top:1px solid color-mix(in srgb,var(--tier) 45%,transparent);
+  font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;line-height:1.4;color:var(--tier)}
+
+/* Portrait spends its boldness on the image and oversized name. */
+.tarot-member-portrait .tarot-member-title-block{margin-top:auto}
+.tarot-member-portrait .tarot-member-copy{max-width:390px}
+
+/* Dossier behaves like a redacted intelligence file: compact, ruled and off-axis. */
+.tarot-member-dossier .tarot-member-veil{background:linear-gradient(90deg,#08090c 0 55%,rgba(8,9,12,.72) 78%,rgba(8,9,12,.42))}
+.tarot-member-dossier .tarot-member-image{left:52%;background-position:center}
+.tarot-member-dossier .tarot-member-content{width:69%;border-right:1px solid rgba(255,255,255,.14)}
+.tarot-member-dossier .tarot-member-title-block{margin-top:62px}
+.tarot-member-dossier .tarot-member-name{font-size:52px}
+.tarot-member-stamp{position:absolute;right:-116px;top:86px;padding:7px 12px;border:2px solid var(--tier);
+  font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--tier);transform:rotate(7deg);opacity:.8}
+.tarot-member-dossier .tarot-member-description{font-size:16px}
+
+/* Contrast is a typographic split screen; the image becomes atmosphere, not the layout. */
+.tarot-member-contrast .tarot-member-veil{background:linear-gradient(180deg,rgba(8,9,12,.62),#08090c 48%)}
+.tarot-member-contrast .tarot-member-title-block{margin-top:34px}
+.tarot-member-contrast .tarot-member-name{font-size:50px;max-width:100%}
+.tarot-member-contrast-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:auto;margin-bottom:auto;
+  border-top:1px solid rgba(255,255,255,.16);border-bottom:1px solid rgba(255,255,255,.16)}
+.tarot-member-contrast-grid section{padding:22px 18px 24px 0}
+.tarot-member-contrast-grid section+section{padding-left:18px;border-left:1px solid rgba(255,255,255,.16)}
+.tarot-member-contrast-grid p{font-size:17px;font-weight:600;line-height:1.42;color:#eeeae0}
+
 /* ================= CONTROL PANEL ================= */
 .panel{width:360px;flex:0 0 auto;background:var(--panel);border-left:1px solid var(--line);
   padding:22px;height:100vh;position:sticky;top:0;overflow-y:auto;align-self:flex-start}

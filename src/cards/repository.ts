@@ -629,7 +629,7 @@ export class CardRepository {
           position INTEGER NOT NULL CHECK (position > 0),
           type TEXT NOT NULL CHECK (type IN (
             'Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Pathway',
-            'Tier Explanation', 'General Explanation', 'Pathway Explanation', 'Breakdown', 'Map'
+            'Tier Explanation', 'General Explanation', 'Pathway Explanation', 'Breakdown', 'Map', 'Tarot Member'
           )),
           title TEXT NOT NULL,
           data_json TEXT NOT NULL,
@@ -678,7 +678,7 @@ export class CardRepository {
         position INTEGER NOT NULL CHECK (position > 0),
         type TEXT NOT NULL CHECK (type IN (
           'Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Pathway',
-          'Tier Explanation', 'General Explanation', 'Pathway Explanation', 'Breakdown', 'Map'
+          'Tier Explanation', 'General Explanation', 'Pathway Explanation', 'Breakdown', 'Map', 'Tarot Member'
         )),
         title TEXT NOT NULL,
         data_json TEXT NOT NULL,
