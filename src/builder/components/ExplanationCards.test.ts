@@ -40,6 +40,8 @@ test('Corruption File cambia jerarquia entre Warning, Evidence y Quote', () => {
   assert.match(evidence, /corruption-evidence-tag/)
   assert.match(quote, /corruption-quote-mark/)
   assert.match(warning, /Catastrophic/)
+  assert.match(warning, /INCIDENT FILE/)
+  assert.doesNotMatch(warning, /0803|corruption-file-index/)
   const longEvidence = renderToStaticMarkup(React.createElement(CorruptionFile, {
     ...common, variant: 'Evidence', incident: 'FORS, INTERDIMENSIONAL TAXI',
   }))

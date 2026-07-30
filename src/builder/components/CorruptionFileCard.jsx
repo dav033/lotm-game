@@ -20,7 +20,6 @@ const CorruptionFileCard = forwardRef(function CorruptionFileCard(
   const { dragging, dropProps } = useBackgroundDrop(onDropBackground)
   const mode = ['Warning', 'Evidence', 'Quote'].includes(variant) ? variant : 'Warning'
   const evidenceLayout = mode === 'Evidence' && (incident || '').length > 24 ? 'stacked' : 'columns'
-  const incidentNumber = String((incident || 'UNKNOWN').length * 73).padStart(4, '0')
   const formatLabel = { Warning: 'Hazard poster', Evidence: 'Meme autopsy', Quote: 'Context collapse' }[mode]
   const accent = /^#[0-9a-f]{6}$/i.test(accentColor || '') ? accentColor : '#d84a4a'
   const imageVisibility = Math.max(0, Math.min(100, backgroundOpacity)) / 100
@@ -47,14 +46,13 @@ const CorruptionFileCard = forwardRef(function CorruptionFileCard(
       {image && <div className="corruption-file-image" style={{ backgroundImage: `url("${image}")` }} aria-hidden="true" />}
       <div className="corruption-file-veil" aria-hidden="true" />
       <div className="corruption-file-grid" aria-hidden="true" />
-      <div className="corruption-file-index" aria-hidden="true">{incidentNumber}</div>
       <div className="corruption-file-tape" aria-hidden="true" />
 
       <div className="corruption-file-content">
         <header className="corruption-file-head">
           <div>
             <span className="corruption-file-kicker">LOTM context damage unit</span>
-            <strong>INCIDENT / {incidentNumber}</strong>
+            <strong>INCIDENT FILE</strong>
           </div>
           <span className="corruption-file-level">{corruptionLevel} corruption</span>
         </header>
