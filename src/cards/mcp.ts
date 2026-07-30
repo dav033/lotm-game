@@ -52,7 +52,7 @@ export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl 
       description:
         'Crea o reutiliza un anime/universo y una parte, y agrega hasta 100 cartas. ' +
         'Acepta Character, Artifact, Cover, Full Image Cover, Tier, Pathway, Tier Explanation, ' +
-        'General Explanation, Pathway Explanation, Breakdown, Map y Tarot Member. ' +
+        'General Explanation, Pathway Explanation, Breakdown, Map, Tarot Member y Corruption File. ' +
         'Las explicaciones pueden ser generales o asociarse a uno de los 22 pathways. ' +
         'Pathway Explanation es una carta corta por pathway: titulo con una palabra ' +
         'resaltada entre *asteriscos*, regla y descripcion breve; el contador "N / 22 PATHWAYS" ' +
@@ -69,6 +69,8 @@ export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl 
         'en Map tiene prioridad sobre el fondo del pathway. ' +
         'Tarot Member describe una identidad del Tarot Club y ofrece tres composiciones realmente distintas: ' +
         'Portrait, Dossier y Contrast; acepta nombre, arcano, descripcion, segunda idea y remate. ' +
+        'Corruption File explica chistes internos con tres composiciones: Warning, Evidence y Quote; ' +
+        'acepta incidente, explicacion, reaccion, nivel de corrupcion, remate y color propio. ' +
         'Las imagenes son solo URLs o rutas de /public.',
       inputSchema: SaveCardBatchSchema,
       annotations: {

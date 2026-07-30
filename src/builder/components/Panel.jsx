@@ -167,6 +167,7 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
   const isBreakdown = state.type === 'Breakdown'
   const isMap = state.type === 'Map'
   const isTarotMember = state.type === 'Tarot Member'
+  const isCorruptionFile = state.type === 'Corruption File'
   const isExplanation = isTierExplanation || isGeneralExplanation
   const defaultTierBackground = PATHWAY_BACKGROUNDS[state.tierPath] ?? null
   const defaultPathwayCardBackground = PATHWAY_BACKGROUNDS[state.pathwayCardPath] ?? null
@@ -182,7 +183,7 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
       <div className="field">
         <label>Type</label>
         <div className="toggle">
-          {['Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Pathway', 'Tier Explanation', 'General Explanation', 'Pathway Explanation', 'Breakdown', 'Map', 'Tarot Member'].map((t) => (
+          {['Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Pathway', 'Tier Explanation', 'General Explanation', 'Pathway Explanation', 'Breakdown', 'Map', 'Tarot Member', 'Corruption File'].map((t) => (
             <button
               key={t}
               className={'seg' + (state.type === t ? ' sel' : '')}
@@ -759,6 +760,40 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
           <div className="actions">
             <button className="btn-dl" style={{ background: accent.c }} onClick={onDownload}>Download PNG</button>
           </div>
+        </div>
+      ) : isCorruptionFile ? (
+        <div key="corruption-file-fields">
+          <div className="field">
+            <label>Composition</label>
+            <div className="toggle">
+              {['Warning', 'Evidence', 'Quote'].map((variant) => (
+                <button key={variant} className={'seg' + (state.corruptionVariant === variant ? ' sel' : '')} onClick={() => set({ corruptionVariant: variant })}>{variant}</button>
+              ))}
+            </div>
+          </div>
+          <div className="field">
+            <label>Corruption level</label>
+            <div className="toggle">
+              {['Low', 'Moderate', 'Severe', 'Catastrophic'].map((level) => (
+                <button key={level} className={'seg' + (state.corruptionLevel === level ? ' sel' : '')} onClick={() => set({ corruptionLevel: level })}>{level}</button>
+              ))}
+            </div>
+          </div>
+          <div className="field">
+            <label>Accent color</label>
+            <div className="tarot-color-row">
+              <input className="tarot-color-input" type="color" aria-label="Corruption accent color" value={state.corruptionAccentColor || '#d84a4a'} onChange={(e) => set({ corruptionAccentColor: e.target.value })} />
+              <code>{state.corruptionAccentColor || '#d84a4a'}</code>
+            </div>
+          </div>
+          <div className="field"><label>Incident</label><input maxLength={90} value={state.corruptionIncident ?? ''} onChange={(e) => set({ corruptionIncident: e.target.value })} /></div>
+          <div className="field"><label>Explanation label</label><input maxLength={40} value={state.corruptionCaseLabel ?? ''} onChange={(e) => set({ corruptionCaseLabel: e.target.value })} /></div>
+          <div className="field"><label>Normal explanation</label><textarea rows={4} maxLength={320} value={state.corruptionExplanation ?? ''} onChange={(e) => set({ corruptionExplanation: e.target.value })} /></div>
+          <div className="field"><label>Reaction label</label><input maxLength={40} value={state.corruptionReactionLabel ?? ''} onChange={(e) => set({ corruptionReactionLabel: e.target.value })} /></div>
+          <div className="field"><label>Fandom reaction</label><textarea rows={4} maxLength={280} value={state.corruptionReaction ?? ''} onChange={(e) => set({ corruptionReaction: e.target.value })} /></div>
+          <div className="field"><label>Footer punchline</label><textarea rows={2} maxLength={180} value={state.corruptionFooterText ?? ''} onChange={(e) => set({ corruptionFooterText: e.target.value })} /></div>
+          <BackgroundField value={state.corruptionImage} field="corruptionImage" opacity={state.backgroundOpacity} set={set} onUploadImage={onUploadImage} help="Optional evidence image or atmospheric background." />
+          <div className="actions"><button className="btn-dl" style={{ background: accent.c }} onClick={onDownload}>Download PNG</button></div>
         </div>
       ) : isTarotMember ? (
         <div key="tarot-member-fields">

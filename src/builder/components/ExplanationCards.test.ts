@@ -12,6 +12,7 @@ import FullImageCoverCard from './FullImageCoverCard.jsx'
 import TierCard from './TierCard.jsx'
 import PathwayCard from './PathwayCard.jsx'
 import TarotMemberCard from './TarotMemberCard.jsx'
+import CorruptionFileCard from './CorruptionFileCard.jsx'
 import Panel from './Panel.jsx'
 import { CardContentSchema, toBuilderCardState } from '../../cards/schema'
 
@@ -24,7 +25,22 @@ const FullImageCover = FullImageCoverCard as ComponentType<Record<string, unknow
 const Tier = TierCard as ComponentType<Record<string, unknown>>
 const Pathway = PathwayCard as ComponentType<Record<string, unknown>>
 const TarotMember = TarotMemberCard as ComponentType<Record<string, unknown>>
+const CorruptionFile = CorruptionFileCard as ComponentType<Record<string, unknown>>
 const Panel_ = Panel as unknown as ComponentType<Record<string, unknown>>
+
+test('Corruption File cambia jerarquia entre Warning, Evidence y Quote', () => {
+  const common = {
+    incident: 'The Monocle', caseLabel: 'Explanation', explanation: 'A normal artifact.',
+    reactionLabel: 'Damage', reaction: 'Circles are suspicious now.', corruptionLevel: 'Catastrophic',
+  }
+  const warning = renderToStaticMarkup(React.createElement(CorruptionFile, { ...common, variant: 'Warning' }))
+  const evidence = renderToStaticMarkup(React.createElement(CorruptionFile, { ...common, variant: 'Evidence' }))
+  const quote = renderToStaticMarkup(React.createElement(CorruptionFile, { ...common, variant: 'Quote' }))
+  assert.match(warning, /corruption-warning-mark/)
+  assert.match(evidence, /corruption-evidence-tag/)
+  assert.match(quote, /corruption-quote-mark/)
+  assert.match(warning, /Catastrophic/)
+})
 
 test('Tarot Member produce composiciones distintas para retrato, expediente y contraste', () => {
   const common = {

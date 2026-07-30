@@ -471,6 +471,13 @@ function withPlaceholders(state) {
     fill('tarotMemberDetailLabel', 'Club function')
     fill('tarotMemberDetailText', 'What is actually happening.')
   }
+  if (state.type === 'Corruption File') {
+    fill('corruptionIncident', 'New incident')
+    fill('corruptionCaseLabel', 'Normal explanation')
+    fill('corruptionExplanation', 'What happened.')
+    fill('corruptionReactionLabel', 'Fandom reaction')
+    fill('corruptionReaction', 'What the fandom did with it.')
+  }
   return next
 }
 

@@ -243,6 +243,25 @@ export const TarotMemberCardSchema = z
   })
   .strict()
 
+export const CorruptionFileCardSchema = z
+  .object({
+    type: z.literal('Corruption File'),
+    variant: z.enum(['Warning', 'Evidence', 'Quote']).default('Warning').describe(
+      'Composicion visual: Warning es una alerta, Evidence es un expediente y Quote prioriza el remate.',
+    ),
+    incident: z.string().trim().min(1).max(90).describe('Nombre breve del chiste o incidente.'),
+    caseLabel: z.string().trim().min(1).max(40).default('Normal explanation'),
+    explanation: z.string().trim().min(1).max(320).describe('Explicacion autocontenida del origen del chiste.'),
+    reactionLabel: z.string().trim().min(1).max(40).default('Fandom reaction'),
+    reaction: z.string().trim().min(1).max(280).describe('Remate o consecuencia comica dentro del fandom.'),
+    footerText: z.string().trim().max(180).optional(),
+    corruptionLevel: z.enum(['Low', 'Moderate', 'Severe', 'Catastrophic']).default('Severe'),
+    accentColor: z.string().regex(/^#[0-9a-f]{6}$/i).optional(),
+    imageUrl: ImageSourceSchema.optional(),
+    backgroundOpacity: BackgroundOpacitySchema,
+  })
+  .strict()
+
 export const CardContentSchema = z.discriminatedUnion('type', [
   CharacterCardSchema,
   ArtifactCardSchema,
@@ -256,6 +275,7 @@ export const CardContentSchema = z.discriminatedUnion('type', [
   BreakdownCardSchema,
   MapCardSchema,
   TarotMemberCardSchema,
+  CorruptionFileCardSchema,
 ])
 
 export type CardContent = z.infer<typeof CardContentSchema>
@@ -350,7 +370,7 @@ export type SaveCardBatchInput = z.infer<typeof SaveCardBatchSchema>
 export type CardFilter = z.infer<typeof CardFilterSchema>
 
 export type BuilderCardState = {
-  type: 'Character' | 'Artifact' | 'Cover' | 'Full Image Cover' | 'Tier' | 'Pathway' | 'Tier Explanation' | 'General Explanation' | 'Pathway Explanation' | 'Breakdown' | 'Map' | 'Tarot Member'
+  type: 'Character' | 'Artifact' | 'Cover' | 'Full Image Cover' | 'Tier' | 'Pathway' | 'Tier Explanation' | 'General Explanation' | 'Pathway Explanation' | 'Breakdown' | 'Map' | 'Tarot Member' | 'Corruption File'
   name: string
   path: string
   seq: number
@@ -411,6 +431,16 @@ export type BuilderCardState = {
   tarotMemberPathway: string | null
   tarotMemberAccentColor: string | null
   tarotMemberImage: string | null
+  corruptionVariant: 'Warning' | 'Evidence' | 'Quote'
+  corruptionIncident: string
+  corruptionCaseLabel: string
+  corruptionExplanation: string
+  corruptionReactionLabel: string
+  corruptionReaction: string
+  corruptionFooterText: string
+  corruptionLevel: 'Low' | 'Moderate' | 'Severe' | 'Catastrophic'
+  corruptionAccentColor: string | null
+  corruptionImage: string | null
   backgroundOpacity: number
 }
 
@@ -476,6 +506,16 @@ const DEFAULT_BUILDER_STATE: BuilderCardState = {
   tarotMemberPathway: null,
   tarotMemberAccentColor: null,
   tarotMemberImage: null,
+  corruptionVariant: 'Warning',
+  corruptionIncident: '',
+  corruptionCaseLabel: 'Normal explanation',
+  corruptionExplanation: '',
+  corruptionReactionLabel: 'Fandom reaction',
+  corruptionReaction: '',
+  corruptionFooterText: '',
+  corruptionLevel: 'Severe',
+  corruptionAccentColor: null,
+  corruptionImage: null,
   backgroundOpacity: 65,
 }
 
@@ -595,6 +635,22 @@ export function toBuilderCardState(content: CardContent): BuilderCardState {
       tarotMemberPathway: content.pathway ?? null,
       tarotMemberAccentColor: content.accentColor ?? null,
       tarotMemberImage: content.imageUrl ?? null,
+    }
+  }
+
+  if (content.type === 'Corruption File') {
+    return {
+      ...state,
+      corruptionVariant: content.variant,
+      corruptionIncident: content.incident,
+      corruptionCaseLabel: content.caseLabel,
+      corruptionExplanation: content.explanation,
+      corruptionReactionLabel: content.reactionLabel,
+      corruptionReaction: content.reaction,
+      corruptionFooterText: content.footerText ?? '',
+      corruptionLevel: content.corruptionLevel,
+      corruptionAccentColor: content.accentColor ?? null,
+      corruptionImage: content.imageUrl ?? null,
     }
   }
 
@@ -724,6 +780,22 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
       backgroundOpacity: state.backgroundOpacity,
     }
   }
+  if (state.type === 'Corruption File') {
+    return {
+      type: 'Corruption File',
+      variant: state.corruptionVariant,
+      incident: state.corruptionIncident.trim(),
+      caseLabel: state.corruptionCaseLabel.trim() || 'Normal explanation',
+      explanation: state.corruptionExplanation.trim(),
+      reactionLabel: state.corruptionReactionLabel.trim() || 'Fandom reaction',
+      reaction: state.corruptionReaction.trim(),
+      ...(state.corruptionFooterText.trim() ? { footerText: state.corruptionFooterText.trim() } : {}),
+      corruptionLevel: state.corruptionLevel,
+      ...(state.corruptionAccentColor ? { accentColor: state.corruptionAccentColor } : {}),
+      ...(state.corruptionImage ? { imageUrl: state.corruptionImage } : {}),
+      backgroundOpacity: state.backgroundOpacity,
+    }
+  }
   const standard = {
     name: state.name.trim(),
     pathway: state.path,
@@ -762,6 +834,7 @@ export function titleForCard(content: CardContent): string {
     return content.title
   }
   if (content.type === 'Tarot Member') return `${content.tarotTitle}: ${content.name}`
+  if (content.type === 'Corruption File') return content.incident
   return content.name
 }
 
@@ -805,5 +878,6 @@ export function filenameForCard(content: CardContent): string {
   if (content.type === 'Tarot Member') {
     return `tarot-member_${slugify(content.tarotTitle)}_${slugify(content.name)}`
   }
+  if (content.type === 'Corruption File') return `corruption-file_${slugify(content.incident)}`
   return `${slugify(content.name)}_seq-${content.sequence}`
 }

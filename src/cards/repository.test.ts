@@ -243,7 +243,7 @@ test('migra cards.db v4 a v5 sin perder cartas y acepta Pathway Explanation y Br
   assert.equal(repository.listCards().length, 4)
 })
 
-test('migra cards.db v7 a v8 y permite Tarot Member sin perder duracion', async (t) => {
+test('migra cards.db v7 a v9 y permite Tarot Member sin perder duracion', async (t) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-cards-'))
   const dbPath = path.join(directory, 'cards.db')
   const legacy = new Database(dbPath)
@@ -306,7 +306,7 @@ test('migra cards.db v7 a v8 y permite Tarot Member sin perder duracion', async 
   })
   assert.equal(saved.content.type, 'Tarot Member')
   const migrated = new Database(dbPath, { readonly: true })
-  assert.equal(migrated.pragma('user_version', { simple: true }), 8)
+  assert.equal(migrated.pragma('user_version', { simple: true }), 9)
   migrated.close()
 })
 

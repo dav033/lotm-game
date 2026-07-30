@@ -10,6 +10,7 @@ import PathwayExplanationCard from './components/PathwayExplanationCard.jsx'
 import BreakdownCard from './components/BreakdownCard.jsx'
 import MapCard from './components/MapCard.jsx'
 import TarotMemberCard from './components/TarotMemberCard.jsx'
+import CorruptionFileCard from './components/CorruptionFileCard.jsx'
 import { PATHWAYS, PATH_NAMES, PATHWAY_COLORS, TIER_RANKS, tarotMemberTheme, tierColor, powerTier } from './data/pathways.js'
 import { PATHWAY_ICONS } from './data/pathwayIcons.js'
 import { PATHWAY_BACKGROUNDS } from './data/pathwayBackgrounds.js'
@@ -177,6 +178,24 @@ export default function LiveCardPreview({ state }) {
         image={state.tarotMemberImage || (pathway ? PATHWAY_BACKGROUNDS[pathway] ?? null : null)}
         backgroundOpacity={state.backgroundOpacity}
         tier={tarotMemberTheme(pathway, state.tarotMemberAccentColor)}
+      />
+    )
+  }
+
+  if (state.type === 'Corruption File') {
+    return (
+      <CorruptionFileCard
+        variant={state.corruptionVariant}
+        incident={state.corruptionIncident}
+        caseLabel={state.corruptionCaseLabel}
+        explanation={state.corruptionExplanation}
+        reactionLabel={state.corruptionReactionLabel}
+        reaction={state.corruptionReaction}
+        footerText={state.corruptionFooterText}
+        corruptionLevel={state.corruptionLevel}
+        accentColor={state.corruptionAccentColor}
+        image={state.corruptionImage}
+        backgroundOpacity={state.backgroundOpacity}
       />
     )
   }

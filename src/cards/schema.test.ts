@@ -18,6 +18,22 @@ test('Tarot Member conserva sus tres composiciones y campos al ida y vuelta', ()
   }
 })
 
+test('Corruption File conserva sus tres composiciones y campos al ida y vuelta', () => {
+  for (const variant of ['Warning', 'Evidence', 'Quote'] as const) {
+    const content = CardContentSchema.parse({
+      type: 'Corruption File', variant, incident: 'The Monocle',
+      caseLabel: 'Normal explanation', explanation: 'An artifact linked to Amon.',
+      reactionLabel: 'Community damage', reaction: 'Every circle now requires inspection.',
+      footerText: 'Paranoia successfully installed.', corruptionLevel: 'Catastrophic',
+      accentColor: '#d7b04a', backgroundOpacity: 42,
+    })
+    const state = toBuilderCardState(content)
+    assert.equal(state.corruptionVariant, variant)
+    assert.deepEqual(fromBuilderCardState(state), content)
+    assert.equal(filenameForCard(content), 'corruption-file_the-monocle')
+  }
+})
+
 test('convierte una carta Tier al estado que consume el renderer actual', () => {
   const content = CardContentSchema.parse({
     type: 'Tier',

@@ -15,6 +15,7 @@ import PathwayExplanationCard from './components/PathwayExplanationCard.jsx'
 import BreakdownCard from './components/BreakdownCard.jsx'
 import MapCard from './components/MapCard.jsx'
 import TarotMemberCard from './components/TarotMemberCard.jsx'
+import CorruptionFileCard from './components/CorruptionFileCard.jsx'
 import Panel from './components/Panel.jsx'
 import Filmstrip from './components/Filmstrip.jsx'
 import ProjectTabs, { MAX_OPEN_PROJECTS } from './components/ProjectTabs.jsx'
@@ -62,6 +63,11 @@ const NEW_CARD_SEEDS = {
     tarotMemberTitle: 'The Unknown',
     tarotMemberDescription: 'What the Club sees.',
     tarotMemberDetailText: 'What is actually happening.',
+  },
+  'Corruption File': {
+    corruptionIncident: 'New incident',
+    corruptionExplanation: 'What happened.',
+    corruptionReaction: 'What the fandom did with it.',
   },
 }
 
@@ -127,6 +133,16 @@ const DEFAULT_STATE = {
   tarotMemberPathway: null,
   tarotMemberAccentColor: null,
   tarotMemberImage: null,
+  corruptionVariant: 'Warning',
+  corruptionIncident: '',
+  corruptionCaseLabel: 'Normal explanation',
+  corruptionExplanation: '',
+  corruptionReactionLabel: 'Fandom reaction',
+  corruptionReaction: '',
+  corruptionFooterText: '',
+  corruptionLevel: 'Severe',
+  corruptionAccentColor: '#d84a4a',
+  corruptionImage: null,
   backgroundOpacity: 65,
 }
 
@@ -352,6 +368,11 @@ export default function App() {
       mapEntriesText: '',
       mapFooterText: '',
       mapBackgroundImage: null,
+      corruptionIncident: '',
+      corruptionExplanation: '',
+      corruptionReaction: '',
+      corruptionFooterText: '',
+      corruptionImage: null,
       ...(NEW_CARD_SEEDS[state.type] ?? {}),
     }
     const id = await session.createCard(fresh)
@@ -614,6 +635,7 @@ export default function App() {
   const isBreakdown = state.type === 'Breakdown'
   const isMap = state.type === 'Map'
   const isTarotMember = state.type === 'Tarot Member'
+  const isCorruptionFile = state.type === 'Corruption File'
   // Older saved cards predate the tier fields — fall back to sane defaults.
   const tierPath = PATHWAYS[state.tierPath] ? state.tierPath : 'Fool'
   const tierSeq = Number.isInteger(state.tierSeq) && state.tierSeq >= 0 && state.tierSeq <= 9
@@ -638,6 +660,8 @@ export default function App() {
         ? { ...PATHWAY_COLORS[mapPathway], pct: 100 }
       : isTarotMember
         ? { ...tarotMemberTheme(state.tarotMemberPathway, state.tarotMemberAccentColor), pct: 100 }
+      : isCorruptionFile
+        ? { c: state.corruptionAccentColor || '#d84a4a', d: '#351317', pct: 100 }
       : isGeneralExplanation || isPathwayExplanation || isBreakdown || isMap
         ? COVER_ACCENT
       : powerTier(state.type, state.power, state.grade)
@@ -864,6 +888,22 @@ export default function App() {
               tier={tarotMemberTheme(state.tarotMemberPathway, state.tarotMemberAccentColor)}
               onDropBackground={(file) => onUploadImage(file, 'tarotMemberImage')}
             />
+          ) : isCorruptionFile ? (
+            <CorruptionFileCard
+              ref={cardRef}
+              variant={state.corruptionVariant}
+              incident={state.corruptionIncident}
+              caseLabel={state.corruptionCaseLabel}
+              explanation={state.corruptionExplanation}
+              reactionLabel={state.corruptionReactionLabel}
+              reaction={state.corruptionReaction}
+              footerText={state.corruptionFooterText}
+              corruptionLevel={state.corruptionLevel}
+              accentColor={state.corruptionAccentColor}
+              image={state.corruptionImage}
+              backgroundOpacity={state.backgroundOpacity}
+              onDropBackground={(file) => onUploadImage(file, 'corruptionImage')}
+            />
           ) : (
             <Card
               ref={cardRef}
@@ -1010,5 +1050,6 @@ function labelFor(s) {
   if (s.type === 'Tarot Member') {
     return `tarot_member_${s.tarotMemberTitle || 'arcana'}_${s.tarotMemberName || 'member'}`.replace(/\s+/g, '_')
   }
+  if (s.type === 'Corruption File') return `corruption_file_${s.corruptionIncident || 'incident'}`.replace(/\s+/g, '_')
   return `${s.name || 'card'}_seq${s.seq}`
 }
