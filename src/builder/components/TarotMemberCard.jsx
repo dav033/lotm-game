@@ -2,6 +2,17 @@ import React, { forwardRef } from 'react'
 import { titleSizeClass } from '../titleFit'
 import { useBackgroundDrop } from '../useBackgroundDrop'
 
+export function tarotMemberDensity({ name = '', description = '', detailText = '', footerText = '' }) {
+  const estimatedLines = Math.ceil(name.length / 15)
+    + Math.ceil(description.length / 42)
+    + Math.ceil(detailText.length / 39)
+    + Math.ceil(footerText.length / 48)
+
+  if (estimatedLines <= 8) return 'sparse'
+  if (estimatedLines >= 14) return 'dense'
+  return 'balanced'
+}
+
 const TarotMemberCard = forwardRef(function TarotMemberCard(
   {
     variant = 'Portrait', name, tarotTitle, description, detailLabel, detailText,
@@ -11,6 +22,7 @@ const TarotMemberCard = forwardRef(function TarotMemberCard(
 ) {
   const { dragging, dropProps } = useBackgroundDrop(onDropBackground)
   const mode = ['Portrait', 'Dossier', 'Contrast'].includes(variant) ? variant : 'Portrait'
+  const density = tarotMemberDensity({ name, description, detailText, footerText })
   const modeLabel = {
     Portrait: 'Member spotlight',
     Dossier: 'Monday incident report',
@@ -23,7 +35,7 @@ const TarotMemberCard = forwardRef(function TarotMemberCard(
 
   return (
     <article
-      className={`ficha tarot-member-card tarot-member-${mode.toLowerCase()}${dragging ? ' dragover' : ''}`}
+      className={`ficha tarot-member-card tarot-member-${mode.toLowerCase()} tarot-member-density-${density}${dragging ? ' dragover' : ''}`}
       id="card"
       ref={ref}
       style={style}

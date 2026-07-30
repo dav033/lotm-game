@@ -713,19 +713,28 @@
 .tarot-member-dossier .tarot-member-veil{background:linear-gradient(90deg,#0d0b18 0 55%,rgba(13,11,24,.72) 78%,rgba(13,11,24,.42))}
 .tarot-member-dossier .tarot-member-image{left:52%;background-position:center}
 .tarot-member-dossier .tarot-member-content{width:72%;min-height:0;padding:26px 30px 24px;
-  border-right:1px solid rgba(255,255,255,.14)}
+  display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;border-right:1px solid rgba(255,255,255,.14)}
 .tarot-member-dossier .tarot-member-title-block{margin-top:34px}
 .tarot-member-dossier .tarot-member-name{font-size:48px}
 .tarot-member-stamp{position:absolute;right:-116px;top:92px;padding:7px 12px;border:2px solid var(--tier);
   font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;letter-spacing:.22em;
   text-transform:uppercase;color:var(--tier);transform:rotate(7deg);opacity:.8}
-.tarot-member-dossier .tarot-member-copy{margin-top:17px;gap:12px}
+.tarot-member-dossier .tarot-member-copy{min-height:0;margin-top:17px;gap:12px}
 .tarot-member-dossier .tarot-member-description{font-size:14px;line-height:1.35}
 .tarot-member-dossier .tarot-member-detail{padding:10px 12px}
 .tarot-member-dossier .tarot-member-detail p{font-size:13px;line-height:1.32}
-.tarot-member-dossier .tarot-member-footer{flex:0 0 auto;margin-top:auto;padding:8px 11px}
+.tarot-member-dossier .tarot-member-footer{margin-top:8px;padding:8px 11px}
 .tarot-member-dossier .tarot-member-footer span{font-size:8px}
 .tarot-member-dossier .tarot-member-footer p{font-size:11px;line-height:1.28}
+.tarot-member-dossier.tarot-member-density-sparse .tarot-member-copy,
+.tarot-member-dossier.tarot-member-density-balanced .tarot-member-copy{display:grid;grid-template-rows:1fr 1fr;align-items:center}
+.tarot-member-dossier.tarot-member-density-sparse .tarot-member-copy{gap:18px}
+.tarot-member-dossier.tarot-member-density-dense .tarot-member-title-block{margin-top:22px}
+.tarot-member-dossier.tarot-member-density-dense .tarot-member-copy{justify-content:center;margin-top:10px;gap:8px}
+.tarot-member-dossier.tarot-member-density-dense .tarot-member-description{font-size:13px;line-height:1.28}
+.tarot-member-dossier.tarot-member-density-dense .tarot-member-detail{padding:8px 10px}
+.tarot-member-dossier.tarot-member-density-dense .tarot-member-detail p{font-size:12px;line-height:1.26}
+.tarot-member-dossier.tarot-member-density-dense .tarot-member-footer{padding:7px 10px}
 
 /* Contrast is a typographic split screen; the image becomes atmosphere, not the layout. */
 .tarot-member-contrast .tarot-member-veil{background:linear-gradient(180deg,rgba(13,11,24,.48),#0d0b18 48%)}

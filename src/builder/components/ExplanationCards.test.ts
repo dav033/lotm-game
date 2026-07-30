@@ -42,6 +42,23 @@ test('Tarot Member produce composiciones distintas para retrato, expediente y co
   assert.match(contrast, /Official story/)
 })
 
+test('Tarot Member adapta el layout del expediente a la cantidad de contenido', () => {
+  const renderDossier = (props: Record<string, unknown>) => renderToStaticMarkup(React.createElement(TarotMember, {
+    variant: 'Dossier', ...props,
+  }))
+  const sparse = renderDossier({ name: 'Xio', description: 'Short.', detailText: 'Brief.', footerText: 'Done.' })
+  const balanced = renderDossier({
+    name: 'Xio Derecha', description: 'D'.repeat(120), detailText: 'T'.repeat(100), footerText: 'F'.repeat(70),
+  })
+  const dense = renderDossier({
+    name: 'A very long member name', description: 'D'.repeat(300), detailText: 'T'.repeat(240), footerText: 'F'.repeat(150),
+  })
+
+  assert.match(sparse, /tarot-member-density-sparse/)
+  assert.match(balanced, /tarot-member-density-balanced/)
+  assert.match(dense, /tarot-member-density-dense/)
+})
+
 test('Tarot Member expone selector y paletas de color sin presentarlas como canon', () => {
   const html = renderToStaticMarkup(React.createElement(Panel_, {
     state: { ...toBuilderCardState(CardContentSchema.parse({
