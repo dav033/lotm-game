@@ -1,7 +1,13 @@
 import React, { forwardRef } from 'react'
 import { titleSizeClass } from '../titleFit'
 import { useBackgroundDrop } from '../useBackgroundDrop'
-import { colorWithAlpha } from './TarotMemberCard.jsx'
+
+function colorWithAlpha(color, alpha) {
+  const match = /^#([0-9a-f]{6})$/i.exec(color || '')
+  if (!match) return color
+  const value = Number.parseInt(match[1], 16)
+  return `rgba(${value >> 16},${(value >> 8) & 255},${value & 255},${alpha})`
+}
 
 const CorruptionFileCard = forwardRef(function CorruptionFileCard(
   {
@@ -14,6 +20,8 @@ const CorruptionFileCard = forwardRef(function CorruptionFileCard(
   const { dragging, dropProps } = useBackgroundDrop(onDropBackground)
   const mode = ['Warning', 'Evidence', 'Quote'].includes(variant) ? variant : 'Warning'
   const evidenceLayout = mode === 'Evidence' && (incident || '').length > 24 ? 'stacked' : 'columns'
+  const incidentNumber = String((incident || 'UNKNOWN').length * 73).padStart(4, '0')
+  const formatLabel = { Warning: 'Hazard poster', Evidence: 'Meme autopsy', Quote: 'Context collapse' }[mode]
   const accent = /^#[0-9a-f]{6}$/i.test(accentColor || '') ? accentColor : '#d84a4a'
   const style = {
     '--corruption': accent,
@@ -35,18 +43,20 @@ const CorruptionFileCard = forwardRef(function CorruptionFileCard(
       {image && <div className="corruption-file-image" style={{ backgroundImage: `url("${image}")` }} aria-hidden="true" />}
       <div className="corruption-file-veil" aria-hidden="true" />
       <div className="corruption-file-grid" aria-hidden="true" />
+      <div className="corruption-file-index" aria-hidden="true">{incidentNumber}</div>
+      <div className="corruption-file-tape" aria-hidden="true" />
 
       <div className="corruption-file-content">
         <header className="corruption-file-head">
           <div>
-            <span className="corruption-file-kicker">Archive of impossible incidents</span>
-            <strong>CASE {String((incident || 'UNKNOWN').length * 73).padStart(4, '0')}</strong>
+            <span className="corruption-file-kicker">LOTM context damage unit</span>
+            <strong>INCIDENT / {incidentNumber}</strong>
           </div>
-          <span className="corruption-file-level">{corruptionLevel}</span>
+          <span className="corruption-file-level">{corruptionLevel} corruption</span>
         </header>
 
         {mode === 'Warning' && <div className="corruption-warning-mark" aria-hidden="true">!</div>}
-        {mode === 'Evidence' && <span className="corruption-evidence-tag">EVIDENCE / DO NOT EXPLAIN TO NORMAL PEOPLE</span>}
+        {mode === 'Evidence' && <span className="corruption-evidence-tag">MEME AUTOPSY / CONTEXT COMPROMISED</span>}
         {mode === 'Quote' && <span className="corruption-quote-mark" aria-hidden="true">“</span>}
 
         <main className="corruption-file-main">
@@ -68,7 +78,7 @@ const CorruptionFileCard = forwardRef(function CorruptionFileCard(
 
         <footer className="corruption-file-footer">
           <span>{footerText || 'Exposure confirmed. Context permanently damaged.'}</span>
-          <b>{mode.toUpperCase()} FILE</b>
+          <b>{formatLabel}</b>
         </footer>
       </div>
     </article>
