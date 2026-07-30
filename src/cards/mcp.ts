@@ -31,7 +31,7 @@ export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl 
   }
 
   const server = new McpServer(
-    { name: 'lotm-card-studio', version: '1.2.0' },
+    { name: 'lotm-card-studio', version: '1.3.0' },
     {
       instructions:
         'Este servidor solo administra y exporta cartas. Organiza cada lote por anime/universo y por secciones ' +
@@ -53,6 +53,7 @@ export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl 
         'Crea o reutiliza un anime/universo y una parte, y agrega hasta 100 cartas. ' +
         'Acepta Character, Artifact, Cover, Full Image Cover, Tier, Pathway, Tier Explanation, ' +
         'General Explanation, Pathway Explanation, Breakdown, Map, Tarot Member y Corruption File. ' +
+        'En Corruption File, showIncidentNumber decide si aparece el numero decorativo. ' +
         'Las explicaciones pueden ser generales o asociarse a uno de los 22 pathways. ' +
         'Pathway Explanation es una carta corta por pathway: titulo con una palabra ' +
         'resaltada entre *asteriscos*, regla y descripcion breve; el contador "N / 22 PATHWAYS" ' +
