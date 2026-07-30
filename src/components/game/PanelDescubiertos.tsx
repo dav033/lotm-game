@@ -243,7 +243,7 @@ function TarjetaElemento({
             {NUMERAL_TIER[tier]}
           </span>
         )}
-        <IconoElemento iconKey={el.iconKey} className="h-5 w-5 text-brass" />
+        <IconoElemento iconKey={el.iconKey} imageUrl={el.imageUrl} className="h-5 w-5 text-brass" />
         <span className="text-[11px] leading-tight text-parchment">{el.name}</span>
         {el.sequenceLabel && (
           <span className="rounded-full border border-brass-deep px-1.5 py-px text-[8px] leading-tight text-brass">

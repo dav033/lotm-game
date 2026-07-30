@@ -180,7 +180,11 @@ function ElementoBandeja({
             Nueva fase
           </span>
         )}
-        <IconoElemento iconKey={elemento.iconKey} className="h-6 w-6 text-brass" />
+        <IconoElemento
+          iconKey={elemento.iconKey}
+          imageUrl={elemento.imageUrl}
+          className="h-6 w-6 text-brass"
+        />
         <span className="max-w-full truncate text-[10px] leading-tight text-parchment">
           {elemento.name}
         </span>

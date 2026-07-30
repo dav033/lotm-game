@@ -148,11 +148,26 @@ export const ICON_KEYS = Object.keys(ELEMENT_ICONS)
 
 export function IconoElemento({
   iconKey,
+  imageUrl,
   className,
 }: {
   iconKey: string
+  /** Ilustración propia del elemento. Si existe, sustituye al icono genérico. */
+  imageUrl?: string | null
   className?: string
 }) {
+  if (imageUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- rutas locales e
+      // internas de tamaño variable; no vale la pena el pipeline de next/image.
+      <img
+        src={imageUrl}
+        alt=""
+        aria-hidden="true"
+        className={`${className ?? ''} rounded-full object-cover`}
+      />
+    )
+  }
   const Icon = ELEMENT_ICONS[iconKey] ?? Sparkles
   return <Icon className={className} aria-hidden="true" />
 }

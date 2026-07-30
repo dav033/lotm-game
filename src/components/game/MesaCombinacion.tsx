@@ -153,7 +153,11 @@ export function MesaCombinacion({ iniciarArrastre }: { iniciarArrastre: IniciarA
                   </span>
                 )}
                 <div className="anim-glow mx-auto my-3 flex h-20 w-20 items-center justify-center rounded-full border border-brass-deep">
-                  <IconoElemento iconKey={r.element.iconKey} className="h-10 w-10 text-brass" />
+                  <IconoElemento
+                    iconKey={r.element.iconKey}
+                    imageUrl={r.element.imageUrl}
+                    className="h-10 w-10 text-brass"
+                  />
                 </div>
                 <h3 className="font-[family-name:var(--font-display)] text-xl text-parchment">
                   {r.element.name}
@@ -316,7 +320,7 @@ function Receptaculo({
             }
             className="flex touch-none select-none flex-col items-center gap-1.5"
           >
-            <IconoElemento iconKey={el.iconKey} className="h-8 w-8 text-brass" />
+            <IconoElemento iconKey={el.iconKey} imageUrl={el.imageUrl} className="h-8 w-8 text-brass" />
             <span className="max-w-20 px-2 text-center text-[11px] leading-tight text-parchment">
               {el.name}
             </span>

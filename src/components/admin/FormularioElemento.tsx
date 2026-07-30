@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { guardarElemento } from '@/server/actions/elementos'
 import { ESTADO_INICIAL } from '@/server/actions/tipos'
@@ -47,6 +47,28 @@ export default function FormularioElemento({
   const router = useRouter()
   const accion = guardarElemento.bind(null, elemento?.id ?? null)
   const [estado, enviar] = useActionState(accion, ESTADO_INICIAL)
+  const imageUrlRef = useRef<HTMLInputElement>(null)
+  const [imagePreview, setImagePreview] = useState(elemento?.imageUrl ?? '')
+  const [subiendoImagen, setSubiendoImagen] = useState(false)
+  const [errorImagen, setErrorImagen] = useState('')
+
+  async function subirImagen(file: File) {
+    setSubiendoImagen(true)
+    setErrorImagen('')
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch('/api/cards/images', { method: 'POST', body: form })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'No se pudo subir la imagen.')
+      if (imageUrlRef.current) imageUrlRef.current.value = data.url
+      setImagePreview(data.url)
+    } catch (err) {
+      setErrorImagen(err instanceof Error ? err.message : 'No se pudo subir la imagen.')
+    } finally {
+      setSubiendoImagen(false)
+    }
+  }
 
   useEffect(() => {
     if (estado.ok && !elemento) router.push('/admin/elementos')
@@ -113,8 +135,44 @@ export default function FormularioElemento({
       </div>
 
       <div>
-        <label htmlFor="imageUrl" className="etiqueta">Imagen (ruta o URL, opcional — nunca base64)</label>
-        <input id="imageUrl" name="imageUrl" maxLength={300} defaultValue={elemento?.imageUrl ?? ''} placeholder="/imagenes/ojo.webp" className="campo" />
+        <label htmlFor="imageUrl" className="etiqueta">Ilustración (ruta o URL, opcional — nunca base64)</label>
+        <div className="flex items-start gap-3">
+          {imagePreview && (
+            <img
+              src={imagePreview}
+              alt=""
+              className="h-14 w-14 shrink-0 rounded-full border border-brass-deep object-cover"
+            />
+          )}
+          <div className="flex-1 space-y-2">
+            <input
+              id="imageUrl"
+              name="imageUrl"
+              ref={imageUrlRef}
+              maxLength={300}
+              defaultValue={elemento?.imageUrl ?? ''}
+              onChange={(e) => setImagePreview(e.target.value)}
+              placeholder="/api/cards/images/…"
+              className="campo"
+            />
+            <label className="flex items-center gap-2 text-xs text-fog">
+              <span>Subir archivo:</span>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
+                disabled={subiendoImagen}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) void subirImagen(file)
+                  e.target.value = ''
+                }}
+                className="text-xs text-fog file:mr-2 file:rounded-md file:border file:border-line2 file:bg-panel file:px-2 file:py-1 file:text-fog file:hover:border-brass-deep disabled:opacity-50"
+              />
+              {subiendoImagen && <span className="text-brass">Subiendo…</span>}
+            </label>
+            {errorImagen && <p className="text-xs text-wine">{errorImagen}</p>}
+          </div>
+        </div>
       </div>
 
       <fieldset className="rounded-lg border border-line p-4">
