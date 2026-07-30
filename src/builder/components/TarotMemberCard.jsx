@@ -13,6 +13,13 @@ export function tarotMemberDensity({ name = '', description = '', detailText = '
   return 'balanced'
 }
 
+export function colorWithAlpha(color, alpha) {
+  const match = /^#([0-9a-f]{6})$/i.exec(color || '')
+  if (!match) return color
+  const value = Number.parseInt(match[1], 16)
+  return `rgba(${value >> 16},${(value >> 8) & 255},${value & 255},${alpha})`
+}
+
 const TarotMemberCard = forwardRef(function TarotMemberCard(
   {
     variant = 'Portrait', name, tarotTitle, description, detailLabel, detailText,
@@ -28,8 +35,13 @@ const TarotMemberCard = forwardRef(function TarotMemberCard(
     Dossier: 'Monday incident report',
     Contrast: 'Expectation / reality',
   }[mode]
+  const tierColor = tier?.c || '#d8b76b'
   const style = {
     ...(tier ? { '--tier': tier.c, '--tier-deep': tier.d } : {}),
+    '--tier-12': colorWithAlpha(tierColor, 0.12),
+    '--tier-38': colorWithAlpha(tierColor, 0.38),
+    '--tier-52': colorWithAlpha(tierColor, 0.52),
+    '--tier-60': colorWithAlpha(tierColor, 0.6),
     '--background-opacity': backgroundOpacity / 100,
   }
 

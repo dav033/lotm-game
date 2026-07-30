@@ -184,6 +184,7 @@ export default function App() {
   const [editingId, setEditingId] = useState(null)
   const [state, setState] = useState(DEFAULT_STATE)
   const [busy, setBusy] = useState(false)
+  const [zipError, setZipError] = useState(null)
   const [videoError, setVideoError] = useState(null)
   // Segundos que dura cada carta o imagen en el MP4. Vive aqui porque lo
   // comparten el filmstrip y la bandeja de imagenes.
@@ -427,6 +428,7 @@ export default function App() {
     const chosen = Array.isArray(subset) ? subset : cards
     if (!chosen.length || busy) return
     setBusy(true)
+    setZipError(null)
     const previousState = state
     const previousEditingId = editingId
     try {
@@ -453,7 +455,9 @@ export default function App() {
       a.href = URL.createObjectURL(blob)
       a.download = `${zipName}.zip`
       a.click()
-      URL.revokeObjectURL(a.href)
+      setTimeout(() => URL.revokeObjectURL(a.href), 1_000)
+    } catch (error) {
+      setZipError(error?.message ?? 'No se pudo generar el ZIP.')
     } finally {
       flushSync(() => {
         setState(previousState)
@@ -892,6 +896,7 @@ export default function App() {
                 if (seccion.length) void onDownloadZip(seccion, slugify(seccion[0].part.name))
               }}
               onDownloadSectionVideo={onDownloadSectionVideo}
+              zipError={zipError}
               videoError={videoError}
               seconds={seconds}
               onSeconds={setSeconds}

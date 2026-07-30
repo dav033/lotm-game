@@ -53,7 +53,7 @@ function SectionLabel({ text, name, editing, draft, onStart, onDraft, onCommit, 
 export default function Filmstrip({
   batch, editingId, accent, busy,
   onLoadCard, onNewCard, onRemoveFromBatch, onReorder, onDownloadZip, onRenameSection,
-  onDownloadSection, onDownloadSectionVideo, videoError, seconds, onSeconds,
+  onDownloadSection, onDownloadSectionVideo, zipError, videoError, seconds, onSeconds,
   onCardDuration,
 }) {
   const [dragIndex, setDragIndex] = useState(null)
@@ -204,6 +204,7 @@ export default function Filmstrip({
         </label>
       </div>
 
+      {zipError ? <p className="film-video-error">ZIP: {zipError}</p> : null}
       {videoError ? <p className="film-video-error">{videoError}</p> : null}
     </div>
   )

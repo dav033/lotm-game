@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import React, { type ComponentType } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -40,6 +41,15 @@ test('Tarot Member produce composiciones distintas para retrato, expediente y co
   assert.match(dossier, /Totally normal/)
   assert.match(contrast, /tarot-member-contrast/)
   assert.match(contrast, /Official story/)
+})
+
+test('Tarot Member genera colores compatibles con html2canvas', () => {
+  const html = renderToStaticMarkup(React.createElement(TarotMember, {
+    variant: 'Portrait', name: 'Emlyn White', description: 'Sanguine.', tier: { c: '#c65373', d: '#451728' },
+  }))
+  assert.match(html, /--tier-38:rgba\(198,83,115,0\.38\)/)
+  assert.match(html, /--tier-60:rgba\(198,83,115,0\.6\)/)
+  assert.doesNotMatch(readFileSync(new URL('../styles.css', import.meta.url), 'utf8'), /color-mix\(/)
 })
 
 test('Tarot Member adapta el layout del expediente a la cantidad de contenido', () => {

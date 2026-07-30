@@ -22,12 +22,14 @@ RUN npx prisma generate && npm run build
 FROM node:22-bookworm-slim AS run
 WORKDIR /app
 ENV NODE_ENV=production
-
-RUN apt-get update && apt-get install -y --no-install-recommends openssl \
-  && rm -rf /var/lib/apt/lists/*
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 COPY --from=build /app/package.json /app/package-lock.json* ./
 COPY --from=build /app/node_modules ./node_modules
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl \
+  && npx playwright install --with-deps chromium \
+  && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
 COPY --from=build /app/prisma ./prisma
