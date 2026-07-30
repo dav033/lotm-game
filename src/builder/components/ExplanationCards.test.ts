@@ -34,10 +34,12 @@ test('Tarot Member produce composiciones distintas para retrato, expediente y co
   const dossier = renderToStaticMarkup(React.createElement(TarotMember, { ...common, variant: 'Dossier' }))
   const contrast = renderToStaticMarkup(React.createElement(TarotMember, { ...common, variant: 'Contrast' }))
   assert.match(portrait, /tarot-member-portrait/)
+  assert.match(portrait, /Tarot Club Weekly/)
+  assert.match(portrait, /Unnecessary footnote/)
   assert.match(dossier, /tarot-member-dossier/)
-  assert.match(dossier, /Restricted/)
+  assert.match(dossier, /Totally normal/)
   assert.match(contrast, /tarot-member-contrast/)
-  assert.match(contrast, /What the Club sees/)
+  assert.match(contrast, /Official story/)
 })
 
 test('Tier Explanation muestra solo tier y descripción general', () => {

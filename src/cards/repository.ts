@@ -534,8 +534,42 @@ export class CardRepository {
 
   private migrate(): void {
     const version = this.db.pragma('user_version', { simple: true }) as number
-    if (version > 7) throw new Error(`La version ${version} de cards.db no es compatible.`)
-    if (version === 7) return
+    if (version > 8) throw new Error(`La version ${version} de cards.db no es compatible.`)
+    if (version === 8) return
+
+    if (version === 7) {
+      this.db.exec(`
+        DROP INDEX cards_part_id_idx;
+        ALTER TABLE cards RENAME TO cards_previous;
+
+        CREATE TABLE cards (
+          id TEXT PRIMARY KEY,
+          part_id TEXT NOT NULL REFERENCES parts(id) ON DELETE CASCADE,
+          position INTEGER NOT NULL CHECK (position > 0),
+          type TEXT NOT NULL CHECK (type IN (
+            'Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Pathway',
+            'Tier Explanation', 'General Explanation', 'Pathway Explanation', 'Breakdown', 'Map', 'Tarot Member'
+          )),
+          title TEXT NOT NULL,
+          data_json TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          duration_seconds REAL,
+          UNIQUE (part_id, position)
+        );
+
+        INSERT INTO cards (
+          id, part_id, position, type, title, data_json, created_at, updated_at, duration_seconds
+        )
+        SELECT id, part_id, position, type, title, data_json, created_at, updated_at, duration_seconds
+        FROM cards_previous;
+
+        DROP TABLE cards_previous;
+        CREATE INDEX cards_part_id_idx ON cards(part_id);
+        PRAGMA user_version = 8;
+      `)
+      return
+    }
 
     if (version === 6) {
       this.db.exec(`
@@ -691,7 +725,7 @@ export class CardRepository {
       CREATE INDEX parts_universe_id_idx ON parts(universe_id);
       ${IMPORTED_IMAGES_SCHEMA}
       ${DURATION_COLUMNS}
-      PRAGMA user_version = 7;
+      PRAGMA user_version = 8;
     `)
   }
 }

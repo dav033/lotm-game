@@ -243,6 +243,73 @@ test('migra cards.db v4 a v5 sin perder cartas y acepta Pathway Explanation y Br
   assert.equal(repository.listCards().length, 4)
 })
 
+test('migra cards.db v7 a v8 y permite Tarot Member sin perder duracion', async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-cards-'))
+  const dbPath = path.join(directory, 'cards.db')
+  const legacy = new Database(dbPath)
+  legacy.exec(`
+    PRAGMA foreign_keys = ON;
+    CREATE TABLE universes (
+      id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
+    CREATE TABLE parts (
+      id TEXT PRIMARY KEY, universe_id TEXT NOT NULL REFERENCES universes(id) ON DELETE CASCADE,
+      slug TEXT NOT NULL COLLATE NOCASE, name TEXT NOT NULL, number INTEGER,
+      description TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      UNIQUE (universe_id, slug)
+    );
+    CREATE TABLE cards (
+      id TEXT PRIMARY KEY, part_id TEXT NOT NULL REFERENCES parts(id) ON DELETE CASCADE,
+      position INTEGER NOT NULL CHECK (position > 0),
+      type TEXT NOT NULL CHECK (type IN (
+        'Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Pathway',
+        'Tier Explanation', 'General Explanation', 'Pathway Explanation', 'Breakdown', 'Map'
+      )),
+      title TEXT NOT NULL, data_json TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      duration_seconds REAL, UNIQUE (part_id, position)
+    );
+    CREATE INDEX cards_part_id_idx ON cards(part_id);
+    CREATE INDEX parts_universe_id_idx ON parts(universe_id);
+    CREATE TABLE imported_images (
+      id TEXT PRIMARY KEY, universe_id TEXT NOT NULL REFERENCES universes(id) ON DELETE CASCADE,
+      position INTEGER NOT NULL, title TEXT NOT NULL, file_path TEXT NOT NULL,
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL, duration_seconds REAL,
+      UNIQUE (universe_id, position)
+    );
+    INSERT INTO universes VALUES ('u', 'lotm', 'LOTM', '', 'now', 'now');
+    INSERT INTO parts VALUES ('p', 'u', 'club', 'Club', 1, '', 'now', 'now');
+    INSERT INTO cards VALUES (
+      'c', 'p', 1, 'General Explanation', 'Old card',
+      '{"type":"General Explanation","title":"Old card","description":"Still here."}',
+      'now', 'now', 4.5
+    );
+    PRAGMA user_version = 7;
+  `)
+  legacy.close()
+
+  const repository = new CardRepository(dbPath)
+  t.after(async () => {
+    repository.close()
+    await fs.rm(directory, { recursive: true, force: true })
+  })
+  assert.equal(repository.listCards()[0].durationSeconds, 4.5)
+  const [saved] = repository.saveBatch({
+    universe: { name: 'LOTM' },
+    part: { name: 'Club', number: 1 },
+    cards: [{
+      type: 'Tarot Member', variant: 'Contrast', name: 'Klein Moretti', tarotTitle: 'The Fool',
+      description: 'Ancient deity.', detailLabel: 'Reality', detailText: 'Improvising human.',
+      pathway: 'Fool', backgroundOpacity: 48,
+    }],
+  })
+  assert.equal(saved.content.type, 'Tarot Member')
+  const migrated = new Database(dbPath, { readonly: true })
+  assert.equal(migrated.pragma('user_version', { simple: true }), 8)
+  migrated.close()
+})
+
 test('divide una seccion en varias conservando las cartas', async (t) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lotm-cards-'))
   const repository = new CardRepository(path.join(directory, 'cards.db'))

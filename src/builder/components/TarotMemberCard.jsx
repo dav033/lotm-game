@@ -11,6 +11,11 @@ const TarotMemberCard = forwardRef(function TarotMemberCard(
 ) {
   const { dragging, dropProps } = useBackgroundDrop(onDropBackground)
   const mode = ['Portrait', 'Dossier', 'Contrast'].includes(variant) ? variant : 'Portrait'
+  const modeLabel = {
+    Portrait: 'Member spotlight',
+    Dossier: 'Monday incident report',
+    Contrast: 'Expectation / reality',
+  }[mode]
   const style = {
     ...(tier ? { '--tier': tier.c, '--tier-deep': tier.d } : {}),
     '--background-opacity': backgroundOpacity / 100,
@@ -28,14 +33,15 @@ const TarotMemberCard = forwardRef(function TarotMemberCard(
       {image && <div className="tarot-member-image" style={{ backgroundImage: `url("${image}")` }} aria-hidden="true" />}
       <div className="tarot-member-veil" aria-hidden="true" />
       <div className="tarot-member-arcana" aria-hidden="true">{tarotTitle || 'Unknown'}</div>
+      <div className="tarot-member-orbit" aria-hidden="true">✦</div>
 
       <div className="tarot-member-content">
         <header className="tarot-member-head">
-          <span className="tarot-member-chip">Tarot Club</span>
-          <span className="tarot-member-mode">{mode}</span>
+          <span className="tarot-member-chip">Tarot Club Weekly</span>
+          <span className="tarot-member-mode">{modeLabel}</span>
         </header>
 
-        {mode === 'Dossier' && <span className="tarot-member-stamp">Restricted</span>}
+        {mode === 'Dossier' && <span className="tarot-member-stamp">Totally normal</span>}
 
         <div className="tarot-member-title-block">
           <p className="tarot-member-tarot">{tarotTitle || 'Tarot title'}</p>
@@ -45,7 +51,7 @@ const TarotMemberCard = forwardRef(function TarotMemberCard(
         {mode === 'Contrast' ? (
           <div className="tarot-member-contrast-grid">
             <section>
-              <span className="tarot-member-label">What the Club sees</span>
+              <span className="tarot-member-label">Official story</span>
               <p>{description || 'The public impression.'}</p>
             </section>
             <section>
@@ -65,7 +71,12 @@ const TarotMemberCard = forwardRef(function TarotMemberCard(
           </div>
         )}
 
-        {footerText && <p className="tarot-member-footer">{footerText}</p>}
+        {footerText && (
+          <div className="tarot-member-footer">
+            <span>Unnecessary footnote</span>
+            <p>{footerText}</p>
+          </div>
+        )}
       </div>
     </article>
   )
