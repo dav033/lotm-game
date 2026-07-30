@@ -40,6 +40,11 @@ test('Corruption File cambia jerarquia entre Warning, Evidence y Quote', () => {
   assert.match(evidence, /corruption-evidence-tag/)
   assert.match(quote, /corruption-quote-mark/)
   assert.match(warning, /Catastrophic/)
+  const longEvidence = renderToStaticMarkup(React.createElement(CorruptionFile, {
+    ...common, variant: 'Evidence', incident: 'FORS, INTERDIMENSIONAL TAXI',
+  }))
+  assert.match(longEvidence, /corruption-evidence-stacked/)
+  assert.match(evidence, /corruption-evidence-columns/)
 })
 
 test('Tarot Member produce composiciones distintas para retrato, expediente y contraste', () => {

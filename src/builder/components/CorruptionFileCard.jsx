@@ -13,6 +13,7 @@ const CorruptionFileCard = forwardRef(function CorruptionFileCard(
 ) {
   const { dragging, dropProps } = useBackgroundDrop(onDropBackground)
   const mode = ['Warning', 'Evidence', 'Quote'].includes(variant) ? variant : 'Warning'
+  const evidenceLayout = mode === 'Evidence' && (incident || '').length > 24 ? 'stacked' : 'columns'
   const accent = /^#[0-9a-f]{6}$/i.test(accentColor || '') ? accentColor : '#d84a4a'
   const style = {
     '--corruption': accent,
@@ -24,7 +25,7 @@ const CorruptionFileCard = forwardRef(function CorruptionFileCard(
 
   return (
     <article
-      className={`ficha corruption-file-card corruption-file-${mode.toLowerCase()}${dragging ? ' dragover' : ''}`}
+      className={`ficha corruption-file-card corruption-file-${mode.toLowerCase()} corruption-evidence-${evidenceLayout}${dragging ? ' dragover' : ''}`}
       id="card"
       ref={ref}
       style={style}
