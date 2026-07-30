@@ -22,10 +22,11 @@ if (!localHosts.has(host) && !token && !allowUnauthenticated) {
   throw new Error('Define CARDS_MCP_TOKEN antes de exponer el servidor fuera de localhost.')
 }
 
-const allowedHosts = process.env.CARDS_MCP_ALLOWED_HOSTS
+const configuredAllowedHosts = process.env.CARDS_MCP_ALLOWED_HOSTS
   ?.split(',')
   .map((value) => value.trim())
   .filter(Boolean)
+const allowedHosts = [...new Set([...(configuredAllowedHosts ?? []), 'cards-mcp'])]
 const app = createMcpExpressApp({ host, allowedHosts })
 const repository = new CardRepository()
 const publicHost = host === '0.0.0.0' || host === '::' ? 'localhost' : host
