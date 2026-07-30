@@ -27,6 +27,8 @@ test('expone herramientas MCP para guardar y consultar cartas', async (t) => {
     tools.tools.map(({ name }) => name).sort(),
     ['delete_cards', 'export_cards_zip', 'list_card_library', 'move_cards', 'save_card_batch', 'save_card_image', 'update_card'],
   )
+  const saveBatchTool = tools.tools.find(({ name }) => name === 'save_card_batch')
+  assert.match(JSON.stringify(saveBatchTool?.inputSchema), /showIncidentNumber/)
 
   const saved = await client.callTool({
     name: 'save_card_batch',

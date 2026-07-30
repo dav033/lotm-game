@@ -143,6 +143,7 @@ const DEFAULT_STATE = {
   corruptionLevel: 'Severe',
   corruptionAccentColor: '#d84a4a',
   corruptionImage: null,
+  corruptionShowIncidentNumber: false,
   backgroundOpacity: 65,
 }
 
@@ -901,6 +902,7 @@ export default function App() {
               corruptionLevel={state.corruptionLevel}
               accentColor={state.corruptionAccentColor}
               image={state.corruptionImage}
+              showIncidentNumber={state.corruptionShowIncidentNumber}
               backgroundOpacity={state.backgroundOpacity}
               onDropBackground={(file) => onUploadImage(file, 'corruptionImage')}
             />

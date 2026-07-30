@@ -25,10 +25,11 @@ test('Corruption File conserva sus tres composiciones y campos al ida y vuelta',
       caseLabel: 'Normal explanation', explanation: 'An artifact linked to Amon.',
       reactionLabel: 'Community damage', reaction: 'Every circle now requires inspection.',
       footerText: 'Paranoia successfully installed.', corruptionLevel: 'Catastrophic',
-      accentColor: '#d7b04a', backgroundOpacity: 42,
+      showIncidentNumber: true, accentColor: '#d7b04a', backgroundOpacity: 42,
     })
     const state = toBuilderCardState(content)
     assert.equal(state.corruptionVariant, variant)
+    assert.equal(state.corruptionShowIncidentNumber, true)
     assert.deepEqual(fromBuilderCardState(state), content)
     assert.equal(filenameForCard(content), 'corruption-file_the-monocle')
   }

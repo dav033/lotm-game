@@ -195,6 +195,7 @@ export default function LiveCardPreview({ state }) {
         corruptionLevel={state.corruptionLevel}
         accentColor={state.corruptionAccentColor}
         image={state.corruptionImage}
+        showIncidentNumber={state.corruptionShowIncidentNumber}
         backgroundOpacity={state.backgroundOpacity}
       />
     )

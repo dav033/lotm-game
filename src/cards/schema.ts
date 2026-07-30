@@ -256,6 +256,9 @@ export const CorruptionFileCardSchema = z
     reaction: z.string().trim().min(1).max(280).describe('Remate o consecuencia comica dentro del fandom.'),
     footerText: z.string().trim().max(180).optional(),
     corruptionLevel: z.enum(['Low', 'Moderate', 'Severe', 'Catastrophic']).default('Severe'),
+    showIncidentNumber: z.boolean().default(false).describe(
+      'Muestra el numero decorativo calculado del incidente en el encabezado y el fondo de la carta.',
+    ),
     accentColor: z.string().regex(/^#[0-9a-f]{6}$/i).optional(),
     imageUrl: ImageSourceSchema.optional(),
     backgroundOpacity: BackgroundOpacitySchema,
@@ -439,6 +442,7 @@ export type BuilderCardState = {
   corruptionReaction: string
   corruptionFooterText: string
   corruptionLevel: 'Low' | 'Moderate' | 'Severe' | 'Catastrophic'
+  corruptionShowIncidentNumber: boolean
   corruptionAccentColor: string | null
   corruptionImage: string | null
   backgroundOpacity: number
@@ -514,6 +518,7 @@ const DEFAULT_BUILDER_STATE: BuilderCardState = {
   corruptionReaction: '',
   corruptionFooterText: '',
   corruptionLevel: 'Severe',
+  corruptionShowIncidentNumber: false,
   corruptionAccentColor: null,
   corruptionImage: null,
   backgroundOpacity: 65,
@@ -649,6 +654,7 @@ export function toBuilderCardState(content: CardContent): BuilderCardState {
       corruptionReaction: content.reaction,
       corruptionFooterText: content.footerText ?? '',
       corruptionLevel: content.corruptionLevel,
+      corruptionShowIncidentNumber: content.showIncidentNumber,
       corruptionAccentColor: content.accentColor ?? null,
       corruptionImage: content.imageUrl ?? null,
     }
@@ -791,6 +797,7 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
       reaction: state.corruptionReaction.trim(),
       ...(state.corruptionFooterText.trim() ? { footerText: state.corruptionFooterText.trim() } : {}),
       corruptionLevel: state.corruptionLevel,
+      showIncidentNumber: state.corruptionShowIncidentNumber,
       ...(state.corruptionAccentColor ? { accentColor: state.corruptionAccentColor } : {}),
       ...(state.corruptionImage ? { imageUrl: state.corruptionImage } : {}),
       backgroundOpacity: state.backgroundOpacity,

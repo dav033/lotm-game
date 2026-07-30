@@ -787,6 +787,13 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
             </div>
           </div>
           <div className="field"><label>Incident</label><input maxLength={90} value={state.corruptionIncident ?? ''} onChange={(e) => set({ corruptionIncident: e.target.value })} /></div>
+          <div className="field">
+            <label>Incident number</label>
+            <div className="toggle" role="group" aria-label="Incident number visibility">
+              <button type="button" className={'seg' + (!state.corruptionShowIncidentNumber ? ' sel' : '')} aria-pressed={!state.corruptionShowIncidentNumber} onClick={() => set({ corruptionShowIncidentNumber: false })}>Hidden</button>
+              <button type="button" className={'seg' + (state.corruptionShowIncidentNumber ? ' sel' : '')} aria-pressed={Boolean(state.corruptionShowIncidentNumber)} onClick={() => set({ corruptionShowIncidentNumber: true })}>Visible</button>
+            </div>
+          </div>
           <div className="field"><label>Explanation label</label><input maxLength={40} value={state.corruptionCaseLabel ?? ''} onChange={(e) => set({ corruptionCaseLabel: e.target.value })} /></div>
           <div className="field"><label>Normal explanation</label><textarea rows={4} maxLength={320} value={state.corruptionExplanation ?? ''} onChange={(e) => set({ corruptionExplanation: e.target.value })} /></div>
           <div className="field"><label>Reaction label</label><input maxLength={40} value={state.corruptionReactionLabel ?? ''} onChange={(e) => set({ corruptionReactionLabel: e.target.value })} /></div>

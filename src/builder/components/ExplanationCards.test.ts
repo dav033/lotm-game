@@ -42,6 +42,11 @@ test('Corruption File cambia jerarquia entre Warning, Evidence y Quote', () => {
   assert.match(warning, /Catastrophic/)
   assert.match(warning, /INCIDENT FILE/)
   assert.doesNotMatch(warning, /0803|corruption-file-index/)
+  const numbered = renderToStaticMarkup(React.createElement(CorruptionFile, {
+    ...common, variant: 'Warning', showIncidentNumber: true,
+  }))
+  assert.match(numbered, /INCIDENT FILE \/ 0803/)
+  assert.match(numbered, /corruption-file-index[^>]*>0803/)
   const longEvidence = renderToStaticMarkup(React.createElement(CorruptionFile, {
     ...common, variant: 'Evidence', incident: 'FORS, INTERDIMENSIONAL TAXI',
   }))
