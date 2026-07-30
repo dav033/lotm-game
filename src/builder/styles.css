@@ -723,7 +723,7 @@
 .tarot-member-dossier .tarot-member-description{font-size:14px;line-height:1.35}
 .tarot-member-dossier .tarot-member-detail{padding:10px 12px}
 .tarot-member-dossier .tarot-member-detail p{font-size:13px;line-height:1.32}
-.tarot-member-dossier .tarot-member-footer{flex:0 0 auto;margin-top:14px;padding:8px 11px}
+.tarot-member-dossier .tarot-member-footer{flex:0 0 auto;margin-top:auto;padding:8px 11px}
 .tarot-member-dossier .tarot-member-footer span{font-size:8px}
 .tarot-member-dossier .tarot-member-footer p{font-size:11px;line-height:1.28}
 
@@ -768,6 +768,13 @@
 .background-opacity-control input.background-opacity-range:focus-visible{outline:2px solid var(--tier);outline-offset:4px}
 .background-opacity-presets{flex-wrap:nowrap}
 .background-opacity-presets .seg{min-width:0;padding:7px 4px;font-size:11px}
+.tarot-color-row{display:flex;align-items:center;gap:9px}
+.field input.tarot-color-input{width:46px;height:38px;flex:0 0 46px;padding:3px;border-radius:7px;cursor:pointer}
+.tarot-color-row code{flex:1;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px}
+.tarot-color-presets{display:grid;grid-template-columns:repeat(10,1fr);gap:5px;margin-top:9px}
+.tarot-color-swatch{height:25px;border:2px solid transparent;border-radius:6px;background:var(--swatch);cursor:pointer;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)}
+.tarot-color-swatch:hover,.tarot-color-swatch.sel{border-color:#fff;transform:translateY(-1px)}
 
 .toggle{display:flex;flex-wrap:wrap;gap:6px}
 .seg{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--muted2);

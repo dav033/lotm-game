@@ -8,10 +8,11 @@ test('Tarot Member conserva sus tres composiciones y campos al ida y vuelta', ()
       type: 'Tarot Member', variant, name: 'Alger Wilson', tarotTitle: 'The Hanged Man',
       description: 'What the Club sees.', detailLabel: 'What is actually happening',
       detailText: 'A cautious intelligence analyst.', footerText: 'Underthinking is fatal.',
-      pathway: 'Tyrant', backgroundOpacity: 42,
+      pathway: 'Tyrant', accentColor: '#2f8fc4', backgroundOpacity: 42,
     })
     const state = toBuilderCardState(content)
     assert.equal(state.tarotMemberVariant, variant)
+    assert.equal(state.tarotMemberAccentColor, '#2f8fc4')
     assert.deepEqual(fromBuilderCardState(state), content)
     assert.equal(filenameForCard(content), 'tarot-member_the-hanged-man_alger-wilson')
   }

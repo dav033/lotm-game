@@ -235,6 +235,9 @@ export const TarotMemberCardSchema = z
     detailText: z.string().trim().min(1).max(280).describe('Segunda idea, funcion o contraste del personaje.'),
     footerText: z.string().trim().max(180).optional().describe('Remate final breve, divertido pero veraz.'),
     pathway: PathwayNameSchema.optional().describe('Pathway opcional que aporta el color de acento.'),
+    accentColor: z.string().regex(/^#[0-9a-f]{6}$/i).optional().describe(
+      'Color visual opcional en hexadecimal. Reemplaza el acento del pathway sin presentarse como canon.',
+    ),
     imageUrl: ImageSourceSchema.optional().describe('Retrato o arte de fondo opcional.'),
     backgroundOpacity: BackgroundOpacitySchema,
   })
@@ -406,6 +409,7 @@ export type BuilderCardState = {
   tarotMemberDetailText: string
   tarotMemberFooterText: string
   tarotMemberPathway: string | null
+  tarotMemberAccentColor: string | null
   tarotMemberImage: string | null
   backgroundOpacity: number
 }
@@ -470,6 +474,7 @@ const DEFAULT_BUILDER_STATE: BuilderCardState = {
   tarotMemberDetailText: '',
   tarotMemberFooterText: '',
   tarotMemberPathway: null,
+  tarotMemberAccentColor: null,
   tarotMemberImage: null,
   backgroundOpacity: 65,
 }
@@ -588,6 +593,7 @@ export function toBuilderCardState(content: CardContent): BuilderCardState {
       tarotMemberDetailText: content.detailText,
       tarotMemberFooterText: content.footerText ?? '',
       tarotMemberPathway: content.pathway ?? null,
+      tarotMemberAccentColor: content.accentColor ?? null,
       tarotMemberImage: content.imageUrl ?? null,
     }
   }
@@ -713,6 +719,7 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
       detailText: state.tarotMemberDetailText.trim(),
       ...(state.tarotMemberFooterText.trim() ? { footerText: state.tarotMemberFooterText.trim() } : {}),
       ...(state.tarotMemberPathway ? { pathway: state.tarotMemberPathway } : {}),
+      ...(state.tarotMemberAccentColor ? { accentColor: state.tarotMemberAccentColor } : {}),
       ...(state.tarotMemberImage ? { imageUrl: state.tarotMemberImage } : {}),
       backgroundOpacity: state.backgroundOpacity,
     }

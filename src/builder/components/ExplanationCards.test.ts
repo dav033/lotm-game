@@ -42,6 +42,20 @@ test('Tarot Member produce composiciones distintas para retrato, expediente y co
   assert.match(contrast, /Official story/)
 })
 
+test('Tarot Member expone selector y paletas de color sin presentarlas como canon', () => {
+  const html = renderToStaticMarkup(React.createElement(Panel_, {
+    state: { ...toBuilderCardState(CardContentSchema.parse({
+      type: 'Tarot Member', variant: 'Dossier', name: 'Xio Derecha', tarotTitle: 'Judgement',
+      description: 'Investigator.', detailLabel: 'Role', detailText: 'Keeps order.',
+      pathway: 'Justiciar', backgroundOpacity: 52,
+    })) },
+    set: () => {}, accent: { c: '#4e86a8' },
+  }))
+  assert.match(html, /Member accent color/)
+  assert.match(html, /Suggested visual palettes, not canonical classifications/)
+  assert.match(html, /type="color"/)
+})
+
 test('Tier Explanation muestra solo tier y descripción general', () => {
   const html = renderToStaticMarkup(React.createElement(TierExplanation, {
     rank: 'S',

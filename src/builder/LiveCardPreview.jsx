@@ -10,7 +10,7 @@ import PathwayExplanationCard from './components/PathwayExplanationCard.jsx'
 import BreakdownCard from './components/BreakdownCard.jsx'
 import MapCard from './components/MapCard.jsx'
 import TarotMemberCard from './components/TarotMemberCard.jsx'
-import { PATHWAYS, PATH_NAMES, PATHWAY_COLORS, TIER_RANKS, tierColor, powerTier } from './data/pathways.js'
+import { PATHWAYS, PATH_NAMES, PATHWAY_COLORS, TIER_RANKS, tarotMemberTheme, tierColor, powerTier } from './data/pathways.js'
 import { PATHWAY_ICONS } from './data/pathwayIcons.js'
 import { PATHWAY_BACKGROUNDS } from './data/pathwayBackgrounds.js'
 
@@ -176,7 +176,7 @@ export default function LiveCardPreview({ state }) {
         footerText={state.tarotMemberFooterText}
         image={state.tarotMemberImage || (pathway ? PATHWAY_BACKGROUNDS[pathway] ?? null : null)}
         backgroundOpacity={state.backgroundOpacity}
-        tier={pathway ? PATHWAY_COLORS[pathway] : null}
+        tier={tarotMemberTheme(pathway, state.tarotMemberAccentColor)}
       />
     )
   }

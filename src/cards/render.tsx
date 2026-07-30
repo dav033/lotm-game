@@ -19,6 +19,7 @@ import {
   PATH_NAMES,
   TIER_RANKS,
   PATHWAY_COLORS,
+  tarotMemberTheme,
   powerTier,
   tierColor,
 } from '../builder/data/pathways.js'
@@ -287,7 +288,7 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
           footerText={state.tarotMemberFooterText}
           image={state.tarotMemberResolvedImage}
           backgroundOpacity={state.backgroundOpacity}
-          tier={state.tarotMemberPathway ? PATHWAY_COLOR_DATA[state.tarotMemberPathway] : null}
+          tier={tarotMemberTheme(state.tarotMemberPathway, state.tarotMemberAccentColor)}
         />
       ) : (
         <StaticCard

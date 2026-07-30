@@ -20,7 +20,7 @@ import Filmstrip from './components/Filmstrip.jsx'
 import ProjectTabs, { MAX_OPEN_PROJECTS } from './components/ProjectTabs.jsx'
 import ImageTray from './components/ImageTray.jsx'
 import SectionField from './components/SectionField.jsx'
-import { PATHWAYS, PATH_NAMES, tierColor, powerTier, TIER_RANKS, PATHWAY_COLORS } from './data/pathways.js'
+import { PATHWAYS, PATH_NAMES, tierColor, powerTier, TIER_RANKS, PATHWAY_COLORS, tarotMemberTheme } from './data/pathways.js'
 import { PATHWAY_ICONS } from './data/pathwayIcons.js'
 import { PATHWAY_BACKGROUNDS } from './data/pathwayBackgrounds.js'
 import { sameCardState, useCardSession } from './useCardSession.js'
@@ -125,6 +125,7 @@ const DEFAULT_STATE = {
   tarotMemberDetailText: '',
   tarotMemberFooterText: '',
   tarotMemberPathway: null,
+  tarotMemberAccentColor: null,
   tarotMemberImage: null,
   backgroundOpacity: 65,
 }
@@ -619,7 +620,9 @@ export default function App() {
         ? { ...PATHWAY_COLORS[pathwayCardPath], pct: 100 }
       : isMap && mapPathway
         ? { ...PATHWAY_COLORS[mapPathway], pct: 100 }
-      : isGeneralExplanation || isPathwayExplanation || isBreakdown || isMap || isTarotMember
+      : isTarotMember
+        ? { ...tarotMemberTheme(state.tarotMemberPathway, state.tarotMemberAccentColor), pct: 100 }
+      : isGeneralExplanation || isPathwayExplanation || isBreakdown || isMap
         ? COVER_ACCENT
       : powerTier(state.type, state.power, state.grade)
   const pathLabel = [...new Set(sequences.map((s) => s.path))].join(' · ')
@@ -842,7 +845,7 @@ export default function App() {
               footerText={state.tarotMemberFooterText}
               image={state.tarotMemberImage || (state.tarotMemberPathway ? PATHWAY_BACKGROUNDS[state.tarotMemberPathway] ?? null : null)}
               backgroundOpacity={state.backgroundOpacity}
-              tier={state.tarotMemberPathway ? PATHWAY_COLORS[state.tarotMemberPathway] : null}
+              tier={tarotMemberTheme(state.tarotMemberPathway, state.tarotMemberAccentColor)}
               onDropBackground={(file) => onUploadImage(file, 'tarotMemberImage')}
             />
           ) : (

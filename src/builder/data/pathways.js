@@ -95,6 +95,41 @@ export const PATHWAY_COLORS = {
   "Justiciar": { c: "#4d7ea8", d: "#1a2c3d" },
 };
 
+// Member-specific accents are editorial choices derived from each identity's
+// pathway, imagery and dominant official-art palette. They are not canon
+// classifications. The editor exposes them as optional presets plus a free
+// color picker so a card never has to pretend the palette is authoritative.
+export const TAROT_MEMBER_COLOR_PRESETS = [
+  { label: "The Fool", color: "#a89bc8" },
+  { label: "The World", color: "#b94a52" },
+  { label: "Justice", color: "#d8b36a" },
+  { label: "Hanged Man", color: "#2f8fc4" },
+  { label: "The Sun", color: "#f0b429" },
+  { label: "Magician", color: "#7d65d8" },
+  { label: "The Moon", color: "#c65373" },
+  { label: "The Hermit", color: "#9a5ac4" },
+  { label: "The Star", color: "#5968a8" },
+  { label: "Judgement", color: "#4e86a8" },
+];
+
+function darkenHex(color, factor = 0.34) {
+  const value = color.replace('#', '');
+  const channel = (offset) => Math.round(parseInt(value.slice(offset, offset + 2), 16) * factor)
+    .toString(16).padStart(2, '0');
+  return `#${channel(0)}${channel(2)}${channel(4)}`;
+}
+
+/**
+ * @param {string | null | undefined} pathway
+ * @param {string | null | undefined} accentColor
+ */
+export function tarotMemberTheme(pathway, accentColor = null) {
+  const base = PATHWAY_COLORS[pathway] || { c: '#d8b76b', d: '#43330f' };
+  return accentColor
+    ? { c: accentColor, d: darkenHex(accentColor) }
+    : base;
+}
+
 // Resolve the active power level into a color + progress percentage.
 export function powerTier(type, power, grade) {
   if (type === "Artifact") {

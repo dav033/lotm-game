@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { PATHWAYS, PATH_NAMES, TIER_RANKS, TIER_RANK_NAMES } from '../data/pathways.js'
+import {
+  PATHWAYS, PATH_NAMES, TIER_RANKS, TIER_RANK_NAMES,
+  TAROT_MEMBER_COLOR_PRESETS, tarotMemberTheme,
+} from '../data/pathways.js'
 import { PATHWAY_BACKGROUNDS } from '../data/pathwayBackgrounds.js'
 
 const BACKGROUND_OPACITY_PRESETS = [
@@ -786,6 +789,40 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
               <PathwayCombo value={state.tarotMemberPathway} onPick={(pathway) => set({ tarotMemberPathway: pathway })} />
             </div>
           )}
+
+          <div className="field">
+            <label>Member accent color</label>
+            <div className="tarot-color-row">
+              <input
+                className="tarot-color-input"
+                type="color"
+                aria-label="Member accent color"
+                value={state.tarotMemberAccentColor || tarotMemberTheme(state.tarotMemberPathway).c}
+                onChange={(e) => set({ tarotMemberAccentColor: e.target.value })}
+              />
+              <code>{state.tarotMemberAccentColor || tarotMemberTheme(state.tarotMemberPathway).c}</code>
+              <button
+                type="button"
+                className="btn-sm"
+                disabled={!state.tarotMemberAccentColor}
+                onClick={() => set({ tarotMemberAccentColor: null })}
+              >Use pathway color</button>
+            </div>
+            <div className="tarot-color-presets" aria-label="Suggested member colors">
+              {TAROT_MEMBER_COLOR_PRESETS.map(({ label, color }) => (
+                <button
+                  type="button"
+                  key={label}
+                  className={'tarot-color-swatch' + (state.tarotMemberAccentColor === color ? ' sel' : '')}
+                  style={{ '--swatch': color }}
+                  title={`${label}: ${color}`}
+                  aria-label={`${label} color ${color}`}
+                  onClick={() => set({ tarotMemberAccentColor: color })}
+                />
+              ))}
+            </div>
+            <p className="field-help">Suggested visual palettes, not canonical classifications.</p>
+          </div>
 
           <div className="field"><label>Name or identity</label><input maxLength={80} value={state.tarotMemberName ?? ''} onChange={(e) => set({ tarotMemberName: e.target.value })} /></div>
           <div className="field"><label>Tarot title</label><input maxLength={40} value={state.tarotMemberTitle ?? ''} placeholder="The Hanged Man" onChange={(e) => set({ tarotMemberTitle: e.target.value })} /></div>
