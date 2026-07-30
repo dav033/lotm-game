@@ -3,7 +3,8 @@ import path from 'node:path'
 import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { CardRepository } from '../src/cards/repository'
-import { resolveCardExportDir } from '../src/cards/export'
+import { exportCardsToZip, resolveCardExportDir } from '../src/cards/export'
+import { ExportCardsSchema } from '../src/cards/schema'
 import { createCardsMcpServer } from '../src/cards/mcp'
 
 try { process.loadEnvFile() } catch { /* .env is optional */ }
@@ -37,6 +38,29 @@ const liveViewUrl = localHosts.has(host)
 
 app.get('/health', (_request, response) => {
   response.json({ ok: true, service: 'lotm-card-studio' })
+})
+
+app.get('/export', async (request, response) => {
+  const parsed = ExportCardsSchema.safeParse({
+    universe: typeof request.query.universe === 'string' ? request.query.universe : undefined,
+    part: typeof request.query.part === 'string' ? request.query.part : undefined,
+    filename: typeof request.query.filename === 'string' ? request.query.filename : undefined,
+  })
+  if (!parsed.success) {
+    response.status(400).json({ error: 'Filtro de cartas invalido.' })
+    return
+  }
+
+  try {
+    const cards = repository.listCards(parsed.data)
+    const result = await exportCardsToZip(cards, parsed.data.filename)
+    response.download(result.filePath, result.filename)
+  } catch (error) {
+    console.error('[cards-mcp:export]', error)
+    response.status(500).json({
+      error: error instanceof Error ? error.message : 'No se pudo generar el ZIP.',
+    })
+  }
 })
 
 app.use('/mcp', (request, response, next) => {

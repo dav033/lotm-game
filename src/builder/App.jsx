@@ -429,6 +429,18 @@ export default function App() {
     if (!chosen.length || busy) return
     setBusy(true)
     setZipError(null)
+    const universeSlugs = [...new Set(chosen.map((card) => card.universe.slug))]
+    if (universeSlugs.length === 1) {
+      const partSlugs = [...new Set(chosen.map((card) => card.part.slug))]
+      const params = new URLSearchParams({ universe: universeSlugs[0], filename: zipName })
+      if (partSlugs.length === 1) params.set('part', partSlugs[0])
+      const a = document.createElement('a')
+      a.href = `/api/cards/export?${params}`
+      a.download = `${zipName}.zip`
+      setBusy(false)
+      a.click()
+      return
+    }
     const previousState = state
     const previousEditingId = editingId
     try {
