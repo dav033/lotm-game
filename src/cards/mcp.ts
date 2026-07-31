@@ -212,7 +212,7 @@ export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl 
       title: 'Exportar cartas a ZIP',
       description:
         'Renderiza todas las cartas que coincidan con el filtro y genera un ZIP con PNG de 960x1280 (3:4, foto de TikTok) ' +
-        'organizados por universo/parte, mas manifest.json.',
+        'organizados por universo/parte. Solo imagenes, sin archivos extra.',
       inputSchema: ExportCardsSchema,
       annotations: {
         readOnlyHint: true,

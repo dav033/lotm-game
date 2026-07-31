@@ -23,7 +23,6 @@ export function resolveCardExportDir(): string {
 export async function createCardsZip(
   cards: StoredCard[],
   renderCard: RenderCard,
-  generatedAt = new Date().toISOString(),
 ): Promise<Buffer> {
   if (!cards.length) throw new Error('No hay cartas que coincidan con el filtro solicitado.')
   const zip = new JSZip()
@@ -35,28 +34,13 @@ export async function createCardsZip(
     // combinan dos slugs y podrían acercarse al límite de ruta de Windows aun
     // con el slug individual ya recortado.
     const base = `${String(card.position).padStart(3, '0')}_${filenameForCard(card.content)}`
-    const filename = `${base.slice(0, 70)}.png`
+    const filename = `${base.slice(0, 50)}.png`
     zip.file(`${folder}/${filename}`, await renderCard(card.content))
   }
 
-  zip.file(
-    'manifest.json',
-    JSON.stringify(
-      {
-        version: 3,
-        generatedAt,
-        cards: cards.map((card) => ({
-          id: card.id,
-          position: card.position,
-          universe: card.universe,
-          part: card.part,
-          content: card.content,
-        })),
-      },
-      null,
-      2,
-    ),
-  )
+  // Solo imagenes: nada de manifest.json ni otros archivos extra, a pedido
+  // expreso — el zip es para importar/repasar las cartas, no para inspeccionar
+  // metadata.
   return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
 }
 
@@ -71,8 +55,14 @@ export async function exportCardsToZip(
     : cards.every(({ universe }) => universe.id === cards[0].universe.id)
       ? cards[0].universe.slug
       : 'all-card-universes'
-  const stem = slugify(requestedFilename?.replace(/\.zip$/i, '') || fallbackName)
-  const filename = `${stem}-${new Date().toISOString().slice(0, 10)}-${randomUUID()}.zip`
+  // El nombre del zip es la carpeta que Windows crea al extraerlo — se
+  // recorta agresivo (stem corto + id corto, sin UUID de 36 caracteres ni
+  // fecha) porque ese nombre despues se anida bajo carpetas de
+  // universo/parte y cada carta, y sumado todo se pasaba del limite de ruta
+  // de Windows (0x80010135).
+  const stem = slugify(requestedFilename?.replace(/\.zip$/i, '') || fallbackName).slice(0, 30)
+  const shortId = randomUUID().slice(0, 8)
+  const filename = `${stem}-${shortId}.zip`
   const filePath = path.join(outputDir, filename)
   const renderer = await CardPngRenderer.create()
 

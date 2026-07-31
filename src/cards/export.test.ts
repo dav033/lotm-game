@@ -5,7 +5,7 @@ import { createCardsZip } from './export'
 import type { StoredCard } from './repository'
 import { titleForCard } from './schema'
 
-test('el ZIP contiene todas las cartas organizadas y un manifiesto textual', async () => {
+test('el ZIP contiene solo las imagenes de las cartas, organizadas por camino', async () => {
   const cards: StoredCard[] = [
     storedCard('a', 1, {
       type: 'Character',
@@ -43,7 +43,7 @@ test('el ZIP contiene todas las cartas organizadas y un manifiesto textual', asy
       imageUrl: '/cover-default.jpg',
     }),
   ]
-  const archive = await createCardsZip(cards, async () => Buffer.from('png'), '2026-07-20T00:00:00.000Z')
+  const archive = await createCardsZip(cards, async () => Buffer.from('png'))
   const zip = await JSZip.loadAsync(archive)
   const files = Object.keys(zip.files).filter((name) => !zip.files[name].dir)
 
@@ -54,12 +54,8 @@ test('el ZIP contiene todas las cartas organizadas y un manifiesto textual', asy
     'bleach/01-soul-society/004_tier-explanation-a.png',
     'bleach/01-soul-society/005_general-explanation_los-caminos_door.png',
     'bleach/01-soul-society/006_full-cover_soul-society.png',
-    'manifest.json',
   ])
-  const manifest = JSON.parse(await zip.file('manifest.json')!.async('text'))
-  assert.equal(manifest.cards.length, 6)
-  assert.equal(manifest.version, 3)
-  assert.equal(manifest.cards[0].content.name, 'Ichigo Kurosaki')
+  assert.ok(files.every((name) => name.endsWith('.png')), 'el zip no debe contener nada mas que imagenes')
 })
 
 function storedCard(

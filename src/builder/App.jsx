@@ -440,10 +440,7 @@ export default function App() {
 
   const onDownload = async () => {
     const url = await captureCard()
-    const a = document.createElement('a')
-    a.download = `${fileSafe(labelFor(state))}.png`
-    a.href = url
-    a.click()
+    triggerDownload(url, `${fileSafe(labelFor(state))}.png`)
   }
 
   // Exporta las cartas indicadas. Sin argumentos, el lote entero; con una
@@ -464,10 +461,7 @@ export default function App() {
       // igual mostramos el overlay un momento para que quede claro que la
       // descarga arrancó y no que el clic no hizo nada.
       setExportProgress({ current: 0, total: 0, label: 'Preparando tu descarga…' })
-      const a = document.createElement('a')
-      a.href = `/api/cards/export?${params}`
-      a.download = `${zipName}.zip`
-      a.click()
+      triggerDownload(`/api/cards/export?${params}`, `${zipName}.zip`)
       setTimeout(() => {
         setBusy(false)
         setExportProgress(null)
@@ -499,11 +493,9 @@ export default function App() {
       }
       setExportProgress({ current: chosen.length, total: chosen.length, label: 'Comprimiendo el ZIP…' })
       const blob = await zip.generateAsync({ type: 'blob' })
-      const a = document.createElement('a')
-      a.href = URL.createObjectURL(blob)
-      a.download = `${zipName}.zip`
-      a.click()
-      setTimeout(() => URL.revokeObjectURL(a.href), 1_000)
+      const blobUrl = URL.createObjectURL(blob)
+      triggerDownload(blobUrl, `${zipName}.zip`)
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1_000)
     } catch (error) {
       setZipError(error?.message ?? 'No se pudo generar el ZIP.')
     } finally {
@@ -1068,6 +1060,19 @@ function filenameFromResponse(response) {
 // acababa como carpeta "Part_2" con un "3.png" dentro.
 function fileSafe(label) {
   return label.replace(/[/\\:*?"<>|]+/g, '-').replace(/\.+$/, '').trim() || 'carta'
+}
+
+// Dispara una descarga con un <a download> desechable. Tiene que estar
+// conectado al DOM antes del click: algunos navegadores ignoran en
+// silencio el click de un <a> que nunca se agregó al documento — no tira
+// error, simplemente no pasa nada, que es justo el bug que esto arregla.
+function triggerDownload(href, filename) {
+  const a = document.createElement('a')
+  a.href = href
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
 }
 
 // Filename-friendly label for a card's current state.
