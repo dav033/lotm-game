@@ -94,6 +94,42 @@ export async function guardarFase(
   }
 }
 
+export async function moverFase(
+  id: string,
+  direction: 'up' | 'down',
+): Promise<{ ok: boolean; error: string | null }> {
+  try {
+    await exigirAdminAccion()
+    const moved = await prisma.$transaction(async (tx) => {
+      const phases = await tx.progressionPhase.findMany({
+        orderBy: { sortOrder: 'asc' },
+        select: { id: true, sortOrder: true },
+      })
+      const index = phases.findIndex((phase) => phase.id === id)
+      if (index === -1) return false
+      const swapIndex = direction === 'up' ? index - 1 : index + 1
+      if (swapIndex < 0 || swapIndex >= phases.length) return false
+      const current = phases[index]
+      const neighbor = phases[swapIndex]
+      // sortOrder es único: pasa por un valor centinela para no chocar con el
+      // vecino mientras dura el intercambio.
+      const sentinel = Math.max(...phases.map((phase) => phase.sortOrder)) + 1
+      await tx.progressionPhase.update({ where: { id: current.id }, data: { sortOrder: sentinel } })
+      await tx.progressionPhase.update({ where: { id: neighbor.id }, data: { sortOrder: current.sortOrder } })
+      await tx.progressionPhase.update({ where: { id: current.id }, data: { sortOrder: neighbor.sortOrder } })
+      await sincronizarUmbralesFases(tx)
+      return true
+    })
+    if (!moved) return { ok: false, error: 'La fase ya está en ese extremo del orden.' }
+    revalidarFases()
+    return { ok: true, error: null }
+  } catch (error) {
+    if (error instanceof NoAutorizadoError) return { ok: false, error: 'No autorizado.' }
+    console.error('[moverFase]', error)
+    return { ok: false, error: 'No se pudo reordenar la fase.' }
+  }
+}
+
 export async function eliminarFase(id: string): Promise<{ ok: boolean; error: string | null }> {
   try {
     await exigirAdminAccion()

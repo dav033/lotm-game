@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react'
 import Link from 'next/link'
-import { Ban, Check, ChevronRight, Eye, EyeOff, LockKeyhole, Pencil, Plus, Search, Sparkles, Trash2, TriangleAlert, X } from 'lucide-react'
+import { Ban, Check, ChevronRight, ChevronUp, ChevronDown, Eye, EyeOff, LockKeyhole, Pencil, Plus, Search, Sparkles, Trash2, TriangleAlert, X } from 'lucide-react'
 import ConstructorReceta from '@/components/admin/ConstructorReceta'
 import { IconoElemento } from '@/components/game/IconoElemento'
 import type { PhaseRule } from '@/shared/phaseRules'
@@ -22,6 +22,7 @@ import {
   guardarCondicionesDesbloqueo,
   guardarFeatureGate,
   guardarFase,
+  moverFase,
 } from '@/server/actions/fases'
 import { alternarElementoActivo } from '@/server/actions/elementos'
 import { alternarRecetaActiva, eliminarReceta } from '@/server/actions/recetas'
@@ -742,6 +743,28 @@ export function MapaFases({
     })
   }
 
+  const moverFaseOrden = (phaseId: string, direction: 'up' | 'down') => {
+    if (saving) return
+    setSaving(true)
+    setMessage(null)
+    startTransition(async () => {
+      const result = await moverFase(phaseId, direction)
+      if (!result.ok) {
+        setMessage(result.error)
+        setSaving(false)
+        return
+      }
+      try {
+        await reload()
+        setMessage('Orden actualizado.')
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : 'No se pudo actualizar la vista.')
+      } finally {
+        setSaving(false)
+      }
+    })
+  }
+
   const borrarFase = () => {
     if (saving) return
     const asignados = data.elements.filter(
@@ -829,33 +852,67 @@ export function MapaFases({
             <p role="status" className="mt-2 text-xs text-fog">{message}</p>
           )}
           <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-2">
-            {data.phases.map((phase) => {
+            {data.phases.map((phase, phaseIndex) => {
               const active = phase.id === selectedPhase.id
               return (
-                <button
+                <div
                   key={phase.id}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setSelectedPhaseId(phase.id)}
-                  className={`min-h-28 min-w-0 rounded-lg border p-3 text-left transition focus-visible:ring-2 focus-visible:ring-brass ${
+                  className={`relative min-h-28 min-w-0 rounded-lg border p-3 transition ${
                     active
                       ? 'border-brass bg-brass/15 shadow-[0_0_24px_rgba(201,163,92,0.12)]'
                       : 'border-line2 bg-panel/50 hover:border-brass-deep'
                   }`}
                 >
-                  <span className="block break-words font-[family-name:var(--font-display)] text-lg text-parchment">
-                    {phase.name}
-                  </span>
-                  <span className="mt-2 block text-[11px] leading-4 text-fog">
-                    <span className="block">
-                      {phase.ownElementIds.length} elementos · {phase.ownRitualIds.length} rituales
+                  {mode === 'editor' && (
+                    <div className="absolute right-1.5 top-1.5 flex flex-col gap-0.5">
+                      <button
+                        type="button"
+                        title={`Mover ${phase.name} antes`}
+                        aria-label={`Mover ${phase.name} antes`}
+                        disabled={saving || phaseIndex === 0}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          moverFaseOrden(phase.id, 'up')
+                        }}
+                        className="rounded border border-line2 bg-black/30 p-0.5 text-fog transition hover:border-brass hover:text-brass disabled:cursor-not-allowed disabled:opacity-30"
+                      >
+                        <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        title={`Mover ${phase.name} después`}
+                        aria-label={`Mover ${phase.name} después`}
+                        disabled={saving || phaseIndex === data.phases.length - 1}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          moverFaseOrden(phase.id, 'down')
+                        }}
+                        className="rounded border border-line2 bg-black/30 p-0.5 text-fog transition hover:border-brass hover:text-brass disabled:cursor-not-allowed disabled:opacity-30"
+                      >
+                        <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setSelectedPhaseId(phase.id)}
+                    className="min-w-0 text-left focus-visible:ring-2 focus-visible:ring-brass"
+                  >
+                    <span className="block break-words pr-6 font-[family-name:var(--font-display)] text-lg text-parchment">
+                      {phase.name}
                     </span>
-                    <span className="block line-clamp-2" title={phase.advancementRuleSummary}>
-                      {phase.advancementRuleSummary}
-                      {!phase.isActive && <span className="ml-1 text-wine">· inactiva</span>}
+                    <span className="mt-2 block text-[11px] leading-4 text-fog">
+                      <span className="block">
+                        {phase.ownElementIds.length} elementos · {phase.ownRitualIds.length} rituales
+                      </span>
+                      <span className="block line-clamp-2" title={phase.advancementRuleSummary}>
+                        {phase.advancementRuleSummary}
+                        {!phase.isActive && <span className="ml-1 text-wine">· inactiva</span>}
+                      </span>
                     </span>
-                  </span>
-                </button>
+                  </button>
+                </div>
               )
             })}
             {mode === 'editor' && (
