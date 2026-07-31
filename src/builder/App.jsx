@@ -457,15 +457,29 @@ export default function App() {
       const partSlugs = [...new Set(chosen.map((card) => card.part.slug))]
       const params = new URLSearchParams({ universe: universeSlugs[0], filename: zipName })
       if (partSlugs.length === 1) params.set('part', partSlugs[0])
-      // El servidor arma el ZIP; no hay progreso por carta que reportar, pero
-      // igual mostramos el overlay un momento para que quede claro que la
-      // descarga arrancó y no que el clic no hizo nada.
-      setExportProgress({ current: 0, total: 0, label: 'Preparando tu descarga…' })
-      triggerDownload(`/api/cards/export?${params}`, `${zipName}.zip`)
-      setTimeout(() => {
+      // El servidor arma el ZIP (puede tardar varios segundos con muchas
+      // cartas). Antes se cerraba el overlay a los 900ms fijos y se disparaba
+      // la descarga por navegación directa — el modal desaparecía mucho antes
+      // de que el servidor terminara, así que parecía que no pasaba nada.
+      // Ahora se espera la respuesta real antes de cerrar y descargar.
+      setExportProgress({ current: 0, total: 0, label: 'Generando el ZIP en el servidor…' })
+      try {
+        const response = await fetch(`/api/cards/export?${params}`)
+        if (!response.ok) {
+          const body = await response.json().catch(() => null)
+          setZipError(body?.error ?? `No se pudo generar el ZIP (HTTP ${response.status}).`)
+          return
+        }
+        const blob = await response.blob()
+        const blobUrl = URL.createObjectURL(blob)
+        triggerDownload(blobUrl, filenameFromResponse(response) ?? `${zipName}.zip`)
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1_000)
+      } catch {
+        setZipError('No se pudo conectar con el servidor.')
+      } finally {
         setBusy(false)
         setExportProgress(null)
-      }, 900)
+      }
       return
     }
     const previousState = state

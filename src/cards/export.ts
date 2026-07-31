@@ -26,16 +26,28 @@ export async function createCardsZip(
 ): Promise<Buffer> {
   if (!cards.length) throw new Error('No hay cartas que coincidan con el filtro solicitado.')
   const zip = new JSZip()
+  // Anidar en carpetas solo cuando hace falta para distinguir cartas de
+  // origenes distintos. La mayoria de las exportaciones son de un unico
+  // universo y una unica parte (el caso que reporto el usuario), y ahi
+  // anidar universo/parte no aporta nada — solo suma dos niveles de carpeta
+  // que, extraidos en Windows dentro de la carpeta que ya crea el propio
+  // zip, ayudaban a pasarse del limite de ruta.
+  const multipleUniverses = new Set(cards.map((card) => card.universe.id)).size > 1
+  const multipleParts = new Set(cards.map((card) => card.part.id)).size > 1
 
   for (const card of cards) {
     const partPrefix = card.part.number ? `${String(card.part.number).padStart(2, '0')}-` : ''
-    const folder = `${card.universe.slug}/${partPrefix}${card.part.slug}`
     // Tope duro además del de slugify(): algunos tipos de carta (Tarot Member)
     // combinan dos slugs y podrían acercarse al límite de ruta de Windows aun
     // con el slug individual ya recortado.
     const base = `${String(card.position).padStart(3, '0')}_${filenameForCard(card.content)}`
     const filename = `${base.slice(0, 50)}.png`
-    zip.file(`${folder}/${filename}`, await renderCard(card.content))
+    const folder = multipleUniverses
+      ? `${card.universe.slug}/${partPrefix}${card.part.slug}`
+      : multipleParts
+        ? `${partPrefix}${card.part.slug}`
+        : ''
+    zip.file(folder ? `${folder}/${filename}` : filename, await renderCard(card.content))
   }
 
   // Solo imagenes: nada de manifest.json ni otros archivos extra, a pedido
