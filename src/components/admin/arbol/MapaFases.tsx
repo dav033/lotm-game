@@ -765,20 +765,20 @@ export function MapaFases({
     })
   }
 
-  const borrarFase = () => {
+  const borrarFasePorId = (phase: { id: string; name: string }) => {
     if (saving) return
     const asignados = data.elements.filter(
-      (element) => element.availableFromPhaseId === selectedPhase.id,
+      (element) => element.availableFromPhaseId === phase.id,
     )
     const aviso =
       asignados.length > 0
-        ? `¿Eliminar «${selectedPhase.name}»? Sus ${asignados.length} elementos iniciales volverán al pool global.`
-        : `¿Eliminar «${selectedPhase.name}»?`
+        ? `¿Eliminar «${phase.name}»? Sus ${asignados.length} elementos iniciales volverán al pool global.`
+        : `¿Eliminar «${phase.name}»?`
     if (!window.confirm(aviso)) return
     setSaving(true)
     setMessage(null)
     startTransition(async () => {
-      const result = await eliminarFase(selectedPhase.id)
+      const result = await eliminarFase(phase.id)
       if (!result.ok) {
         setMessage(result.error)
         setSaving(false)
@@ -786,7 +786,7 @@ export function MapaFases({
       }
       try {
         await reload()
-        setSelectedPhaseId('')
+        if (selectedPhaseId === phase.id) setSelectedPhaseId('')
         setEditorFase(null)
         setMessage('Fase eliminada.')
       } catch (error) {
@@ -795,6 +795,16 @@ export function MapaFases({
         setSaving(false)
       }
     })
+  }
+
+  const borrarFase = () => borrarFasePorId(selectedPhase)
+
+  const editarFasePorId = (phase: { id: string; advancementRule: PhaseRule }) => {
+    if (saving) return
+    setSelectedPhaseId(phase.id)
+    setPhaseRule(phase.advancementRule)
+    setEditorFase('editar')
+    setMessage(null)
   }
 
   const countByState = (state: EstadoElemento) =>
@@ -865,32 +875,62 @@ export function MapaFases({
                 >
                   {mode === 'editor' && (
                     <div className="absolute right-1.5 top-1.5 flex flex-col gap-0.5">
-                      <button
-                        type="button"
-                        title={`Mover ${phase.name} antes`}
-                        aria-label={`Mover ${phase.name} antes`}
-                        disabled={saving || phaseIndex === 0}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          moverFaseOrden(phase.id, 'up')
-                        }}
-                        className="rounded border border-line2 bg-black/30 p-0.5 text-fog transition hover:border-brass hover:text-brass disabled:cursor-not-allowed disabled:opacity-30"
-                      >
-                        <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
-                      <button
-                        type="button"
-                        title={`Mover ${phase.name} después`}
-                        aria-label={`Mover ${phase.name} después`}
-                        disabled={saving || phaseIndex === data.phases.length - 1}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          moverFaseOrden(phase.id, 'down')
-                        }}
-                        className="rounded border border-line2 bg-black/30 p-0.5 text-fog transition hover:border-brass hover:text-brass disabled:cursor-not-allowed disabled:opacity-30"
-                      >
-                        <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
+                      <div className="flex gap-0.5">
+                        <button
+                          type="button"
+                          title={`Mover ${phase.name} antes`}
+                          aria-label={`Mover ${phase.name} antes`}
+                          disabled={saving || phaseIndex === 0}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            moverFaseOrden(phase.id, 'up')
+                          }}
+                          className="rounded border border-line2 bg-black/30 p-0.5 text-fog transition hover:border-brass hover:text-brass disabled:cursor-not-allowed disabled:opacity-30"
+                        >
+                          <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          title={`Mover ${phase.name} después`}
+                          aria-label={`Mover ${phase.name} después`}
+                          disabled={saving || phaseIndex === data.phases.length - 1}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            moverFaseOrden(phase.id, 'down')
+                          }}
+                          className="rounded border border-line2 bg-black/30 p-0.5 text-fog transition hover:border-brass hover:text-brass disabled:cursor-not-allowed disabled:opacity-30"
+                        >
+                          <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
+                      </div>
+                      <div className="flex gap-0.5">
+                        <button
+                          type="button"
+                          title={`Editar ${phase.name}`}
+                          aria-label={`Editar ${phase.name}`}
+                          disabled={saving}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            editarFasePorId(phase)
+                          }}
+                          className="rounded border border-line2 bg-black/30 p-0.5 text-fog transition hover:border-brass hover:text-brass disabled:cursor-not-allowed disabled:opacity-30"
+                        >
+                          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          title={`Eliminar ${phase.name}`}
+                          aria-label={`Eliminar ${phase.name}`}
+                          disabled={saving}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            borrarFasePorId(phase)
+                          }}
+                          className="rounded border border-line2 bg-black/30 p-0.5 text-fog transition hover:border-wine hover:text-wine disabled:cursor-not-allowed disabled:opacity-30"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
+                      </div>
                     </div>
                   )}
                   <button
@@ -899,7 +939,7 @@ export function MapaFases({
                     onClick={() => setSelectedPhaseId(phase.id)}
                     className="min-w-0 text-left focus-visible:ring-2 focus-visible:ring-brass"
                   >
-                    <span className="block break-words pr-6 font-[family-name:var(--font-display)] text-lg text-parchment">
+                    <span className="block break-words pr-12 font-[family-name:var(--font-display)] text-lg text-parchment">
                       {phase.name}
                     </span>
                     <span className="mt-2 block text-[11px] leading-4 text-fog">
