@@ -67,6 +67,29 @@
 .save-status.error::before{background:#e0736b;flex:0 0 auto}
 @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
 
+/* Overlay de exportacion: antes `busy` solo deshabilitaba botones en
+   silencio, sin ninguna senal obvia de que algo estuviera pasando durante
+   una exportacion larga (ZIP con muchas cartas, video). Cubre toda la
+   pantalla a proposito: no debe pasar desapercibido. */
+.export-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;
+  justify-content:center;background:rgba(7,7,9,.82);backdrop-filter:blur(2px)}
+.export-overlay-card{display:flex;flex-direction:column;align-items:center;gap:14px;
+  padding:32px 40px;border-radius:14px;background:var(--panel2);
+  border:1px solid var(--line2);box-shadow:0 20px 60px rgba(0,0,0,.5);min-width:240px}
+.export-spinner{width:36px;height:36px;border-radius:50%;
+  border:3px solid var(--line2);border-top-color:var(--tier);
+  animation:export-spin .8s linear infinite}
+@keyframes export-spin{to{transform:rotate(360deg)}}
+.export-overlay-label{font-size:14px;color:var(--text);letter-spacing:.02em;text-align:center}
+.export-progress-track{width:180px;height:6px;border-radius:99px;background:var(--line2);
+  overflow:hidden}
+.export-progress-fill{height:100%;background:var(--tier);border-radius:99px;
+  transition:width .2s ease}
+.export-overlay-count{font-size:12px;color:var(--muted2);font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){
+  .export-spinner{animation-duration:2s}
+}
+
 .stage-canvas{position:relative;flex:1 1 auto;display:flex;align-items:center;justify-content:center;
   width:100%;min-height:0}
 /* Toda carta es una caja fija de 480x640; los otros hijos del canvas son el

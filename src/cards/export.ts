@@ -31,7 +31,11 @@ export async function createCardsZip(
   for (const card of cards) {
     const partPrefix = card.part.number ? `${String(card.part.number).padStart(2, '0')}-` : ''
     const folder = `${card.universe.slug}/${partPrefix}${card.part.slug}`
-    const filename = `${String(card.position).padStart(3, '0')}_${filenameForCard(card.content)}.png`
+    // Tope duro además del de slugify(): algunos tipos de carta (Tarot Member)
+    // combinan dos slugs y podrían acercarse al límite de ruta de Windows aun
+    // con el slug individual ya recortado.
+    const base = `${String(card.position).padStart(3, '0')}_${filenameForCard(card.content)}`
+    const filename = `${base.slice(0, 70)}.png`
     zip.file(`${folder}/${filename}`, await renderCard(card.content))
   }
 

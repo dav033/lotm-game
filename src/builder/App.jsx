@@ -201,6 +201,10 @@ export default function App() {
   const [editingId, setEditingId] = useState(null)
   const [state, setState] = useState(DEFAULT_STATE)
   const [busy, setBusy] = useState(false)
+  // Progreso visible durante la exportacion: antes `busy` solo deshabilitaba
+  // botones en silencio, sin ninguna senal de que algo estuviera pasando.
+  // null = no hay exportacion en curso.
+  const [exportProgress, setExportProgress] = useState(null)
   const [zipError, setZipError] = useState(null)
   const [videoError, setVideoError] = useState(null)
   // Segundos que dura cada carta o imagen en el MP4. Vive aqui porque lo
@@ -456,11 +460,18 @@ export default function App() {
       const partSlugs = [...new Set(chosen.map((card) => card.part.slug))]
       const params = new URLSearchParams({ universe: universeSlugs[0], filename: zipName })
       if (partSlugs.length === 1) params.set('part', partSlugs[0])
+      // El servidor arma el ZIP; no hay progreso por carta que reportar, pero
+      // igual mostramos el overlay un momento para que quede claro que la
+      // descarga arrancó y no que el clic no hizo nada.
+      setExportProgress({ current: 0, total: 0, label: 'Preparando tu descarga…' })
       const a = document.createElement('a')
       a.href = `/api/cards/export?${params}`
       a.download = `${zipName}.zip`
-      setBusy(false)
       a.click()
+      setTimeout(() => {
+        setBusy(false)
+        setExportProgress(null)
+      }, 900)
       return
     }
     const previousState = state
@@ -468,6 +479,7 @@ export default function App() {
     try {
       const zip = new JSZip()
       const grouped = new Set(chosen.map((card) => card.part.id)).size > 1
+      setExportProgress({ current: 0, total: chosen.length, label: 'Generando cartas…' })
       // Render every card fresh instead of trusting each item's auto-saved
       // thumbnail — that thumbnail is captured on a debounce while editing,
       // so switching cards quickly can leave it stale or mid-transition
@@ -483,7 +495,9 @@ export default function App() {
         const base64 = data.split(',')[1]
         const name = `${String(i + 1).padStart(2, '0')}_${fileSafe(labelFor(item.state))}.png`
         zip.file(grouped ? `${slugify(item.part.name)}/${name}` : name, base64, { base64: true })
+        setExportProgress({ current: i + 1, total: chosen.length, label: 'Generando cartas…' })
       }
+      setExportProgress({ current: chosen.length, total: chosen.length, label: 'Comprimiendo el ZIP…' })
       const blob = await zip.generateAsync({ type: 'blob' })
       const a = document.createElement('a')
       a.href = URL.createObjectURL(blob)
@@ -493,6 +507,7 @@ export default function App() {
     } catch (error) {
       setZipError(error?.message ?? 'No se pudo generar el ZIP.')
     } finally {
+      setExportProgress(null)
       flushSync(() => {
         setState(previousState)
         setEditingId(previousEditingId)
@@ -516,7 +531,9 @@ export default function App() {
       const form = new FormData()
       form.append('secondsPerCard', String(secondsPerCard))
       form.append('name', slugify(chosen[0].part.name))
-      for (const item of chosen) {
+      setExportProgress({ current: 0, total: chosen.length, label: 'Generando cuadros del video…' })
+      for (let i = 0; i < chosen.length; i++) {
+        const item = chosen[i]
         flushSync(() => {
           setState(item.state)
           setEditingId(item.id)
@@ -525,12 +542,15 @@ export default function App() {
         form.append('frames', await (await fetch(data)).blob(), `${item.id}.png`)
         // Vacio = esta carta no tiene excepcion y usa la duracion global.
         form.append('durations', item.durationSeconds ?? '')
+        setExportProgress({ current: i + 1, total: chosen.length, label: 'Generando cuadros del video…' })
       }
 
+      setExportProgress({ current: chosen.length, total: chosen.length, label: 'Ensamblando el video…' })
       await sendVideo(form)
     } catch {
       setVideoError('Sin conexion con el servidor.')
     } finally {
+      setExportProgress(null)
       flushSync(() => {
         setState(previousState)
         setEditingId(previousEditingId)
@@ -551,14 +571,19 @@ export default function App() {
       const form = new FormData()
       form.append('secondsPerCard', String(seconds))
       form.append('name', `${slugify(project?.name ?? 'proyecto')}-imagenes`)
-      for (const image of images) {
+      setExportProgress({ current: 0, total: images.length, label: 'Preparando imágenes…' })
+      for (let i = 0; i < images.length; i++) {
+        const image = images[i]
         form.append('frames', await imageToPng(image.url), `${image.id}.png`)
         form.append('durations', image.durationSeconds ?? '')
+        setExportProgress({ current: i + 1, total: images.length, label: 'Preparando imágenes…' })
       }
+      setExportProgress({ current: images.length, total: images.length, label: 'Ensamblando el video…' })
       await sendVideo(form)
     } catch (error) {
       setVideoError(error?.message ?? 'Sin conexion con el servidor.')
     } finally {
+      setExportProgress(null)
       setBusy(false)
     }
   }
@@ -704,6 +729,27 @@ export default function App() {
 
   return (
     <div className="app">
+      {exportProgress && (
+        <div className="export-overlay" role="status" aria-live="polite">
+          <div className="export-overlay-card">
+            <div className="export-spinner" aria-hidden="true" />
+            <p className="export-overlay-label">{exportProgress.label}</p>
+            {exportProgress.total > 0 && (
+              <>
+                <div className="export-progress-track">
+                  <div
+                    className="export-progress-fill"
+                    style={{ width: `${(exportProgress.current / exportProgress.total) * 100}%` }}
+                  />
+                </div>
+                <p className="export-overlay-count">
+                  {exportProgress.current} de {exportProgress.total}
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       <section className="stage">
         <ProjectTabs
           projects={projects}

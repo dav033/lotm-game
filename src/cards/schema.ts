@@ -845,6 +845,11 @@ export function titleForCard(content: CardContent): string {
   return content.name
 }
 
+// Tope bajo a prop\u00f3sito: el slug termina dentro de un .zip anidado en
+// carpetas de universo/parte, y Windows falla al extraer (0x80010135,
+// "ruta de acceso demasiado larga") si la ruta completa pasa de ~260
+// caracteres. 40 deja margen de sobra para prefijos, n\u00famero de posici\u00f3n,
+// carpetas y la extensi\u00f3n.
 export function slugify(value: string): string {
   return value
     .normalize('NFKD')
@@ -852,7 +857,8 @@ export function slugify(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-    .slice(0, 80) || 'sin-nombre'
+    .slice(0, 40)
+    .replace(/-+$/, '') || 'sin-nombre'
 }
 
 export function filenameForCard(content: CardContent): string {
