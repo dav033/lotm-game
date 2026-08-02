@@ -52,7 +52,7 @@ export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl 
       description:
         'Crea o reutiliza un anime/universo y una parte, y agrega hasta 100 cartas. ' +
         'Acepta Character, Artifact, Cover, Full Image Cover, Tier, Pathway, Tier Explanation, ' +
-        'General Explanation, Pathway Explanation, Breakdown, Map, Tarot Member y Corruption File. ' +
+        'General Explanation, Pathway Explanation, Breakdown, Map, Tarot Member, Corruption File y Ritual Logic. ' +
         'En Corruption File, showIncidentNumber decide si aparece el numero decorativo. ' +
         'Las explicaciones pueden ser generales o asociarse a uno de los 22 pathways. ' +
         'Pathway Explanation es una carta corta por pathway: titulo con una palabra ' +
@@ -72,6 +72,9 @@ export function createCardsMcpServer({ repository, downloadBaseUrl, liveViewUrl 
         'Portrait, Dossier y Contrast; acepta nombre, arcano, descripcion, segunda idea y remate. ' +
         'Corruption File explica chistes internos con tres composiciones: Warning, Evidence y Quote; ' +
         'acepta incidente, explicacion, reaccion, nivel de corrupcion, remate y color propio. ' +
+        'Ritual Logic explica un ritual de avance como una cadena causal: requisito, peligro de la pocion y ' +
+        'preparacion para el poder o concepto de la secuencia objetivo. certainty distingue canon, evidencia mixta y teoria; ' +
+        'uncertainty deja visible lo que la obra no confirma. ' +
         'Las imagenes son solo URLs o rutas de /public.',
       inputSchema: SaveCardBatchSchema,
       annotations: {

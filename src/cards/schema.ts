@@ -265,6 +265,23 @@ export const CorruptionFileCardSchema = z
   })
   .strict()
 
+export const RitualLogicCardSchema = z
+  .object({
+    type: z.literal('Ritual Logic'),
+    pathway: PathwayNameSchema,
+    sequence: z.int().min(0).max(9).describe('Secuencia que se alcanza mediante el ritual.'),
+    sequenceName: z.string().trim().min(1).max(80).describe('Nombre canonico de la secuencia alcanzada.'),
+    ritual: z.string().trim().min(1).max(360).describe('Requisito del ritual, formulado con precision y sin interpretacion.'),
+    survival: z.string().trim().min(1).max(360).describe('Peligro de la pocion que el ritual ayuda a soportar. Indica si no se conoce de forma canonica.'),
+    preparation: z.string().trim().min(1).max(420).describe('Poder o concepto de la nueva secuencia que el ritual ensaya antes del avance.'),
+    certainty: z.enum(['Canon', 'Mixed', 'Theory']).default('Mixed').describe('Solidez de la explicacion causal, no del texto del ritual.'),
+    uncertainty: z.string().trim().max(240).optional().describe('Limite de la evidencia o pregunta que sigue abierta.'),
+    footerText: z.string().trim().max(180).optional().describe('Remate breve, sobrio y opcional.'),
+    backgroundImageUrl: ImageSourceSchema.optional(),
+    backgroundOpacity: BackgroundOpacitySchema,
+  })
+  .strict()
+
 export const CardContentSchema = z.discriminatedUnion('type', [
   CharacterCardSchema,
   ArtifactCardSchema,
@@ -279,6 +296,7 @@ export const CardContentSchema = z.discriminatedUnion('type', [
   MapCardSchema,
   TarotMemberCardSchema,
   CorruptionFileCardSchema,
+  RitualLogicCardSchema,
 ])
 
 export type CardContent = z.infer<typeof CardContentSchema>
@@ -373,7 +391,7 @@ export type SaveCardBatchInput = z.infer<typeof SaveCardBatchSchema>
 export type CardFilter = z.infer<typeof CardFilterSchema>
 
 export type BuilderCardState = {
-  type: 'Character' | 'Artifact' | 'Cover' | 'Full Image Cover' | 'Tier' | 'Pathway' | 'Tier Explanation' | 'General Explanation' | 'Pathway Explanation' | 'Breakdown' | 'Map' | 'Tarot Member' | 'Corruption File'
+  type: 'Character' | 'Artifact' | 'Cover' | 'Full Image Cover' | 'Tier' | 'Pathway' | 'Tier Explanation' | 'General Explanation' | 'Pathway Explanation' | 'Breakdown' | 'Map' | 'Tarot Member' | 'Corruption File' | 'Ritual Logic'
   name: string
   path: string
   seq: number
@@ -445,6 +463,16 @@ export type BuilderCardState = {
   corruptionShowIncidentNumber: boolean
   corruptionAccentColor: string | null
   corruptionImage: string | null
+  ritualPathway: string
+  ritualSequence: number
+  ritualSequenceName: string
+  ritualText: string
+  ritualSurvival: string
+  ritualPreparation: string
+  ritualCertainty: 'Canon' | 'Mixed' | 'Theory'
+  ritualUncertainty: string
+  ritualFooterText: string
+  ritualBackgroundImage: string | null
   backgroundOpacity: number
 }
 
@@ -521,6 +549,16 @@ const DEFAULT_BUILDER_STATE: BuilderCardState = {
   corruptionShowIncidentNumber: false,
   corruptionAccentColor: null,
   corruptionImage: null,
+  ritualPathway: 'Fool',
+  ritualSequence: 5,
+  ritualSequenceName: '',
+  ritualText: '',
+  ritualSurvival: '',
+  ritualPreparation: '',
+  ritualCertainty: 'Mixed',
+  ritualUncertainty: '',
+  ritualFooterText: '',
+  ritualBackgroundImage: null,
   backgroundOpacity: 65,
 }
 
@@ -657,6 +695,22 @@ export function toBuilderCardState(content: CardContent): BuilderCardState {
       corruptionShowIncidentNumber: content.showIncidentNumber,
       corruptionAccentColor: content.accentColor ?? null,
       corruptionImage: content.imageUrl ?? null,
+    }
+  }
+
+  if (content.type === 'Ritual Logic') {
+    return {
+      ...state,
+      ritualPathway: content.pathway,
+      ritualSequence: content.sequence,
+      ritualSequenceName: content.sequenceName,
+      ritualText: content.ritual,
+      ritualSurvival: content.survival,
+      ritualPreparation: content.preparation,
+      ritualCertainty: content.certainty,
+      ritualUncertainty: content.uncertainty ?? '',
+      ritualFooterText: content.footerText ?? '',
+      ritualBackgroundImage: content.backgroundImageUrl ?? null,
     }
   }
 
@@ -803,6 +857,22 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
       backgroundOpacity: state.backgroundOpacity,
     }
   }
+  if (state.type === 'Ritual Logic') {
+    return {
+      type: 'Ritual Logic',
+      pathway: state.ritualPathway,
+      sequence: state.ritualSequence,
+      sequenceName: state.ritualSequenceName.trim(),
+      ritual: state.ritualText.trim(),
+      survival: state.ritualSurvival.trim(),
+      preparation: state.ritualPreparation.trim(),
+      certainty: state.ritualCertainty,
+      ...(state.ritualUncertainty.trim() ? { uncertainty: state.ritualUncertainty.trim() } : {}),
+      ...(state.ritualFooterText.trim() ? { footerText: state.ritualFooterText.trim() } : {}),
+      ...(state.ritualBackgroundImage ? { backgroundImageUrl: state.ritualBackgroundImage } : {}),
+      backgroundOpacity: state.backgroundOpacity,
+    }
+  }
   const standard = {
     name: state.name.trim(),
     pathway: state.path,
@@ -817,6 +887,7 @@ export function fromBuilderCardState(state: BuilderCardState): CardContent {
 }
 
 export function titleForCard(content: CardContent): string {
+  if (content.type === 'Ritual Logic') return `${content.pathway} Sequence ${content.sequence} — ${content.sequenceName}`
   if (content.type === 'Cover') return `Pathways in ${content.title} - Part ${content.partNumber}`
   if (content.type === 'Full Image Cover') return content.title
   if (content.type === 'Tier') {
@@ -862,6 +933,7 @@ export function slugify(value: string): string {
 }
 
 export function filenameForCard(content: CardContent): string {
+  if (content.type === 'Ritual Logic') return `ritual-logic_${slugify(content.pathway)}_seq${content.sequence}`
   if (content.type === 'Cover') return `${slugify(content.title)}_part-${slugify(content.partNumber)}`
   if (content.type === 'Full Image Cover') return `full-cover_${slugify(content.title)}`
   if (content.type === 'Tier') {

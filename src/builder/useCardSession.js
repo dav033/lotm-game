@@ -22,6 +22,7 @@ const IMAGE_FIELDS = [
   'tierBackgroundImage',
   'pathwayCardBackgroundImage',
   'tierExplanationBackgroundImage',
+  'ritualBackgroundImage',
 ]
 
 const toSessionCard = (card) => ({
@@ -477,6 +478,12 @@ function withPlaceholders(state) {
     fill('corruptionExplanation', 'What happened.')
     fill('corruptionReactionLabel', 'Fandom reaction')
     fill('corruptionReaction', 'What the fandom did with it.')
+  }
+  if (state.type === 'Ritual Logic') {
+    fill('ritualSequenceName', 'New sequence')
+    fill('ritualText', 'What the ritual requires.')
+    fill('ritualSurvival', 'What the ritual helps the aspirant survive.')
+    fill('ritualPreparation', 'What the ritual rehearses before the new powers arrive.')
   }
   return next
 }

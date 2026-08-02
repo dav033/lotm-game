@@ -168,6 +168,7 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
   const isMap = state.type === 'Map'
   const isTarotMember = state.type === 'Tarot Member'
   const isCorruptionFile = state.type === 'Corruption File'
+  const isRitualLogic = state.type === 'Ritual Logic'
   const isExplanation = isTierExplanation || isGeneralExplanation
   const defaultTierBackground = PATHWAY_BACKGROUNDS[state.tierPath] ?? null
   const defaultPathwayCardBackground = PATHWAY_BACKGROUNDS[state.pathwayCardPath] ?? null
@@ -183,7 +184,7 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
       <div className="field">
         <label>Type</label>
         <div className="toggle">
-          {['Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Pathway', 'Tier Explanation', 'General Explanation', 'Pathway Explanation', 'Breakdown', 'Map', 'Tarot Member', 'Corruption File'].map((t) => (
+          {['Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Pathway', 'Tier Explanation', 'General Explanation', 'Pathway Explanation', 'Breakdown', 'Map', 'Tarot Member', 'Corruption File', 'Ritual Logic'].map((t) => (
             <button
               key={t}
               className={'seg' + (state.type === t ? ' sel' : '')}
@@ -760,6 +761,31 @@ export default function Panel({ state, set, accent, onUploadImage, onDownload, o
           <div className="actions">
             <button className="btn-dl" style={{ background: accent.c }} onClick={onDownload}>Download PNG</button>
           </div>
+        </div>
+      ) : isRitualLogic ? (
+        <div key="ritual-logic-fields">
+          <div className="field"><label>Pathway</label><PathwayCombo value={state.ritualPathway} onPick={(pathway) => set({ ritualPathway: pathway })} /></div>
+          <div className="field">
+            <label>Target sequence</label>
+            <select value={state.ritualSequence} onChange={(e) => {
+              const sequence = Number(e.target.value)
+              set({ ritualSequence: sequence, ritualSequenceName: PATHWAYS[state.ritualPathway][9 - sequence] })
+            }}>
+              {Array.from({ length: 10 }, (_, index) => 9 - index).map((sequence) => <option key={sequence} value={sequence}>Sequence {sequence} · {PATHWAYS[state.ritualPathway][9 - sequence]}</option>)}
+            </select>
+          </div>
+          <div className="field"><label>Sequence name</label><input maxLength={80} value={state.ritualSequenceName ?? ''} onChange={(e) => set({ ritualSequenceName: e.target.value })} /></div>
+          <div className="field"><label>Ritual</label><textarea rows={4} maxLength={360} value={state.ritualText ?? ''} onChange={(e) => set({ ritualText: e.target.value })} /></div>
+          <div className="field"><label>Potion hazard</label><textarea rows={4} maxLength={360} value={state.ritualSurvival ?? ''} onChange={(e) => set({ ritualSurvival: e.target.value })} /></div>
+          <div className="field"><label>Concept rehearsal</label><textarea rows={5} maxLength={420} value={state.ritualPreparation ?? ''} onChange={(e) => set({ ritualPreparation: e.target.value })} /></div>
+          <div className="field">
+            <label>Explanation certainty</label>
+            <div className="toggle">{['Canon', 'Mixed', 'Theory'].map((certainty) => <button key={certainty} className={'seg' + (state.ritualCertainty === certainty ? ' sel' : '')} onClick={() => set({ ritualCertainty: certainty })}>{certainty}</button>)}</div>
+          </div>
+          <div className="field"><label>Evidence limit (optional)</label><textarea rows={3} maxLength={240} value={state.ritualUncertainty ?? ''} onChange={(e) => set({ ritualUncertainty: e.target.value })} /></div>
+          <div className="field"><label>Footer (optional)</label><textarea rows={2} maxLength={180} value={state.ritualFooterText ?? ''} onChange={(e) => set({ ritualFooterText: e.target.value })} /></div>
+          <BackgroundField value={state.ritualBackgroundImage} field="ritualBackgroundImage" opacity={state.backgroundOpacity} set={set} onUploadImage={onUploadImage} help={`Using the default ${state.ritualPathway} background.`} />
+          <div className="actions"><button className="btn-dl" style={{ background: accent.c }} onClick={onDownload}>Download PNG</button></div>
         </div>
       ) : isCorruptionFile ? (
         <div key="corruption-file-fields">

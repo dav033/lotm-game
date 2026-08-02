@@ -11,6 +11,7 @@ import BreakdownCard from './components/BreakdownCard.jsx'
 import MapCard from './components/MapCard.jsx'
 import TarotMemberCard from './components/TarotMemberCard.jsx'
 import CorruptionFileCard from './components/CorruptionFileCard.jsx'
+import RitualLogicCard from './components/RitualLogicCard.jsx'
 import { PATHWAYS, PATH_NAMES, PATHWAY_COLORS, TIER_RANKS, tarotMemberTheme, tierColor, powerTier } from './data/pathways.js'
 import { PATHWAY_ICONS } from './data/pathwayIcons.js'
 import { PATHWAY_BACKGROUNDS } from './data/pathwayBackgrounds.js'
@@ -196,6 +197,26 @@ export default function LiveCardPreview({ state }) {
         accentColor={state.corruptionAccentColor}
         image={state.corruptionImage}
         showIncidentNumber={state.corruptionShowIncidentNumber}
+        backgroundOpacity={state.backgroundOpacity}
+      />
+    )
+  }
+
+  if (state.type === 'Ritual Logic') {
+    const pathway = PATHWAYS[state.ritualPathway] ? state.ritualPathway : 'Fool'
+    return (
+      <RitualLogicCard
+        pathway={pathway}
+        sequence={state.ritualSequence}
+        sequenceName={state.ritualSequenceName}
+        ritual={state.ritualText}
+        survival={state.ritualSurvival}
+        preparation={state.ritualPreparation}
+        certainty={state.ritualCertainty}
+        uncertainty={state.ritualUncertainty}
+        footerText={state.ritualFooterText}
+        tier={PATHWAY_COLORS[pathway]}
+        backgroundImage={state.ritualBackgroundImage || PATHWAY_BACKGROUNDS[pathway] || null}
         backgroundOpacity={state.backgroundOpacity}
       />
     )

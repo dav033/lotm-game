@@ -534,8 +534,35 @@ export class CardRepository {
 
   private migrate(): void {
     const version = this.db.pragma('user_version', { simple: true }) as number
-    if (version > 9) throw new Error(`La version ${version} de cards.db no es compatible.`)
-    if (version === 9) return
+    if (version > 10) throw new Error(`La version ${version} de cards.db no es compatible.`)
+    if (version === 10) return
+
+    if (version === 9) {
+      this.db.exec(`
+        ALTER TABLE cards RENAME TO cards_previous;
+        CREATE TABLE cards (
+          id TEXT PRIMARY KEY,
+          part_id TEXT NOT NULL REFERENCES parts(id) ON DELETE CASCADE,
+          position INTEGER NOT NULL CHECK (position > 0),
+          type TEXT NOT NULL CHECK (type IN (
+            'Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Pathway',
+            'Tier Explanation', 'General Explanation', 'Pathway Explanation', 'Breakdown', 'Map', 'Tarot Member',
+            'Corruption File', 'Ritual Logic'
+          )),
+          title TEXT NOT NULL,
+          data_json TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          duration_seconds REAL CHECK (duration_seconds IS NULL OR (duration_seconds >= 0.5 AND duration_seconds <= 60))
+        );
+        INSERT INTO cards (id, part_id, position, type, title, data_json, created_at, updated_at, duration_seconds)
+          SELECT id, part_id, position, type, title, data_json, created_at, updated_at, duration_seconds FROM cards_previous;
+        DROP TABLE cards_previous;
+        CREATE INDEX cards_part_id_idx ON cards(part_id);
+        PRAGMA user_version = 10;
+      `)
+      return
+    }
 
     if (version === 8) {
       this.db.exec(`
@@ -741,7 +768,7 @@ export class CardRepository {
         position INTEGER NOT NULL CHECK (position > 0),
         type TEXT NOT NULL CHECK (type IN (
           'Character', 'Artifact', 'Cover', 'Full Image Cover', 'Tier', 'Pathway',
-          'Tier Explanation', 'General Explanation', 'Pathway Explanation', 'Breakdown', 'Map', 'Tarot Member', 'Corruption File'
+          'Tier Explanation', 'General Explanation', 'Pathway Explanation', 'Breakdown', 'Map', 'Tarot Member', 'Corruption File', 'Ritual Logic'
         )),
         title TEXT NOT NULL,
         data_json TEXT NOT NULL,
@@ -754,7 +781,7 @@ export class CardRepository {
       CREATE INDEX parts_universe_id_idx ON parts(universe_id);
       ${IMPORTED_IMAGES_SCHEMA}
       ${DURATION_COLUMNS}
-      PRAGMA user_version = 9;
+      PRAGMA user_version = 10;
     `)
   }
 }

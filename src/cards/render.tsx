@@ -15,6 +15,7 @@ import BreakdownCard from '../builder/components/BreakdownCard.jsx'
 import MapCard from '../builder/components/MapCard.jsx'
 import TarotMemberCard from '../builder/components/TarotMemberCard.jsx'
 import CorruptionFileCard from '../builder/components/CorruptionFileCard.jsx'
+import RitualLogicCard from '../builder/components/RitualLogicCard.jsx'
 import {
   PATHWAYS,
   PATH_NAMES,
@@ -46,6 +47,7 @@ const StaticBreakdownCard = BreakdownCard as unknown as ComponentType<Record<str
 const StaticMapCard = MapCard as unknown as ComponentType<Record<string, unknown>>
 const StaticTarotMemberCard = TarotMemberCard as unknown as ComponentType<Record<string, unknown>>
 const StaticCorruptionFileCard = CorruptionFileCard as unknown as ComponentType<Record<string, unknown>>
+const StaticRitualLogicCard = RitualLogicCard as unknown as ComponentType<Record<string, unknown>>
 const FONT_STYLESHEET =
   'https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Space+Grotesk:wght@400;500;700' +
   '&family=Playfair+Display:wght@700;900&family=Archivo:wght@400;500;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap'
@@ -144,6 +146,7 @@ type RenderState = BuilderCardState & {
   mapBackground: string | null
   tarotMemberResolvedImage: string | null
   corruptionResolvedImage: string | null
+  ritualResolvedBackground: string | null
 }
 
 function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string, string> }) {
@@ -159,6 +162,7 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
   const isMap = state.type === 'Map'
   const isTarotMember = state.type === 'Tarot Member'
   const isCorruptionFile = state.type === 'Corruption File'
+  const isRitualLogic = state.type === 'Ritual Logic'
   const rawSequences = [
     { path: state.path, seq: state.seq },
     ...(state.hasSecond ? [{ path: state.path2, seq: state.seq2 }] : []),
@@ -181,6 +185,8 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
         ? { ...PATHWAY_COLOR_DATA[state.pathwayCardPath], pct: 100 }
       : isMap && state.mapPathway
         ? { ...PATHWAY_COLOR_DATA[state.mapPathway], pct: 100 }
+      : isRitualLogic
+        ? { ...PATHWAY_COLOR_DATA[state.ritualPathway], pct: 100 }
       : isGeneralExplanation || isPathwayExplanation || isBreakdown || isMap || isTarotMember || isCorruptionFile
         ? COVER_ACCENT
       : powerTier(state.type, state.power, state.grade)
@@ -308,6 +314,21 @@ function CardMarkup({ state, icons }: { state: RenderState; icons: Record<string
           image={state.corruptionResolvedImage}
           backgroundOpacity={state.backgroundOpacity}
         />
+      ) : isRitualLogic ? (
+        <StaticRitualLogicCard
+          pathway={state.ritualPathway}
+          sequence={state.ritualSequence}
+          sequenceName={state.ritualSequenceName}
+          ritual={state.ritualText}
+          survival={state.ritualSurvival}
+          preparation={state.ritualPreparation}
+          certainty={state.ritualCertainty}
+          uncertainty={state.ritualUncertainty}
+          footerText={state.ritualFooterText}
+          tier={PATHWAY_COLOR_DATA[state.ritualPathway]}
+          backgroundImage={state.ritualResolvedBackground}
+          backgroundOpacity={state.backgroundOpacity}
+        />
       ) : (
         <StaticCard
           name={state.name}
@@ -391,6 +412,13 @@ async function resolveStateImages(
         : null,
     corruptionResolvedImage: state.corruptionImage
       ? await resolveImageSource(state.corruptionImage, publicDir)
+      : null,
+    ritualResolvedBackground: state.type === 'Ritual Logic'
+      ? await resolveImageSource(
+        state.ritualBackgroundImage
+          ?? (PATHWAY_BACKGROUNDS as Record<string, string>)[state.ritualPathway],
+        publicDir,
+      )
       : null,
     pathwayExplanationBackgroundImage: pathwayExplanationSource
       ? await resolveImageSource(pathwayExplanationSource, publicDir)

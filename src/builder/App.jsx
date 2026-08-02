@@ -16,6 +16,7 @@ import BreakdownCard from './components/BreakdownCard.jsx'
 import MapCard from './components/MapCard.jsx'
 import TarotMemberCard from './components/TarotMemberCard.jsx'
 import CorruptionFileCard from './components/CorruptionFileCard.jsx'
+import RitualLogicCard from './components/RitualLogicCard.jsx'
 import Panel from './components/Panel.jsx'
 import Filmstrip from './components/Filmstrip.jsx'
 import ProjectTabs, { MAX_OPEN_PROJECTS } from './components/ProjectTabs.jsx'
@@ -68,6 +69,12 @@ const NEW_CARD_SEEDS = {
     corruptionIncident: 'New incident',
     corruptionExplanation: 'What happened.',
     corruptionReaction: 'What the fandom did with it.',
+  },
+  'Ritual Logic': {
+    ritualSequenceName: 'New sequence',
+    ritualText: 'What the ritual requires.',
+    ritualSurvival: 'What the ritual helps the aspirant survive.',
+    ritualPreparation: 'What the ritual rehearses before the new powers arrive.',
   },
 }
 
@@ -144,6 +151,16 @@ const DEFAULT_STATE = {
   corruptionAccentColor: '#d84a4a',
   corruptionImage: null,
   corruptionShowIncidentNumber: false,
+  ritualPathway: 'Fool',
+  ritualSequence: 5,
+  ritualSequenceName: '',
+  ritualText: '',
+  ritualSurvival: '',
+  ritualPreparation: '',
+  ritualCertainty: 'Mixed',
+  ritualUncertainty: '',
+  ritualFooterText: '',
+  ritualBackgroundImage: null,
   backgroundOpacity: 65,
 }
 
@@ -668,6 +685,7 @@ export default function App() {
   const isMap = state.type === 'Map'
   const isTarotMember = state.type === 'Tarot Member'
   const isCorruptionFile = state.type === 'Corruption File'
+  const isRitualLogic = state.type === 'Ritual Logic'
   // Older saved cards predate the tier fields — fall back to sane defaults.
   const tierPath = PATHWAYS[state.tierPath] ? state.tierPath : 'Fool'
   const tierSeq = Number.isInteger(state.tierSeq) && state.tierSeq >= 0 && state.tierSeq <= 9
@@ -694,6 +712,8 @@ export default function App() {
         ? { ...tarotMemberTheme(state.tarotMemberPathway, state.tarotMemberAccentColor), pct: 100 }
       : isCorruptionFile
         ? { c: state.corruptionAccentColor || '#d84a4a', d: '#351317', pct: 100 }
+      : isRitualLogic
+        ? { ...PATHWAY_COLORS[PATHWAYS[state.ritualPathway] ? state.ritualPathway : 'Fool'], pct: 100 }
       : isGeneralExplanation || isPathwayExplanation || isBreakdown || isMap
         ? COVER_ACCENT
       : powerTier(state.type, state.power, state.grade)
@@ -958,6 +978,23 @@ export default function App() {
               backgroundOpacity={state.backgroundOpacity}
               onDropBackground={(file) => onUploadImage(file, 'corruptionImage')}
             />
+          ) : isRitualLogic ? (
+            <RitualLogicCard
+              ref={cardRef}
+              pathway={PATHWAYS[state.ritualPathway] ? state.ritualPathway : 'Fool'}
+              sequence={state.ritualSequence}
+              sequenceName={state.ritualSequenceName}
+              ritual={state.ritualText}
+              survival={state.ritualSurvival}
+              preparation={state.ritualPreparation}
+              certainty={state.ritualCertainty}
+              uncertainty={state.ritualUncertainty}
+              footerText={state.ritualFooterText}
+              tier={PATHWAY_COLORS[PATHWAYS[state.ritualPathway] ? state.ritualPathway : 'Fool']}
+              backgroundImage={state.ritualBackgroundImage || PATHWAY_BACKGROUNDS[state.ritualPathway] || null}
+              backgroundOpacity={state.backgroundOpacity}
+              onDropBackground={(file) => onUploadImage(file, 'ritualBackgroundImage')}
+            />
           ) : (
             <Card
               ref={cardRef}
@@ -1118,5 +1155,6 @@ function labelFor(s) {
     return `tarot_member_${s.tarotMemberTitle || 'arcana'}_${s.tarotMemberName || 'member'}`.replace(/\s+/g, '_')
   }
   if (s.type === 'Corruption File') return `corruption_file_${s.corruptionIncident || 'incident'}`.replace(/\s+/g, '_')
+  if (s.type === 'Ritual Logic') return `ritual_logic_${s.ritualPathway || 'pathway'}_seq${s.ritualSequence}`.replace(/\s+/g, '_')
   return `${s.name || 'card'}_seq${s.seq}`
 }

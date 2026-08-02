@@ -960,3 +960,25 @@
 .corruption-file-evidence .corruption-file-panels{margin:auto 0}.corruption-file-evidence .corruption-file-explanation{background:#101115;color:#eee7d8}.corruption-file-evidence .corruption-file-explanation span{color:var(--corruption)}.corruption-file-evidence .corruption-file-reaction{transform:translateY(10px)}.corruption-file-evidence.corruption-evidence-stacked .corruption-file-reaction{margin-left:28px;transform:none}
 .corruption-file-quote{background:var(--corruption)}.corruption-file-quote::before{background:#101115}.corruption-file-quote .corruption-file-veil{background:var(--corruption)}.corruption-file-quote .corruption-file-grid{opacity:.12}.corruption-file-quote .corruption-file-level{background:#eee7d8}.corruption-file-quote .corruption-file-panels{margin-top:auto}.corruption-file-quote .corruption-file-explanation{padding:14px 15px;border:3px solid #101115;background:#eee7d8;box-shadow:7px 7px 0 #101115}.corruption-file-quote .corruption-file-explanation p{font-family:'Archivo',sans-serif;font-size:19px;line-height:1.2;font-weight:900}.corruption-file-quote .corruption-file-reaction{margin-left:36px;padding:14px 15px;background:#101115;color:#eee7d8;box-shadow:none}.corruption-file-quote .corruption-file-reaction span{color:var(--corruption)}.corruption-file-quote .corruption-file-footer b{background:#101115;color:var(--corruption)}.corruption-quote-mark{right:25px;top:124px;color:#101115;font-family:'Archivo',sans-serif;font-size:120px;opacity:.22}
 .corruption-file-quote .corruption-file-index{top:245px;right:15px;color:rgba(16,17,21,.12);font-size:195px;transform:rotate(6deg)}
+/* ================= RITUAL LOGIC (ritual -> hazard -> rehearsal) ================= */
+.ritual-logic-card{padding:28px 34px 28px;display:flex;flex-direction:column;background:#090a0d;overflow:hidden}
+.ritual-logic-content{position:relative;z-index:3;display:flex;flex-direction:column;height:100%;min-height:0;text-align:left}
+.ritual-logic-ghost{position:absolute;z-index:0;right:-42px;top:52px;font-family:'Playfair Display',serif;font-size:360px;font-weight:900;line-height:.72;color:var(--tier);opacity:.045}
+.ritual-logic-head{display:flex;align-items:center;justify-content:space-between;gap:16px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#969186}
+.ritual-logic-sequence{padding:6px 10px;border:1px solid rgba(227,189,119,.55);border-radius:999px;color:var(--tier);background:rgba(8,9,12,.72)}
+.ritual-logic-pathway{margin:18px 0 5px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--tier)}
+.ritual-logic-title{margin:0;font-size:42px;line-height:.98;max-width:410px;overflow-wrap:normal}
+.ritual-logic-rule{width:108px;height:3px;margin:13px 0 18px;background:var(--tier);box-shadow:0 0 18px rgba(227,189,119,.35)}
+.ritual-logic-chain{position:relative;display:flex;flex:0 0 auto;flex-direction:column;justify-content:flex-start;gap:12px;padding-left:3px}
+.ritual-logic-chain::before{content:'';position:absolute;left:22px;top:38px;bottom:38px;width:1px;background:linear-gradient(var(--tier),rgba(255,255,255,.12))}
+.ritual-logic-step{position:relative;display:grid;grid-template-columns:46px 1fr;gap:16px;align-items:start}
+.ritual-logic-node{position:relative;z-index:1;display:grid;place-items:center;width:44px;height:44px;border:1px solid var(--tier);border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:800;color:#08090b;background:var(--tier)}
+.ritual-logic-label{display:block;margin:1px 0 5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#918c82}
+.ritual-logic-step p{margin:0;font-size:14px;font-weight:600;line-height:1.3;color:#f0ede5;text-wrap:pretty;overflow-wrap:anywhere}
+.ritual-logic-step:last-child p{color:var(--tier)}
+.ritual-logic-verdict{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;margin-top:16px;padding:10px 12px;border:1px dashed rgba(255,255,255,.19);background:rgba(7,8,10,.68)}
+.ritual-logic-certainty{padding:4px 7px;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#090a0c;background:var(--tier)}
+.ritual-logic-card.certainty-theory .ritual-logic-certainty{color:#eee;background:#705878}
+.ritual-logic-verdict p{margin:0;font-size:10px;line-height:1.35;color:#aaa59b}
+.ritual-logic-footer{margin:13px 0 0;padding-top:10px;border-top:1px solid rgba(227,189,119,.45);font-family:'Playfair Display',serif;font-size:14px;font-style:italic;color:#d8d2c4}
+.ritual-logic-card.dense .ritual-logic-chain{gap:9px}.ritual-logic-card.dense .ritual-logic-step p{font-size:12px;line-height:1.25}.ritual-logic-card.dense .ritual-logic-title{font-size:38px}.ritual-logic-card.dense .ritual-logic-verdict{margin-top:11px}.ritual-logic-card.dense .ritual-logic-footer{margin-top:9px}
